@@ -21,6 +21,57 @@ body {
     text-align: center;
 }
 
+.coins-section {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    padding: 15px;
+    border-radius: 15px;
+    margin: 20px 0;
+    text-align: center;
+    border: 2px solid #ffc107;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+}
+
+.coins-balance {
+    font-size: 24px;
+    font-weight: bold;
+    color: #856404;
+    margin-bottom: 10px;
+}
+
+.coins-icon {
+    font-size: 28px;
+    margin-right: 10px;
+}
+
+.coins-info {
+    color: #856404;
+    font-size: 14px;
+}
+
+.reward-animation {
+    animation: coinPop 0.6s ease-in-out;
+}
+
+@keyframes coinPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.coins-awarded {
+    background: #28a745;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    margin: 10px 0;
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .avatar {
     width: 120px;
     height: 120px;
@@ -112,4 +163,5 @@ body {
 
 .subscribe-btn:hover {
     background: #5a6fd8;
+
 }
