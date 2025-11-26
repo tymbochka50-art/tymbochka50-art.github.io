@@ -11,6 +11,32 @@ body {
     padding: 20px;
 }
 
+/* Стили для поля ввода био */
+#bioInput {
+    width: 100%;
+    height: 80px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.bio-edit-btn {
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.bio-edit-btn:hover {
+    color: #495057;
+}
+
 .container {
     max-width: 400px;
     margin: 0 auto;
@@ -165,3 +191,4 @@ body {
     background: #5a6fd8;
 
 }
+
