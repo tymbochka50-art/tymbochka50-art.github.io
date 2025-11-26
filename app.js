@@ -282,36 +282,28 @@ async function claimDailyRewardTimer() {
         const result = await response.json();
         
         if (result.success) {
-            // Показываем анимацию
+            // 🔥 ОБНОВЛЯЕМ ОСНОВНОЙ БАЛАНС МОНЕТ
             const coinsElement = document.getElementById('userCoins');
+            coinsElement.textContent = result.coins; // Теперь это общий баланс
             coinsElement.classList.add('coin-animation');
             setTimeout(() => coinsElement.classList.remove('coin-animation'), 600);
             
-            // Обновляем UI
+            // Обновляем прогресс наград
             updateRewardUI(result);
             
             // Показываем сообщение
-            if (result.coinsAwarded > 0) {
-                tg.showAlert(result.message);
-                
-                // Запускаем таймер на 60 секунд
-                startRewardTimer(60, userId);
-            } else {
-                tg.showAlert(result.message);
-                
-                // Если нужно ждать, запускаем таймер
-                if (!result.canClaim) {
-                    const timeMatch = result.message.match(/(\d+) секунд/);
-                    if (timeMatch) {
-                        startRewardTimer(parseInt(timeMatch[1]), userId);
-                    }
-                }
+            tg.showAlert(result.message);
+            
+            // Запускаем таймер если нужно
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
+                startRewardTimer(result.timeUntilNextReward, userId);
             }
         } else {
             tg.showAlert(`❌ Ошибка: ${result.error}`);
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +10 монет';
         }
+        
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +10 монет';
         
     } catch (error) {
         console.error('Ошибка получения награды:', error);
@@ -563,5 +555,6 @@ function subscribeToChannel() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
