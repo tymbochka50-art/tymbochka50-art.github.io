@@ -1,20 +1,10 @@
 // Инициализация Telegram Web App
 const tg = window.Telegram.WebApp;
 
-// Основная функция инициализации
-function initApp() {
+async function initApp() {
     try {
-        // Расширяем приложение на весь экран
         tg.expand();
         
-        // Показываем основную кнопку
-        tg.MainButton.setText("Обновить");
-        tg.MainButton.show();
-        tg.MainButton.onClick(() => {
-            location.reload();
-        });
-        
-        // Получаем данные пользователя
         const user = tg.initDataUnsafe?.user;
         
         if (!user) {
@@ -22,46 +12,119 @@ function initApp() {
             return;
         }
 
-        // Показываем ID пользователя для отладки
+        // Основные данные
         document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
-        document.getElementById('debugBackend').textContent = 'Vercel';
-
-        // Отображаем аватар пользователя
+        
         const avatar = document.getElementById('userAvatar');
-        if (user.photo_url) {
-            avatar.src = user.photo_url;
-        } else {
-            avatar.src = getDefaultAvatar();
-        }
+        avatar.src = user.photo_url || getDefaultAvatar();
 
-        // Отображаем имя пользователя
         const userName = document.getElementById('userName');
         userName.textContent = user.first_name || 'Пользователь';
 
-        // Отображаем фамилию
         const userLastName = document.getElementById('userLastName');
         userLastName.textContent = user.last_name || 'Не указана';
 
-        // Отображаем описание (bio) с проверкой доступности
-        const userBio = document.getElementById('userBio');
-        if (user.bio && user.bio.trim() !== '') {
-            userBio.textContent = user.bio;
-        } else {
-            userBio.textContent = 'Био не доступно или не заполнено';
-            userBio.style.color = '#6c757d';
-            userBio.style.fontStyle = 'italic';
-        }
+        // 🔥 ГЛАВНОЕ: Получаем био через getUserProfile
+        await displayUserBioWithPopup(user.id);
 
-        // Проверяем подписку на канал
+        // Проверяем подписку
         checkRealSubscription(user.id);
-
-        // Показываем все данные для отладки
-        console.log('📱 Данные пользователя:', user);
-        console.log('🔧 Все initData:', tg.initDataUnsafe);
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
-        document.body.innerHTML = '<div class="loading">Ошибка загрузки приложения</div>';
+    }
+}
+
+// 🔥 ОСНОВНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ БИО
+async function displayUserBioWithPopup(userId) {
+    const userBio = document.getElementById('userBio');
+    
+    // Сначала показываем что пытаемся получить данные
+    userBio.textContent = '🔄 Запрашиваем данные профиля...';
+    userBio.style.color = '#6c757d';
+    
+    try {
+        // Способ 1: Прямой запрос профиля
+        tg.getUserProfile((profile) => {
+            if (profile && profile.bio) {
+                userBio.textContent = profile.bio;
+                userBio.style.color = '#333';
+                userBio.style.fontStyle = 'normal';
+                console.log('✅ Био получено:', profile.bio);
+            } else {
+                // Способ 2: Если не сработало, показываем кнопку
+                showBioRequestButton(userId, userBio);
+            }
+        });
+        
+    } catch (error) {
+        console.error('Ошибка получения профиля:', error);
+        showBioRequestButton(userId, userBio);
+    }
+}
+
+// Показываем кнопку для запроса био
+function showBioRequestButton(userId, userBioElement) {
+    userBioElement.innerHTML = `
+        <div style="text-align: center;">
+            <p style="margin-bottom: 10px;">Био не доступно автоматически</p>
+            <button onclick="requestBioWithPopup(${userId})" 
+                    class="subscribe-btn"
+                    style="background: #28a745;">
+                👤 Запросить данные профиля
+            </button>
+        </div>
+    `;
+}
+
+// Запрос био через попап
+function requestBioWithPopup(userId) {
+    const userBio = document.getElementById('userBio');
+    userBio.innerHTML = '🔄 Открываем доступ к профилю...';
+    
+    // Открываем попап для запроса данных
+    tg.showPopup({
+        title: 'Доступ к профилю',
+        message: 'Разрешите доступ к вашему профилю Telegram для отображения био и персональных данных',
+        buttons: [
+            {id: 'allow', type: 'default', text: '✅ Разрешить'},
+            {id: 'cancel', type: 'cancel', text: '❌ Отмена'}
+        ]
+    }, async (buttonId) => {
+        if (buttonId === 'allow') {
+            // После разрешения запрашиваем профиль
+            tg.getUserProfile((profile) => {
+                if (profile && profile.bio) {
+                    userBio.textContent = profile.bio;
+                    userBio.style.color = '#333';
+                    userBio.style.fontStyle = 'normal';
+                    
+                    // Сохраняем в localStorage на будущее
+                    localStorage.setItem('userBio', profile.bio);
+                    
+                    // Показываем успех
+                    showBioSuccess();
+                } else {
+                    userBio.textContent = 'Био не заполнено в вашем профиле Telegram';
+                    userBio.style.color = '#6c757d';
+                }
+            });
+        } else {
+            userBio.textContent = 'Доступ к био не предоставлен';
+            userBio.style.color = '#dc3545';
+        }
+    });
+}
+
+function showBioSuccess() {
+    const statusElement = document.getElementById('subscriptionStatus');
+    if (statusElement) {
+        const oldContent = statusElement.innerHTML;
+        statusElement.innerHTML = oldContent + `
+            <div style="background: #d4edda; color: #155724; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                ✅ Данные профиля успешно загружены
+            </div>
+        `;
     }
 }
 
@@ -165,3 +228,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
