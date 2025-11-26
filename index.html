@@ -196,6 +196,31 @@
             </div>
             <!-- УБИРАЕМ БЛОК С БИО -->
         </div>
+
+<!-- Добавьте этот блок после coins-section -->
+<div class="daily-reward-section">
+    <div class="reward-header">
+        <span class="reward-icon">⏰</span>
+        <span>Ежедневная награда</span>
+    </div>
+    <div class="reward-progress">
+        <div class="progress-bar">
+            <div id="rewardProgress" class="progress-fill"></div>
+        </div>
+        <div class="progress-text">
+            <span id="rewardCount">0</span>/<span id="maxRewards">30</span> наград
+        </div>
+    </div>
+    <div class="reward-timer">
+        <span id="timerText">Готово к получению!</span>
+    </div>
+    <button id="claimRewardBtn" onclick="claimDailyRewardTimer()" class="subscribe-btn reward-btn">
+        🎁 Забрать +10 монет
+    </button>
+    <div class="reward-info">
+        <small>Каждую минуту можно получить награду. Максимум 30 раз в день.</small>
+    </div>
+</div>
         
         <!-- Добавляем блок с монетами -->
         <div class="coins-section">
@@ -220,3 +245,4 @@
     <script src="app.js"></script>
 </body>
 </html>
+
