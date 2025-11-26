@@ -44,7 +44,6 @@
             color: #333;
             margin-bottom: 10px;
         }
-
         
         .user-info {
             background: #f8f9fa;
@@ -70,6 +69,33 @@
         .info-value {
             color: #333;
             word-break: break-word;
+        }
+        
+        .coins-section {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            padding: 15px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+            border: 2px solid #ffc107;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        }
+        
+        .coins-balance {
+            font-size: 24px;
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .coins-icon {
+            font-size: 28px;
+            margin-right: 10px;
+        }
+        
+        .coins-info {
+            color: #856404;
+            font-size: 14px;
         }
         
         .subscription-status {
@@ -132,6 +158,30 @@
             color: #666;
             text-align: left;
         }
+        
+        .reward-animation {
+            animation: coinPop 0.6s ease-in-out;
+        }
+        
+        @keyframes coinPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .coins-awarded {
+            background: #28a745;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -144,22 +194,19 @@
                 <span class="info-label">Фамилия:</span>
                 <span id="userLastName" class="info-value"></span>
             </div>
-            <div class="info-item">
-                <span class="info-label">Описание (Bio):</span>
-                <span id="userBio" class="info-value"></span>
+            <!-- УБИРАЕМ БЛОК С БИО -->
+        </div>
+        
+        <!-- Добавляем блок с монетами -->
+        <div class="coins-section">
+            <div class="coins-balance">
+                <span class="coins-icon">🪙</span>
+                <span id="userCoins">0</span> монет
+            </div>
+            <div class="coins-info">
+                <small>Подпишись на канал и получай +10 монет ежедневно!</small>
             </div>
         </div>
-
-                <!-- Добавьте этот блок после user-info -->
-<div class="coins-section">
-    <div class="coins-balance">
-        <span class="coins-icon">🪙</span>
-        <span id="userCoins">0</span> монет
-    </div>
-    <div class="coins-info">
-        <small>Подпишись на канал и получай +10 монет ежедневно!</small>
-    </div>
-</div>
         
         <div id="subscriptionStatus" class="subscription-status"></div>
         
@@ -173,5 +220,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
-
