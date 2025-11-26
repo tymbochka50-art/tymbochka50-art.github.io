@@ -54,6 +54,201 @@ async function initApp() {
     }
 }
 
+// Загрузка статуса ежедневных наград
+async function loadRewardStatus(userId) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/reward-status';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateRewardUI(result);
+            
+            // Запускаем таймер если нужно
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
+                startRewardTimer(result.timeUntilNextReward, userId);
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса наград:', error);
+    }
+}
+
+// Обновление интерфейса наград
+function updateRewardUI(data) {
+    const rewardCount = document.getElementById('rewardCount');
+    const maxRewards = document.getElementById('maxRewards');
+    const rewardProgress = document.getElementById('rewardProgress');
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    const coinsElement = document.getElementById('userCoins');
+    
+    // Обновляем прогресс
+    rewardCount.textContent = data.rewardCount;
+    maxRewards.textContent = data.maxRewards;
+    
+    const progressPercent = (data.rewardCount / data.maxRewards) * 100;
+    rewardProgress.style.width = `${progressPercent}%`;
+    
+    // Обновляем баланс монет
+    coinsElement.textContent = data.coins;
+    
+    // Обновляем таймер и кнопку
+    if (data.rewardCount >= data.maxRewards) {
+        timerText.textContent = '🎉 Все награды получены!';
+        claimBtn.disabled = true;
+        claimBtn.textContent = '✅ Завершено';
+        rewardProgress.classList.add('progress-pulse');
+    } else if (data.canClaim) {
+        timerText.textContent = '✅ Готово к получению!';
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +10 монет';
+        rewardProgress.classList.remove('progress-pulse');
+    } else {
+        timerText.textContent = `⏳ До следующей награды: ${data.timeUntilNextReward}с`;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '⏳ Ждите...';
+        rewardProgress.classList.remove('progress-pulse');
+    }
+}
+
+// Запрос ежедневной награды
+async function claimDailyRewardTimer() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Получаем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/daily-reward-timer';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Показываем анимацию
+            const coinsElement = document.getElementById('userCoins');
+            coinsElement.classList.add('coin-animation');
+            setTimeout(() => coinsElement.classList.remove('coin-animation'), 600);
+            
+            // Обновляем UI
+            updateRewardUI(result);
+            
+            // Показываем сообщение
+            if (result.coinsAwarded > 0) {
+                tg.showAlert(result.message);
+                
+                // Запускаем таймер на 60 секунд
+                startRewardTimer(60, userId);
+            } else {
+                tg.showAlert(result.message);
+                
+                // Если нужно ждать, запускаем таймер
+                if (!result.canClaim) {
+                    const timeMatch = result.message.match(/(\d+) секунд/);
+                    if (timeMatch) {
+                        startRewardTimer(parseInt(timeMatch[1]), userId);
+                    }
+                }
+            }
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +10 монет';
+        }
+        
+    } catch (error) {
+        console.error('Ошибка получения награды:', error);
+        tg.showAlert('❌ Ошибка сети');
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +10 монет';
+    }
+}
+
+// Таймер обратного отсчета
+function startRewardTimer(seconds, userId) {
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    let timeLeft = seconds;
+    
+    const timer = setInterval(() => {
+        timerText.textContent = `⏳ До следующей награды: ${timeLeft}с`;
+        timeLeft--;
+        
+        if (timeLeft < 0) {
+            clearInterval(timer);
+            timerText.textContent = '✅ Готово к получению!';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +10 монет';
+            
+            // Обновляем статус
+            loadRewardStatus(userId);
+        }
+    }, 1000);
+}
+
+// В initApp добавляем загрузку статуса наград
+async function initApp() {
+    try {
+        tg.expand();
+        
+        const user = tg.initDataUnsafe?.user;
+        
+        if (!user) {
+            document.body.innerHTML = '<div class="loading">Ошибка: Не удалось получить данные пользователя</div>';
+            return;
+        }
+
+        // Основные данные
+        document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
+        
+        const avatar = document.getElementById('userAvatar');
+        avatar.src = user.photo_url || getDefaultAvatar();
+
+        const userName = document.getElementById('userName');
+        userName.textContent = user.first_name || 'Пользователь';
+
+        const userLastName = document.getElementById('userLastName');
+        userLastName.textContent = user.last_name || 'Не указана';
+
+        // Загружаем баланс и статус наград
+        await loadUserBalance(user.id);
+        await loadRewardStatus(user.id);
+
+        // Проверяем подписку
+        checkRealSubscription(user.id);
+
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+    }
+}
+
 // Функция для создания заглушки аватара
 function getDefaultAvatar() {
     return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
@@ -237,3 +432,4 @@ function subscribeToChannel() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
