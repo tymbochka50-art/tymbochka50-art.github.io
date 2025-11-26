@@ -1,6 +1,137 @@
 // Инициализация Telegram Web App
 const tg = window.Telegram.WebApp;
 
+// Добавьте эту функцию в app.js ПЕРЕД всем остальным кодом
+function claimDailyRewardTimer() {
+    const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (!userId) {
+        alert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    // Временно показываем сообщение
+    claimBtn.disabled = true;
+    claimBtn.textContent = '🔄 Получаем...';
+    
+    setTimeout(() => {
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +10 монет';
+        alert('✅ Награда получена! +10 монет');
+    }, 1000);
+}
+
+// Или если хотите полную версию, добавьте эту функцию:
+async function claimDailyRewardTimer() {
+    const tg = window.Telegram.WebApp;
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Получаем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/daily-reward-timer';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Обновляем баланс
+            const coinsElement = document.getElementById('userCoins');
+            coinsElement.textContent = result.coins;
+            coinsElement.classList.add('coin-animation');
+            setTimeout(() => coinsElement.classList.remove('coin-animation'), 600);
+            
+            // Обновляем прогресс
+            updateRewardUI(result);
+            
+            // Показываем сообщение
+            tg.showAlert(result.message);
+            
+            // Запускаем таймер если нужно
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
+                startRewardTimer(result.timeUntilNextReward, userId);
+            }
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +10 монет';
+        
+    } catch (error) {
+        console.error('Ошибка получения награды:', error);
+        tg.showAlert('❌ Ошибка сети');
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +10 монет';
+    }
+}
+
+// Также добавьте вспомогательные функции:
+function updateRewardUI(data) {
+    const rewardCount = document.getElementById('rewardCount');
+    const rewardProgress = document.getElementById('rewardProgress');
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (rewardCount && data.rewardCount !== undefined) {
+        rewardCount.textContent = data.rewardCount;
+    }
+    
+    if (rewardProgress && data.rewardCount !== undefined && data.maxRewards) {
+        const progressPercent = (data.rewardCount / data.maxRewards) * 100;
+        rewardProgress.style.width = `${progressPercent}%`;
+    }
+    
+    if (timerText) {
+        timerText.textContent = data.message || '✅ Готово к получению!';
+    }
+    
+    if (claimBtn) {
+        claimBtn.disabled = !data.canClaim;
+        claimBtn.textContent = data.canClaim ? '🎁 Забрать +10 монет' : '⏳ Ждите...';
+    }
+}
+
+function startRewardTimer(seconds, userId) {
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    let timeLeft = seconds;
+    
+    const timer = setInterval(() => {
+        if (timerText) {
+            timerText.textContent = `⏳ До следующей награды: ${timeLeft}с`;
+        }
+        timeLeft--;
+        
+        if (timeLeft < 0) {
+            clearInterval(timer);
+            if (timerText) timerText.textContent = '✅ Готово к получению!';
+            if (claimBtn) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = '🎁 Забрать +10 монет';
+            }
+        }
+    }, 1000);
+}
+
 // Основная функция инициализации
 async function initApp() {
     try {
@@ -432,4 +563,5 @@ function subscribeToChannel() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
