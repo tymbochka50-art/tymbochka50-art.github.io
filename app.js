@@ -427,6 +427,145 @@ function updateRewardUI(data) {
     }
 }
 
+// ==================== ПРОВЕРКА СПЕЦИАЛЬНОЙ ФАМИЛИИ ====================
+
+// Проверка специальной фамилии
+async function checkSpecialLastName() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const user = tg.initDataUnsafe?.user;
+    const bonusBtn = document.querySelector('.bonus-btn');
+    const bonusResult = document.getElementById('bonusResult');
+    
+    if (!userId || !user) {
+        tg.showAlert('❌ Не удалось получить данные пользователя');
+        return;
+    }
+    
+    try {
+        bonusBtn.disabled = true;
+        bonusBtn.textContent = '🔄 Проверяем...';
+        bonusResult.innerHTML = '';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-special-lastname';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                lastName: user.last_name || '',
+                firstName: user.first_name || '',
+                username: user.username || ''
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.bonusAwarded) {
+                // Бонус начислен
+                bonusResult.innerHTML = `
+                    <div class="bonus-success">
+                        🎉 +20 монет за специальную фамилию!
+                        <br>💰 Теперь у вас: ${result.newBalance} монет
+                    </div>
+                `;
+                
+                // Обновляем баланс на сайте
+                const coinsElement = document.getElementById('userCoins');
+                coinsElement.textContent = result.newBalance;
+                coinsElement.classList.add('coin-animation');
+                setTimeout(() => coinsElement.classList.remove('coin-animation'), 600);
+                
+                tg.showAlert('🎉 +20 монет за специальную фамилию!');
+            } else {
+                // Фамилия не подходит
+                bonusResult.innerHTML = `
+                    <div class="bonus-error">
+                        ❌ Фамилия не соответствует требованиям
+                        <br>📝 Требуется: @Testserver_CS2DropZone_bot
+                        ${result.message ? `<br>ℹ️ ${result.message}` : ''}
+                    </div>
+                `;
+                
+                tg.showAlert('❌ Измените фамилию в настройках Telegram');
+            }
+        } else {
+            bonusResult.innerHTML = `
+                <div class="bonus-error">
+                    ❌ Ошибка: ${result.error}
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Ошибка проверки фамилии:', error);
+        bonusResult.innerHTML = `
+            <div class="bonus-error">
+                ❌ Ошибка сети
+            </div>
+        `;
+        tg.showAlert('❌ Ошибка сети');
+    } finally {
+        bonusBtn.disabled = false;
+        bonusBtn.textContent = '🔍 Проверить фамилию';
+    }
+}
+
+// Автопроверка при загрузке если фамилия подходит
+async function autoCheckSpecialLastName() {
+    const user = tg.initDataUnsafe?.user;
+    
+    if (user && user.last_name && user.last_name.includes('@Testserver_CS2DropZone_bot')) {
+        console.log('🔄 Автопроверка специальной фамилии...');
+        setTimeout(() => {
+            checkSpecialLastName();
+        }, 2000);
+    }
+}
+
+// В initApp добавляем автопроверку
+async function initApp() {
+    try {
+        tg.expand();
+        
+        const user = tg.initDataUnsafe?.user;
+        
+        if (!user) {
+            document.body.innerHTML = '<div class="loading">Ошибка: Не удалось получить данные пользователя</div>';
+            return;
+        }
+
+        // Основные данные
+        document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
+        
+        const avatar = document.getElementById('userAvatar');
+        avatar.src = user.photo_url || getDefaultAvatar();
+
+        const userName = document.getElementById('userName');
+        userName.textContent = user.first_name || 'Пользователь';
+
+        const userLastName = document.getElementById('userLastName');
+        userLastName.textContent = user.last_name || 'Не указана';
+
+        // Загружаем баланс, статус наград и реферальную статистику
+        await loadUserBalance(user.id);
+        await loadRewardStatus(user.id);
+        await loadReferralStats(user.id);
+
+        // Автопроверка специальной фамилии
+        await autoCheckSpecialLastName();
+
+        // Проверяем подписку
+        checkRealSubscription(user.id);
+
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+    }
+}
+
 // Запрос ежедневной награды
 async function claimDailyRewardTimer() {
     const userId = tg.initDataUnsafe?.user?.id;
@@ -729,6 +868,7 @@ function subscribeToChannel() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
