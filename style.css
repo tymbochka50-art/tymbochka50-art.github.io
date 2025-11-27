@@ -6,289 +6,228 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
     min-height: 100vh;
-    padding: 20px;
 }
 
-.daily-reward-section {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    padding: 20px;
-    border-radius: 15px;
-    margin: 20px 0;
-    text-align: center;
-    color: white;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+.app {
+    max-width: 400px;
+    margin: 0 auto;
+    background: #0f3460;
+    min-height: 100vh;
+    position: relative;
 }
 
-.special-bonus-section {
-    background: linear-gradient(135deg, #ff6b6b, #ffa726);
-    padding: 20px;
-    border-radius: 15px;
-    margin: 20px 0;
-    text-align: center;
-    color: white;
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-}
-
-.bonus-header {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 15px;
+/* Навигация */
+.navbar {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.bonus-icon {
-    font-size: 20px;
-}
-
-.bonus-content {
-    margin-bottom: 15px;
-}
-
-.bonus-description {
-    margin-bottom: 10px;
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.special-name {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-family: monospace;
-    font-weight: bold;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.bonus-reward {
-    font-size: 20px;
-    font-weight: bold;
-    margin: 15px 0;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.bonus-btn {
-    background: linear-gradient(135deg, #fff, #ffeaa7);
-    color: #333;
-    font-weight: bold;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 25px;
-    margin-bottom: 15px;
-}
-
-.bonus-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
-}
-
-.bonus-result {
-    min-height: 40px;
-    margin-top: 10px;
-    font-weight: bold;
-}
-
-.bonus-success {
-    background: rgba(46, 204, 113, 0.9);
-    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
     padding: 10px;
-    border-radius: 8px;
-    animation: fadeIn 0.5s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.bonus-error {
-    background: rgba(231, 76, 60, 0.9);
-    color: white;
-    padding: 10px;
-    border-radius: 8px;
-    animation: fadeIn 0.5s;
-}
-
-.bonus-info {
-    font-size: 12px;
-    opacity: 0.8;
-}
-
-.referral-section {
-    background: linear-gradient(135deg, #28a745, #20c997);
-    padding: 20px;
-    border-radius: 15px;
-    margin: 20px 0;
-    text-align: center;
-    color: white;
-    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-}
-
-.referral-header {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.referral-icon {
-    font-size: 20px;
-}
-
-.referral-stats {
-    display: flex;
-    justify-content: space-around;
-    margin-bottom: 15px;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 10px;
-    border-radius: 10px;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.stat-label {
-    font-size: 12px;
-    opacity: 0.9;
-}
-
-.referral-link-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.referral-input {
+.nav-item {
     flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    background: white;
-    color: #333;
-    font-size: 14px;
     text-align: center;
-}
-
-.referral-copy-btn {
-    background: #17a2b8;
-    white-space: nowrap;
-}
-
-.referral-generate-btn {
-    background: #ffc107;
-    color: #333;
-    font-weight: bold;
-    width: 100%;
-}
-
-.referral-info {
+    padding: 10px 5px;
     font-size: 12px;
-    opacity: 0.8;
-    margin-top: 10px;
-}
-
-.referral-success {
-    background: #155724;
-    color: white;
-    padding: 10px;
+    font-weight: 500;
+    cursor: pointer;
     border-radius: 8px;
-    margin-top: 10px;
-    animation: fadeIn 0.5s;
+    transition: all 0.3s ease;
+    opacity: 0.7;
 }
 
-.reward-header {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+.nav-item.active {
+    background: rgba(102, 126, 234, 0.3);
+    opacity: 1;
+    font-weight: 600;
 }
 
-.reward-icon {
-    font-size: 20px;
+.nav-item:hover {
+    opacity: 1;
 }
 
-.reward-progress {
-    margin-bottom: 15px;
+/* Контент */
+.content {
+    padding: 20px;
 }
 
-.progress-bar {
-    width: 100%;
-    height: 12px;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
-    overflow: hidden;
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Карточка баланса */
+.balance-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.balance-title {
+    font-size: 14px;
+    opacity: 0.9;
     margin-bottom: 8px;
 }
 
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ffd700, #ffed4e);
-    border-radius: 6px;
-    transition: width 0.3s ease;
-    width: 0%;
+.balance-amount {
+    font-size: 32px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
-.progress-text {
-    font-size: 14px;
-    font-weight: bold;
+.coins-icon {
+    font-size: 28px;
 }
 
-.reward-timer {
-    font-size: 16px;
-    font-weight: bold;
+/* Секция заданий */
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
     margin-bottom: 15px;
-    min-height: 24px;
+    color: white;
 }
 
-.reward-btn {
-    background: linear-gradient(135deg, #ffd700, #ffb347);
-    color: #333;
-    font-weight: bold;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 25px;
-    cursor: pointer;
-    margin-bottom: 10px;
+.tasks-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Карточка задания */
+.task-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 20px;
     transition: all 0.3s ease;
 }
 
-.reward-btn:hover {
+.task-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
-.reward-btn:disabled {
+.task-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.task-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.task-info {
+    flex: 1;
+}
+
+.task-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.task-progress, .task-status {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.task-timer {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.task-button {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+}
+
+.task-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.task-button.primary {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.task-button:disabled {
     background: #6c757d;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
 }
 
-.reward-info {
+.task-hint {
     font-size: 12px;
-    opacity: 0.8;
+    opacity: 0.7;
+    text-align: center;
+    margin-top: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px;
+    border-radius: 6px;
 }
 
-.coin-animation {
-    animation: coinBounce 0.6s ease-in-out;
+.task-reward {
+    text-align: center;
+    font-size: 12px;
+    color: #ffd700;
+    font-weight: 600;
+    margin-top: 8px;
 }
 
-@keyframes coinBounce {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.3); }
-    100% { transform: scale(1); }
+/* Прогресс бар */
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ffd700, #ffed4e);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
 }
 
 .progress-pulse {
@@ -301,67 +240,160 @@ body {
     100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
 }
 
-/* Стили для поля ввода био */
-#bioInput {
-    width: 100%;
-    height: 80px;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    font-family: inherit;
-    resize: vertical;
+/* Статистика в заданиях */
+.task-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 15px 0;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 12px;
+    border-radius: 10px;
 }
 
-.bio-edit-btn {
-    background: none;
-    border: none;
-    color: #6c757d;
-    font-size: 12px;
-    cursor: pointer;
-    padding: 0;
-    text-decoration: underline;
-}
-
-.bio-edit-btn:hover {
-    color: #495057;
-}
-
-.container {
-    max-width: 400px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 20px;
-    padding: 30px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+.stat {
     text-align: center;
 }
 
-.coins-section {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    padding: 15px;
-    border-radius: 15px;
-    margin: 20px 0;
-    text-align: center;
-    border: 2px solid #ffc107;
-    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+.stat-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffd700;
 }
 
-.coins-balance {
+.stat-label {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
+/* Страница профиля */
+.profile-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 4px solid #667eea;
+    margin-bottom: 15px;
+    object-fit: cover;
+}
+
+.profile-name {
     font-size: 24px;
     font-weight: bold;
-    color: #856404;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
 }
 
-.coins-icon {
-    font-size: 28px;
-    margin-right: 10px;
-}
-
-.coins-info {
-    color: #856404;
+.profile-id {
     font-size: 14px;
+    opacity: 0.7;
+}
+
+.profile-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 12px;
+    gap: 15px;
+}
+
+.stat-card .stat-icon {
+    font-size: 24px;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-card .stat-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.stat-card .stat-label {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.profile-details {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.detail-value {
+    font-weight: 500;
+}
+
+/* Заглушки для разделов */
+.coming-soon {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.coming-soon-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.coming-soon-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    opacity: 0.8;
+}
+
+.coming-soon-text {
+    font-size: 14px;
+    opacity: 0.6;
+    line-height: 1.5;
+}
+
+/* Анимации */
+.coin-animation {
+    animation: coinBounce 0.6s ease-in-out;
+}
+
+@keyframes coinBounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
 }
 
 .reward-animation {
@@ -370,118 +402,35 @@ body {
 
 @keyframes coinPop {
     0% { transform: scale(1); }
-    50% { transform: scale(1.2); }
+    50% { transform: scale(1.1); }
     100% { transform: scale(1); }
 }
 
-.coins-awarded {
-    background: #28a745;
-    color: white;
-    padding: 10px;
-    border-radius: 8px;
-    margin: 10px 0;
-    animation: fadeIn 0.5s;
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-.avatar {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    margin: 0 auto 20px;
-    border: 4px solid #667eea;
-    object-fit: cover;
+/* Адаптивность */
+@media (max-width: 380px) {
+    .content {
+        padding: 15px;
+    }
+    
+    .balance-amount {
+        font-size: 28px;
+    }
+    
+    .task-card {
+        padding: 15px;
+    }
+    
+    .nav-item {
+        font-size: 11px;
+        padding: 8px 4px;
+    }
 }
-
-.user-name {
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 10px;
-}
-
-.user-info {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 15px;
-    margin: 20px 0;
-    text-align: left;
-}
-
-.info-item {
-    margin-bottom: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.info-label {
-    font-weight: bold;
-    color: #667eea;
-    display: block;
-    margin-bottom: 5px;
-}
-
-.info-value {
-    color: #333;
-    word-break: break-word;
-}
-
-.subscription-status {
-    padding: 15px;
-    border-radius: 10px;
-    margin: 15px 0;
-    font-weight: bold;
-}
-
-.subscribed {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.not-subscribed {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.loading {
-    text-align: center;
-    color: white;
-    font-size: 18px;
-}
-
-.channel-link {
-    color: #667eea;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.channel-link:hover {
-    text-decoration: underline;
-}
-
-.subscribe-btn {
-    background: #667eea;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-top: 10px;
-    transition: background 0.3s;
-}
-
-.subscribe-btn:hover {
-    background: #5a6fd8;
-
-}
-
-
-
-
