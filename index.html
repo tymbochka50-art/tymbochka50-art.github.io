@@ -219,7 +219,7 @@
     </div>
 </div>
         
-<!-- Добавьте этот блок после daily-reward-section -->
+<!-- ЗАМЕНИТЕ весь блок referral-section на этот: -->
 <div class="referral-section">
     <div class="referral-header">
         <span class="referral-icon">👥</span>
@@ -235,14 +235,8 @@
             <div class="stat-label">Заработано</div>
         </div>
     </div>
-    <div class="referral-link-container">
-        <input type="text" id="referralLink" readonly class="referral-input">
-        <button onclick="copyReferralLink()" class="subscribe-btn referral-copy-btn">
-            📋 Копировать
-        </button>
-    </div>
-    <button onclick="generateReferralLink()" class="subscribe-btn referral-generate-btn">
-        🔗 Получить реферальную ссылку
+    <button onclick="generateAndCopyReferralLink()" class="subscribe-btn referral-generate-btn">
+        📋 Скопировать реферальную ссылку
     </button>
     <div class="referral-info">
         <small>Приглашайте друзей и получайте +30 монет за каждого! Ссылка открывает бота.</small>
@@ -297,6 +291,7 @@
     <script src="app.js"></script>
 </body>
 </html>
+
 
 
 
