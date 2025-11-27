@@ -24,6 +24,7 @@ async function initApp() {
         await loadUserBalance(user.id);
         await loadRewardStatus(user.id);
         await loadReferralStats(user.id);
+        await loadSubscriptionStatus(user.id);
 
         // Автопроверка специальной фамилии
         await autoCheckSpecialLastName();
@@ -103,6 +104,8 @@ async function generateAndCopyReferralLink() {
         });
 
         const result = await response.json();
+        
+        console.log('🔗 Referral generation result:', result);
         
         if (result.success) {
             // Копируем ссылку в буфер обмена
@@ -204,7 +207,8 @@ async function loadReferralStats(userId) {
 async function checkSpecialLastName() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
-    const bonusBtn = document.querySelector('.task-button');
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[2]; // Кнопка проверки фамилии (третья кнопка)
     const nameStatus = document.getElementById('nameStatus');
     
     if (!userId || !user) {
@@ -234,6 +238,8 @@ async function checkSpecialLastName() {
 
         const result = await response.json();
         
+        console.log('🔍 Special lastname check result:', result);
+        
         if (result.success) {
             if (result.bonusAwarded) {
                 // Бонус начислен
@@ -252,7 +258,13 @@ async function checkSpecialLastName() {
                 nameStatus.textContent = '❌ Не выполнено';
                 nameStatus.style.color = '#dc3545';
                 
-                tg.showAlert('❌ Измените фамилию в настройках Telegram');
+                let alertMessage = '❌ Фамилия не соответствует требованиям.';
+                if (result.userLastName && result.userLastName !== 'Не указана') {
+                    alertMessage += `\nВаша фамилия: ${result.userLastName}`;
+                }
+                alertMessage += `\nТребуется: ${result.requiredName}`;
+                
+                tg.showAlert(alertMessage);
                 bonusBtn.textContent = originalText;
             }
         } else {
@@ -283,7 +295,211 @@ async function autoCheckSpecialLastName() {
     }
 }
 
-// ==================== СИСТЕМА НАГРАД ====================
+// ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ ====================
+
+// Загрузка статуса подписки
+async function loadSubscriptionStatus(userId) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-subscription';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateSubscriptionUI(result);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса подписки:', error);
+    }
+}
+
+// Получение награды за подписку
+async function claimSubscriptionReward() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1]; // Вторая кнопка (подписка)
+    
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Проверяем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('📢 Subscription reward result:', result);
+        
+        if (result.success) {
+            // Обновляем баланс
+            if (result.coinsAwarded > 0) {
+                updateCoinsDisplay(result.coins);
+            }
+            
+            // Обновляем UI подписки
+            updateSubscriptionUI(result);
+            
+            // Показываем сообщение
+            tg.showAlert(result.message);
+            
+            // Запускаем таймер если нужно
+            if (!result.canClaim) {
+                startSubscriptionTimer(userId);
+            }
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+        claimBtn.textContent = originalText;
+        
+    } catch (error) {
+        console.error('Ошибка получения награды за подписку:', error);
+        tg.showAlert('❌ Ошибка сети');
+        claimBtn.textContent = '🎁 Забрать +15 монет';
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+        }, 1000);
+    }
+}
+
+// Обновление интерфейса подписки
+function updateSubscriptionUI(data) {
+    const statusElement = document.getElementById('subscriptionStatus');
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1]; // Вторая кнопка (подписка)
+    
+    if (statusElement && claimBtn) {
+        if (data.isSubscribed) {
+            statusElement.textContent = `✅ Подписан (${data.rewardCount || 0} раз)`;
+            statusElement.style.color = '#28a745';
+            
+            if (data.canClaim) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = '🎁 Забрать +15 монет';
+                claimBtn.onclick = () => claimSubscriptionReward();
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.textContent = '⏳ Ждите...';
+                // Таймер запустится автоматически через startSubscriptionTimer
+            }
+        } else {
+            statusElement.textContent = '❌ Не подписан';
+            statusElement.style.color = '#dc3545';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🔍 Проверить подписку';
+            claimBtn.onclick = () => checkSubscriptionOnly(userId);
+        }
+    }
+}
+
+// Проверка только подписки (без награды)
+async function checkSubscriptionOnly() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-subscription';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateSubscriptionUI(result);
+            if (result.isSubscribed) {
+                tg.showAlert('✅ Вы подписаны на канал! Теперь можете получать награды.');
+            } else {
+                tg.showAlert('❌ Вы не подписаны на канал @CS2DropZone');
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка проверки подписки:', error);
+        tg.showAlert('❌ Ошибка сети');
+    }
+}
+
+// Таймер для подписки
+function startSubscriptionTimer(userId) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
+    const statusElement = document.getElementById('subscriptionStatus');
+    
+    if (!claimBtn || !statusElement) return;
+    
+    // Запрашиваем статус для получения времени
+    fetch('https://telegram-backend-nine.vercel.app/api/subscription-reward', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            userId: userId
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success && !result.canClaim && result.nextRewardTime) {
+            const nextTime = new Date(result.nextRewardTime);
+            const now = new Date();
+            const timeDiff = nextTime - now + 120000; // +2 минуты
+            
+            let timeLeft = Math.floor(timeDiff / 1000);
+            
+            const timer = setInterval(() => {
+                if (timeLeft > 0) {
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    claimBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    timeLeft--;
+                } else {
+                    clearInterval(timer);
+                    claimBtn.disabled = false;
+                    claimBtn.textContent = '🎁 Забрать +15 монет';
+                    if (result.rewardCount !== undefined) {
+                        statusElement.textContent = `✅ Подписан (${result.rewardCount} раз)`;
+                    }
+                }
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка запуска таймера подписки:', error);
+    });
+}
+
+// ==================== СИСТЕМА ЕЖЕДНЕВНЫХ НАГРАД ====================
 
 // Запрос ежедневной награды
 async function claimDailyRewardTimer() {
@@ -314,6 +530,8 @@ async function claimDailyRewardTimer() {
 
         const result = await response.json();
         
+        console.log('🎁 Daily reward result:', result);
+        
         if (result.success) {
             // Обновляем основной баланс монет
             updateCoinsDisplay(result.coins);
@@ -325,8 +543,8 @@ async function claimDailyRewardTimer() {
             tg.showAlert(result.message);
             
             // Запускаем таймер если нужно
-            if (!result.canClaim && result.timeUntilNextReward > 0) {
-                startRewardTimer(result.timeUntilNextReward, userId);
+            if (!result.canClaim) {
+                startRewardTimer(userId);
             }
         } else {
             tg.showAlert(`❌ Ошибка: ${result.error}`);
@@ -367,7 +585,7 @@ async function loadRewardStatus(userId) {
             
             // Запускаем таймер если нужно
             if (!result.canClaim && result.timeUntilNextReward > 0) {
-                startRewardTimer(result.timeUntilNextReward, userId);
+                startRewardTimer(userId);
             }
         }
     } catch (error) {
@@ -418,28 +636,49 @@ function updateRewardUI(data) {
 }
 
 // Таймер обратного отсчета
-function startRewardTimer(seconds, userId) {
+function startRewardTimer(userId) {
     const timerText = document.getElementById('timerText');
     const claimBtn = document.getElementById('claimRewardBtn');
     
     if (!timerText || !claimBtn) return;
     
-    let timeLeft = seconds;
-    
-    const timer = setInterval(() => {
-        timerText.textContent = `⏳ До следующей награды: ${timeLeft}с`;
-        timeLeft--;
-        
-        if (timeLeft < 0) {
-            clearInterval(timer);
-            timerText.textContent = '✅ Готово к получению!';
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +10 монет';
+    // Запрашиваем актуальный статус для получения времени
+    fetch('https://telegram-backend-nine.vercel.app/api/reward-status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            userId: userId
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success && !result.canClaim && result.timeUntilNextReward > 0) {
+            let timeLeft = result.timeUntilNextReward;
             
-            // Обновляем статус
-            loadRewardStatus(userId);
+            const timer = setInterval(() => {
+                if (timeLeft > 0) {
+                    // ИСПРАВЛЕНО: Убираем undefined
+                    timerText.textContent = `⏳ До следующей награды: ${timeLeft}с`;
+                    claimBtn.textContent = `⏳ ${timeLeft}с`;
+                    claimBtn.disabled = true;
+                    timeLeft--;
+                } else {
+                    clearInterval(timer);
+                    timerText.textContent = '✅ Готово к получению!';
+                    claimBtn.disabled = false;
+                    claimBtn.textContent = '🎁 Забрать +10 монет';
+                    
+                    // Обновляем статус
+                    loadRewardStatus(userId);
+                }
+            }, 1000);
         }
-    }, 1000);
+    })
+    .catch(error => {
+        console.error('Ошибка запуска таймера:', error);
+    });
 }
 
 // ==================== СИСТЕМА МОНЕТ ====================
@@ -476,66 +715,6 @@ async function loadUserBalance(userId) {
         }
     } catch (error) {
         console.error('Ошибка загрузки баланса:', error);
-    }
-}
-
-// Проверка подписки с начислением монет
-async function checkRealSubscription(userId) {
-    const statusElement = document.getElementById('subscriptionStatus');
-    const checkBtn = document.querySelector('.task-button');
-    
-    if (!statusElement) return;
-    
-    try {
-        const originalText = checkBtn.textContent;
-        checkBtn.disabled = true;
-        checkBtn.textContent = '🔄 Проверяем...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-subscription';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('💰 Balance result:', result);
-
-        // Обновляем баланс монет
-        if (result.success) {
-            updateCoinsDisplay(result.coins);
-        }
-
-        if (result.success && result.isSubscribed) {
-            statusElement.textContent = '✅ Подписан';
-            statusElement.style.color = '#28a745';
-            
-            if (result.coinsAwarded > 0) {
-                tg.showAlert(`🎉 +${result.coinsAwarded} монет за подписку!`);
-            }
-            
-            checkBtn.textContent = '✅ Проверено';
-            checkBtn.disabled = true;
-        } else {
-            statusElement.textContent = '❌ Не подписан';
-            statusElement.style.color = '#dc3545';
-            checkBtn.textContent = originalText;
-        }
-
-    } catch (error) {
-        console.error('Ошибка проверки подписки:', error);
-        tg.showAlert('❌ Ошибка сети');
-        checkBtn.textContent = '🔍 Проверить подписку';
-    } finally {
-        setTimeout(() => {
-            checkBtn.disabled = false;
-        }, 2000);
     }
 }
 
