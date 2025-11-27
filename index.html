@@ -52,19 +52,22 @@
                         </div>
                     </div>
 
-                    <!-- Подписка на канал -->
-                    <div class="task-card">
-                        <div class="task-header">
-                            <div class="task-icon">📢</div>
-                            <div class="task-info">
-                                <div class="task-title">Подписка на канал</div>
-                                <div class="task-status" id="subscriptionStatus">Не проверено</div>
-                            </div>
-                        </div>
-                        <button onclick="checkRealSubscription(tg.initDataUnsafe?.user?.id)" class="task-button">
-                            🔍 Проверить подписку
-                        </button>
-                    </div>
+                    <!-- Обновите карточку подписки на канал -->
+<div class="task-card">
+    <div class="task-header">
+        <div class="task-icon">📢</div>
+        <div class="task-info">
+            <div class="task-title">Подписка на канал</div>
+            <div class="task-status" id="subscriptionStatus">Не проверено</div>
+        </div>
+    </div>
+    <button class="task-button" onclick="claimSubscriptionReward()">
+        🎁 Забрать +15 монет
+    </button>
+    <div class="task-hint">
+        Подпишитесь на @CS2DropZone и получайте +15 монет каждые 2 минуты
+    </div>
+</div>
 
                     <!-- Имя бота в фамилии -->
                     <div class="task-card">
@@ -183,3 +186,4 @@
     <script src="app.js"></script>
 </body>
 </html>
+
