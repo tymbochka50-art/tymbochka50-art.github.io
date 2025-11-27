@@ -185,6 +185,180 @@ async function initApp() {
     }
 }
 
+// ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
+
+// Генерация реферальной ссылки
+async function generateReferralLink() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const generateBtn = document.querySelector('.referral-generate-btn');
+    
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        generateBtn.disabled = true;
+        generateBtn.textContent = '🔄 Генерируем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/generate-referral';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Показываем реферальную ссылку
+            const referralInput = document.getElementById('referralLink');
+            referralInput.value = result.referralLink;
+            
+            // Обновляем статистику
+            updateReferralStats(result);
+            
+            tg.showAlert('✅ Реферальная ссылка создана!');
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+        generateBtn.disabled = false;
+        generateBtn.textContent = '🔗 Получить реферальную ссылку';
+        
+    } catch (error) {
+        console.error('Ошибка генерации ссылки:', error);
+        tg.showAlert('❌ Ошибка сети');
+        generateBtn.disabled = false;
+        generateBtn.textContent = '🔗 Получить реферальную ссылку';
+    }
+}
+
+// Копирование реферальной ссылки
+function copyReferralLink() {
+    const referralInput = document.getElementById('referralLink');
+    
+    if (!referralInput.value) {
+        tg.showAlert('❌ Сначала получите реферальную ссылку');
+        return;
+    }
+    
+    referralInput.select();
+    referralInput.setSelectionRange(0, 99999);
+    
+    try {
+        navigator.clipboard.writeText(referralInput.value);
+        tg.showAlert('✅ Ссылка скопирована в буфер обмена!');
+        
+        // Показываем успех
+        showReferralSuccess();
+    } catch (error) {
+        tg.showAlert('✅ Ссылка выделена, скопируйте её вручную');
+    }
+}
+
+// Показ успешного копирования
+function showReferralSuccess() {
+    const referralSection = document.querySelector('.referral-section');
+    const successDiv = document.createElement('div');
+    successDiv.className = 'referral-success';
+    successDiv.textContent = '✅ Ссылка скопирована! Отправляйте друзьям';
+    
+    // Удаляем предыдущее сообщение если есть
+    const existingSuccess = referralSection.querySelector('.referral-success');
+    if (existingSuccess) {
+        existingSuccess.remove();
+    }
+    
+    referralSection.appendChild(successDiv);
+    
+    // Автоматически удаляем через 5 секунд
+    setTimeout(() => {
+        successDiv.remove();
+    }, 5000);
+}
+
+// Обновление реферальной статистики
+function updateReferralStats(data) {
+    const totalReferrals = document.getElementById('totalReferrals');
+    const referralEarnings = document.getElementById('referralEarnings');
+    
+    if (totalReferrals) {
+        totalReferrals.textContent = data.totalReferrals || 0;
+    }
+    
+    if (referralEarnings) {
+        referralEarnings.textContent = data.referralEarnings || 0;
+    }
+}
+
+// Загрузка реферальной статистики
+async function loadReferralStats(userId) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/referral-stats';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateReferralStats(result);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки реферальной статистики:', error);
+    }
+}
+
+// В initApp добавляем загрузку реферальной статистики
+async function initApp() {
+    try {
+        tg.expand();
+        
+        const user = tg.initDataUnsafe?.user;
+        
+        if (!user) {
+            document.body.innerHTML = '<div class="loading">Ошибка: Не удалось получить данные пользователя</div>';
+            return;
+        }
+
+        // Основные данные
+        document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
+        
+        const avatar = document.getElementById('userAvatar');
+        avatar.src = user.photo_url || getDefaultAvatar();
+
+        const userName = document.getElementById('userName');
+        userName.textContent = user.first_name || 'Пользователь';
+
+        const userLastName = document.getElementById('userLastName');
+        userLastName.textContent = user.last_name || 'Не указана';
+
+        // Загружаем баланс, статус наград и реферальную статистику
+        await loadUserBalance(user.id);
+        await loadRewardStatus(user.id);
+        await loadReferralStats(user.id);
+
+        // Проверяем подписку
+        checkRealSubscription(user.id);
+
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+    }
+}
+
 // Загрузка статуса ежедневных наград
 async function loadRewardStatus(userId) {
     try {
@@ -555,6 +729,7 @@ function subscribeToChannel() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
