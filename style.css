@@ -21,6 +21,98 @@ body {
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
+.special-bonus-section {
+    background: linear-gradient(135deg, #ff6b6b, #ffa726);
+    padding: 20px;
+    border-radius: 15px;
+    margin: 20px 0;
+    text-align: center;
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.bonus-header {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.bonus-icon {
+    font-size: 20px;
+}
+
+.bonus-content {
+    margin-bottom: 15px;
+}
+
+.bonus-description {
+    margin-bottom: 10px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.special-name {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-weight: bold;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.bonus-reward {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 15px 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.bonus-btn {
+    background: linear-gradient(135deg, #fff, #ffeaa7);
+    color: #333;
+    font-weight: bold;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    margin-bottom: 15px;
+}
+
+.bonus-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
+}
+
+.bonus-result {
+    min-height: 40px;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.bonus-success {
+    background: rgba(46, 204, 113, 0.9);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    animation: fadeIn 0.5s;
+}
+
+.bonus-error {
+    background: rgba(231, 76, 60, 0.9);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    animation: fadeIn 0.5s;
+}
+
+.bonus-info {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
 .referral-section {
     background: linear-gradient(135deg, #28a745, #20c997);
     padding: 20px;
@@ -389,6 +481,7 @@ body {
     background: #5a6fd8;
 
 }
+
 
 
 
