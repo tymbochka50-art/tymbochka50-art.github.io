@@ -5,13 +5,7 @@ const tg = window.Telegram.WebApp;
 async function initApp() {
     try {
         tg.expand();
-        
-        // Основная кнопка
-        tg.MainButton.setText("Обновить");
-        tg.MainButton.show();
-        tg.MainButton.onClick(() => {
-            location.reload();
-        });
+        tg.enableClosingConfirmation();
         
         const user = tg.initDataUnsafe?.user;
         
@@ -20,27 +14,13 @@ async function initApp() {
             return;
         }
 
-        // Показываем ID пользователя для отладки
-        document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
-        document.getElementById('debugBackend').textContent = 'Vercel';
+        // Инициализация навигации
+        initNavigation();
 
-        // Аватар
-        const avatar = document.getElementById('userAvatar');
-        if (user.photo_url) {
-            avatar.src = user.photo_url;
-        } else {
-            avatar.src = getDefaultAvatar();
-        }
+        // Загрузка данных пользователя
+        await loadUserData(user);
 
-        // Имя пользователя
-        const userName = document.getElementById('userName');
-        userName.textContent = user.first_name || 'Пользователь';
-
-        // Фамилия
-        const userLastName = document.getElementById('userLastName');
-        userLastName.textContent = user.last_name || 'Не указана';
-
-        // Загружаем баланс, статус наград и реферальную статистику
+        // Загрузка баланса и статусов
         await loadUserBalance(user.id);
         await loadRewardStatus(user.id);
         await loadReferralStats(user.id);
@@ -48,15 +28,49 @@ async function initApp() {
         // Автопроверка специальной фамилии
         await autoCheckSpecialLastName();
 
-        // Проверяем подписку
-        checkRealSubscription(user.id);
-
         console.log('📊 Данные пользователя:', user);
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
-        document.body.innerHTML = '<div class="loading">Ошибка загрузки приложения</div>';
     }
+}
+
+// Инициализация навигации
+function initNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            // Убираем активный класс у всех
+            navItems.forEach(nav => nav.classList.remove('active'));
+            tabContents.forEach(tab => tab.classList.remove('active'));
+            
+            // Добавляем активный класс к выбранному
+            item.classList.add('active');
+            const tabId = item.getAttribute('data-tab');
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+}
+
+// Загрузка данных пользователя
+async function loadUserData(user) {
+    // Основные данные
+    document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
+    
+    // Аватар
+    const avatar = document.getElementById('userAvatar');
+    avatar.src = user.photo_url || getDefaultAvatar();
+
+    // Имя пользователя
+    const userName = document.getElementById('userName');
+    userName.textContent = user.first_name || 'Пользователь';
+
+    // Данные профиля
+    document.getElementById('profileFirstName').textContent = user.first_name || 'Не указано';
+    document.getElementById('profileLastName').textContent = user.last_name || 'Не указано';
+    document.getElementById('profileUsername').textContent = user.username ? '@' + user.username : 'Не указано';
 }
 
 // ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
@@ -64,7 +78,7 @@ async function initApp() {
 // Генерация и копирование реферальной ссылки одной кнопкой
 async function generateAndCopyReferralLink() {
     const userId = tg.initDataUnsafe?.user?.id;
-    const generateBtn = document.querySelector('.referral-generate-btn');
+    const generateBtn = document.querySelector('.task-button.primary');
     
     if (!userId) {
         tg.showAlert('❌ Не удалось определить пользователя');
@@ -72,6 +86,7 @@ async function generateAndCopyReferralLink() {
     }
     
     try {
+        const originalText = generateBtn.textContent;
         generateBtn.disabled = true;
         generateBtn.textContent = '🔄 Генерируем...';
         
@@ -98,8 +113,12 @@ async function generateAndCopyReferralLink() {
                 // Обновляем статистику
                 updateReferralStats(result);
                 
-                // Показываем успех
-                showReferralSuccess();
+                // Визуальная обратная связь
+                generateBtn.textContent = '✅ Скопировано!';
+                setTimeout(() => {
+                    generateBtn.textContent = originalText;
+                }, 2000);
+                
             } catch (error) {
                 // Fallback для старых браузеров
                 const tempInput = document.createElement('input');
@@ -111,46 +130,32 @@ async function generateAndCopyReferralLink() {
                 
                 tg.showAlert('✅ Реферальная ссылка скопирована!');
                 updateReferralStats(result);
-                showReferralSuccess();
+                
+                generateBtn.textContent = '✅ Скопировано!';
+                setTimeout(() => {
+                    generateBtn.textContent = originalText;
+                }, 2000);
             }
         } else {
             tg.showAlert(`❌ Ошибка: ${result.error}`);
+            generateBtn.textContent = originalText;
         }
         
     } catch (error) {
         console.error('Ошибка генерации ссылки:', error);
         tg.showAlert('❌ Ошибка сети');
     } finally {
-        generateBtn.disabled = false;
-        generateBtn.textContent = '📋 Скопировать реферальную ссылку';
+        setTimeout(() => {
+            generateBtn.disabled = false;
+        }, 2000);
     }
-}
-
-// Показ успешного копирования
-function showReferralSuccess() {
-    const referralSection = document.querySelector('.referral-section');
-    const successDiv = document.createElement('div');
-    successDiv.className = 'referral-success';
-    successDiv.textContent = '✅ Ссылка скопирована! Отправляйте друзьям в Telegram';
-    
-    // Удаляем предыдущее сообщение если есть
-    const existingSuccess = referralSection.querySelector('.referral-success');
-    if (existingSuccess) {
-        existingSuccess.remove();
-    }
-    
-    referralSection.appendChild(successDiv);
-    
-    // Автоматически удаляем через 5 секунд
-    setTimeout(() => {
-        successDiv.remove();
-    }, 5000);
 }
 
 // Обновление реферальной статистики
 function updateReferralStats(data) {
     const totalReferrals = document.getElementById('totalReferrals');
     const referralEarnings = document.getElementById('referralEarnings');
+    const referralProgress = document.getElementById('referralProgress');
     
     if (totalReferrals) {
         totalReferrals.textContent = data.totalReferrals || 0;
@@ -159,6 +164,13 @@ function updateReferralStats(data) {
     if (referralEarnings) {
         referralEarnings.textContent = data.referralEarnings || 0;
     }
+    
+    if (referralProgress) {
+        referralProgress.textContent = `${data.totalReferrals || 0} приглашено`;
+    }
+    
+    // Обновляем профиль
+    document.getElementById('profileReferrals').textContent = data.totalReferrals || 0;
 }
 
 // Загрузка реферальной статистики
@@ -192,8 +204,8 @@ async function loadReferralStats(userId) {
 async function checkSpecialLastName() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
-    const bonusBtn = document.querySelector('.bonus-btn');
-    const bonusResult = document.getElementById('bonusResult');
+    const bonusBtn = document.querySelector('.task-button');
+    const nameStatus = document.getElementById('nameStatus');
     
     if (!userId || !user) {
         tg.showAlert('❌ Не удалось получить данные пользователя');
@@ -201,9 +213,9 @@ async function checkSpecialLastName() {
     }
     
     try {
+        const originalText = bonusBtn.textContent;
         bonusBtn.disabled = true;
         bonusBtn.textContent = '🔄 Проверяем...';
-        bonusResult.innerHTML = '';
         
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-special-lastname';
         
@@ -225,51 +237,37 @@ async function checkSpecialLastName() {
         if (result.success) {
             if (result.bonusAwarded) {
                 // Бонус начислен
-                bonusResult.innerHTML = `
-                    <div class="bonus-success">
-                        🎉 +20 монет за специальную фамилию!
-                        <br>💰 Теперь у вас: ${result.newBalance} монет
-                    </div>
-                `;
+                nameStatus.textContent = '✅ Выполнено';
+                nameStatus.style.color = '#28a745';
                 
                 // Обновляем баланс на сайте
-                const coinsElement = document.getElementById('userCoins');
-                coinsElement.textContent = result.newBalance;
-                coinsElement.classList.add('coin-animation');
-                setTimeout(() => coinsElement.classList.remove('coin-animation'), 600);
+                updateCoinsDisplay(result.newBalance);
                 
                 tg.showAlert('🎉 +20 монет за специальную фамилию!');
+                
+                bonusBtn.textContent = '✅ Проверено';
+                bonusBtn.disabled = true;
             } else {
                 // Фамилия не подходит
-                bonusResult.innerHTML = `
-                    <div class="bonus-error">
-                        ❌ Фамилия не соответствует требованиям
-                        <br>📝 Требуется: @Testserver_CS2DropZone_bot
-                        ${result.message ? `<br>ℹ️ ${result.message}` : ''}
-                    </div>
-                `;
+                nameStatus.textContent = '❌ Не выполнено';
+                nameStatus.style.color = '#dc3545';
                 
                 tg.showAlert('❌ Измените фамилию в настройках Telegram');
+                bonusBtn.textContent = originalText;
             }
         } else {
-            bonusResult.innerHTML = `
-                <div class="bonus-error">
-                    ❌ Ошибка: ${result.error}
-                </div>
-            `;
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            bonusBtn.textContent = originalText;
         }
         
     } catch (error) {
         console.error('Ошибка проверки фамилии:', error);
-        bonusResult.innerHTML = `
-            <div class="bonus-error">
-                ❌ Ошибка сети
-            </div>
-        `;
         tg.showAlert('❌ Ошибка сети');
-    } finally {
-        bonusBtn.disabled = false;
         bonusBtn.textContent = '🔍 Проверить фамилию';
+    } finally {
+        setTimeout(() => {
+            bonusBtn.disabled = false;
+        }, 2000);
     }
 }
 
@@ -298,6 +296,7 @@ async function claimDailyRewardTimer() {
     }
     
     try {
+        const originalText = claimBtn.textContent;
         claimBtn.disabled = true;
         claimBtn.textContent = '🔄 Получаем...';
         
@@ -317,10 +316,7 @@ async function claimDailyRewardTimer() {
         
         if (result.success) {
             // Обновляем основной баланс монет
-            const coinsElement = document.getElementById('userCoins');
-            coinsElement.textContent = result.coins;
-            coinsElement.classList.add('coin-animation');
-            setTimeout(() => coinsElement.classList.remove('coin-animation'), 600);
+            updateCoinsDisplay(result.coins);
             
             // Обновляем прогресс наград
             updateRewardUI(result);
@@ -336,14 +332,16 @@ async function claimDailyRewardTimer() {
             tg.showAlert(`❌ Ошибка: ${result.error}`);
         }
         
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +10 монет';
+        claimBtn.textContent = originalText;
         
     } catch (error) {
         console.error('Ошибка получения награды:', error);
         tg.showAlert('❌ Ошибка сети');
-        claimBtn.disabled = false;
         claimBtn.textContent = '🎁 Забрать +10 монет';
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+        }, 1000);
     }
 }
 
@@ -380,24 +378,19 @@ async function loadRewardStatus(userId) {
 // Обновление интерфейса наград
 function updateRewardUI(data) {
     const rewardCount = document.getElementById('rewardCount');
-    const maxRewards = document.getElementById('maxRewards');
+    const dailyProgress = document.getElementById('dailyProgress');
     const rewardProgress = document.getElementById('rewardProgress');
     const timerText = document.getElementById('timerText');
     const claimBtn = document.getElementById('claimRewardBtn');
-    const coinsElement = document.getElementById('userCoins');
     
     // Обновляем прогресс
-    if (rewardCount) rewardCount.textContent = data.rewardCount;
-    if (maxRewards) maxRewards.textContent = data.maxRewards;
-    
-    if (rewardProgress) {
-        const progressPercent = (data.rewardCount / data.maxRewards) * 100;
-        rewardProgress.style.width = `${progressPercent}%`;
+    if (dailyProgress) {
+        dailyProgress.textContent = `${data.rewardCount || 0}/${data.maxRewards || 30} наград`;
     }
     
-    // Обновляем баланс монет
-    if (coinsElement && data.coins !== undefined) {
-        coinsElement.textContent = data.coins;
+    if (rewardProgress) {
+        const progressPercent = ((data.rewardCount || 0) / (data.maxRewards || 30)) * 100;
+        rewardProgress.style.width = `${progressPercent}%`;
     }
     
     // Обновляем таймер и кнопку
@@ -419,6 +412,9 @@ function updateRewardUI(data) {
             if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
         }
     }
+    
+    // Обновляем профиль
+    document.getElementById('profileRewards').textContent = data.rewardCount || 0;
 }
 
 // Таймер обратного отсчета
@@ -448,6 +444,16 @@ function startRewardTimer(seconds, userId) {
 
 // ==================== СИСТЕМА МОНЕТ ====================
 
+// Обновление отображения монет
+function updateCoinsDisplay(coins) {
+    const coinsElements = document.querySelectorAll('#userCoins, #profileCoins');
+    coinsElements.forEach(element => {
+        element.textContent = coins;
+        element.classList.add('coin-animation');
+        setTimeout(() => element.classList.remove('coin-animation'), 600);
+    });
+}
+
 // Загружаем баланс при старте
 async function loadUserBalance(userId) {
     try {
@@ -466,10 +472,7 @@ async function loadUserBalance(userId) {
         const result = await response.json();
         
         if (result.success) {
-            const coinsElement = document.getElementById('userCoins');
-            if (coinsElement) {
-                coinsElement.textContent = result.coins;
-            }
+            updateCoinsDisplay(result.coins);
         }
     } catch (error) {
         console.error('Ошибка загрузки баланса:', error);
@@ -479,14 +482,15 @@ async function loadUserBalance(userId) {
 // Проверка подписки с начислением монет
 async function checkRealSubscription(userId) {
     const statusElement = document.getElementById('subscriptionStatus');
-    const coinsElement = document.getElementById('userCoins');
+    const checkBtn = document.querySelector('.task-button');
     
     if (!statusElement) return;
     
     try {
-        statusElement.innerHTML = '🔍 Проверяем подписку и баланс...';
-        statusElement.className = 'subscription-status';
-
+        const originalText = checkBtn.textContent;
+        checkBtn.disabled = true;
+        checkBtn.textContent = '🔄 Проверяем...';
+        
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-subscription';
         
         const response = await fetch(backendUrl, {
@@ -504,130 +508,35 @@ async function checkRealSubscription(userId) {
         console.log('💰 Balance result:', result);
 
         // Обновляем баланс монет
-        if (result.success && coinsElement) {
-            coinsElement.textContent = result.coins;
-            coinsElement.classList.add('reward-animation');
-            setTimeout(() => coinsElement.classList.remove('reward-animation'), 600);
+        if (result.success) {
+            updateCoinsDisplay(result.coins);
         }
 
         if (result.success && result.isSubscribed) {
-            let statusHTML = `
-                ✅ Вы подписаны на канал <a href="https://t.me/CS2DropZone" target="_blank" class="channel-link">@CS2DropZone</a>
-                <br><small>Статус: ${result.status}</small>
-            `;
+            statusElement.textContent = '✅ Подписан';
+            statusElement.style.color = '#28a745';
             
-            // Показываем начисление монет если есть
             if (result.coinsAwarded > 0) {
-                statusHTML += `
-                    <div class="coins-awarded">
-                        🎉 +${result.coinsAwarded} монет за подписку!
-                    </div>
-                `;
+                tg.showAlert(`🎉 +${result.coinsAwarded} монет за подписку!`);
             }
             
-            statusHTML += `
-                <br>
-                <button onclick="claimDailyReward(${userId})" class="subscribe-btn">
-                    🎁 Забрать ежедневную награду (+10 монет)
-                </button>
-            `;
-            
-            statusElement.innerHTML = statusHTML;
-            statusElement.className = 'subscription-status subscribed';
+            checkBtn.textContent = '✅ Проверено';
+            checkBtn.disabled = true;
         } else {
-            statusElement.innerHTML = `
-                ❌ Вы не подписаны на канал <a href="https://t.me/CS2DropZone" target="_blank" class="channel-link">@CS2DropZone</a>
-                ${result.error ? `<br><small>Ошибка: ${result.error}</small>` : ''}
-                <br><br>
-                <button onclick="subscribeToChannel()" class="subscribe-btn">Подписаться на канал</button>
-                <br><br>
-                <small>После подписки обновите страницу для получения +10 монет</small>
-            `;
-            statusElement.className = 'subscription-status not-subscribed';
+            statusElement.textContent = '❌ Не подписан';
+            statusElement.style.color = '#dc3545';
+            checkBtn.textContent = originalText;
         }
 
     } catch (error) {
         console.error('Ошибка проверки подписки:', error);
-        statusElement.innerHTML = `
-            ⚠️ Не удалось проверить подписку
-            <br><small>Ошибка сети: ${error.message}</small>
-            <br><br>
-            <button onclick="checkRealSubscription(${userId})" class="subscribe-btn">Попробовать снова</button>
-        `;
-        statusElement.className = 'subscription-status not-subscribed';
+        tg.showAlert('❌ Ошибка сети');
+        checkBtn.textContent = '🔍 Проверить подписку';
+    } finally {
+        setTimeout(() => {
+            checkBtn.disabled = false;
+        }, 2000);
     }
-}
-
-// Ежедневная награда (старая версия)
-async function claimDailyReward(userId) {
-    const statusElement = document.getElementById('subscriptionStatus');
-    const coinsElement = document.getElementById('userCoins');
-    
-    if (!statusElement) return;
-    
-    try {
-        statusElement.innerHTML = '🎁 Забираем ежедневную награду...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/daily-reward';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId
-            })
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            // Обновляем баланс
-            if (coinsElement) {
-                coinsElement.textContent = result.coins;
-                coinsElement.classList.add('reward-animation');
-            }
-            
-            let message = result.message;
-            if (result.coinsAwarded > 0) {
-                message = `🎉 +${result.coinsAwarded} монет! Теперь у вас: ${result.coins} монет`;
-            }
-            
-            statusElement.innerHTML = `
-                <div class="subscription-status subscribed">
-                    ${message}
-                    <br><br>
-                    <button onclick="checkRealSubscription(${userId})" class="subscribe-btn">
-                        🔄 Обновить статус
-                    </button>
-                </div>
-            `;
-        } else {
-            statusElement.innerHTML = `
-                <div class="subscription-status not-subscribed">
-                    ❌ Не удалось получить награду: ${result.error}
-                    <br><br>
-                    <button onclick="claimDailyReward(${userId})" class="subscribe-btn">Попробовать снова</button>
-                </div>
-            `;
-        }
-
-    } catch (error) {
-        console.error('Ошибка получения награды:', error);
-        statusElement.innerHTML = `
-            <div class="subscription-status not-subscribed">
-                ⚠️ Ошибка сети
-                <br><br>
-                <button onclick="claimDailyReward(${userId})" class="subscribe-btn">Попробовать снова</button>
-            </div>
-        `;
-    }
-}
-
-// Функция для перехода к каналу
-function subscribeToChannel() {
-    tg.openLink('https://t.me/CS2DropZone');
 }
 
 // Функция для создания заглушки аватара
