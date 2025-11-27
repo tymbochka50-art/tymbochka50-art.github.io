@@ -201,7 +201,7 @@ async function loadReferralStats(userId) {
     }
 }
 
-// ==================== ПРОВЕРКА СПЕЦИАЛЬНОЙ ФАМИЛИИ ====================
+// ==================== ПРОВЕРКА СПЕЦИАЛЬНОЙ ФАМИЛИИ (ИСПРАВЛЕННАЯ) ====================
 
 // Проверка специальной фамилии
 async function checkSpecialLastName() {
@@ -260,9 +260,10 @@ async function checkSpecialLastName() {
                 
                 let alertMessage = '❌ Фамилия не соответствует требованиям.';
                 if (result.userLastName && result.userLastName !== 'Не указана') {
-                    alertMessage += `\nВаша фамилия: ${result.userLastName}`;
+                    alertMessage += `\nВаша фамилия: "${result.userLastName}"`;
                 }
-                alertMessage += `\nТребуется: ${result.requiredName}`;
+                alertMessage += `\nТребуется: "${result.requiredName}"`;
+                alertMessage += `\n\nУбедитесь, что фамилия точно совпадает!`;
                 
                 tg.showAlert(alertMessage);
                 bonusBtn.textContent = originalText;
@@ -283,24 +284,12 @@ async function checkSpecialLastName() {
     }
 }
 
-// Автопроверка при загрузке если фамилия подходит
-async function autoCheckSpecialLastName() {
-    const user = tg.initDataUnsafe?.user;
-    
-    if (user && user.last_name && user.last_name.includes('@Testserver_CS2DropZone_bot')) {
-        console.log('🔄 Автопроверка специальной фамилии...');
-        setTimeout(() => {
-            checkSpecialLastName();
-        }, 2000);
-    }
-}
-
-// ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ ====================
+// ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ (ИСПРАВЛЕННАЯ) ====================
 
 // Загрузка статуса подписки
 async function loadSubscriptionStatus(userId) {
     try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-subscription';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -374,15 +363,13 @@ async function claimSubscriptionReward() {
             tg.showAlert(`❌ Ошибка: ${result.error}`);
         }
         
-        claimBtn.textContent = originalText;
-        
     } catch (error) {
         console.error('Ошибка получения награды за подписку:', error);
         tg.showAlert('❌ Ошибка сети');
-        claimBtn.textContent = '🎁 Забрать +15 монет';
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +15 монет';
         }, 1000);
     }
 }
@@ -405,16 +392,45 @@ function updateSubscriptionUI(data) {
             } else {
                 claimBtn.disabled = true;
                 claimBtn.textContent = '⏳ Ждите...';
-                // Таймер запустится автоматически через startSubscriptionTimer
+                // Таймер запустится автоматически
+                if (data.timeUntilNextReward > 0) {
+                    startSubscriptionTimer(data.timeUntilNextReward);
+                }
             }
         } else {
             statusElement.textContent = '❌ Не подписан';
             statusElement.style.color = '#dc3545';
             claimBtn.disabled = false;
             claimBtn.textContent = '🔍 Проверить подписку';
-            claimBtn.onclick = () => checkSubscriptionOnly(userId);
+            claimBtn.onclick = () => checkSubscriptionOnly();
         }
     }
+}
+
+// Таймер для подписки (упрощенная версия)
+function startSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
+    const statusElement = document.getElementById('subscriptionStatus');
+    
+    if (!claimBtn || !statusElement) return;
+    
+    let timeLeft = seconds;
+    
+    const timer = setInterval(() => {
+        if (timeLeft > 0) {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            claimBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            timeLeft--;
+        } else {
+            clearInterval(timer);
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +15 монет';
+            // Обновляем статус
+            loadSubscriptionStatus(tg.initDataUnsafe?.user?.id);
+        }
+    }, 1000);
 }
 
 // Проверка только подписки (без награды)
@@ -422,7 +438,7 @@ async function checkSubscriptionOnly() {
     const userId = tg.initDataUnsafe?.user?.id;
     
     try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-subscription';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -448,55 +464,6 @@ async function checkSubscriptionOnly() {
         console.error('Ошибка проверки подписки:', error);
         tg.showAlert('❌ Ошибка сети');
     }
-}
-
-// Таймер для подписки
-function startSubscriptionTimer(userId) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1];
-    const statusElement = document.getElementById('subscriptionStatus');
-    
-    if (!claimBtn || !statusElement) return;
-    
-    // Запрашиваем статус для получения времени
-    fetch('https://telegram-backend-nine.vercel.app/api/subscription-reward', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            userId: userId
-        })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success && !result.canClaim && result.nextRewardTime) {
-            const nextTime = new Date(result.nextRewardTime);
-            const now = new Date();
-            const timeDiff = nextTime - now + 120000; // +2 минуты
-            
-            let timeLeft = Math.floor(timeDiff / 1000);
-            
-            const timer = setInterval(() => {
-                if (timeLeft > 0) {
-                    const minutes = Math.floor(timeLeft / 60);
-                    const seconds = timeLeft % 60;
-                    claimBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
-                    timeLeft--;
-                } else {
-                    clearInterval(timer);
-                    claimBtn.disabled = false;
-                    claimBtn.textContent = '🎁 Забрать +15 монет';
-                    if (result.rewardCount !== undefined) {
-                        statusElement.textContent = `✅ Подписан (${result.rewardCount} раз)`;
-                    }
-                }
-            }, 1000);
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка запуска таймера подписки:', error);
-    });
 }
 
 // ==================== СИСТЕМА ЕЖЕДНЕВНЫХ НАГРАД ====================
@@ -725,3 +692,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
