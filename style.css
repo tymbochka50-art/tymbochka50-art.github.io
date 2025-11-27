@@ -21,6 +21,98 @@ body {
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
+.referral-section {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    padding: 20px;
+    border-radius: 15px;
+    margin: 20px 0;
+    text-align: center;
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.referral-header {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.referral-icon {
+    font-size: 20px;
+}
+
+.referral-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 15px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.referral-link-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.referral-input {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: white;
+    color: #333;
+    font-size: 14px;
+    text-align: center;
+}
+
+.referral-copy-btn {
+    background: #17a2b8;
+    white-space: nowrap;
+}
+
+.referral-generate-btn {
+    background: #ffc107;
+    color: #333;
+    font-weight: bold;
+    width: 100%;
+}
+
+.referral-info {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 10px;
+}
+
+.referral-success {
+    background: #155724;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+    animation: fadeIn 0.5s;
+}
+
 .reward-header {
     font-size: 18px;
     font-weight: bold;
@@ -297,5 +389,6 @@ body {
     background: #5a6fd8;
 
 }
+
 
 
