@@ -9,15 +9,7 @@
 </head>
 <body>
     <div class="app">
-        <!-- Шапка с навигацией -->
-        <nav class="navbar">
-            <div class="nav-item active" data-tab="main">Главная</div>
-            <div class="nav-item" data-tab="profile">Профиль</div>
-            <div class="nav-item" data-tab="leaderboard">Топ игроков</div>
-            <div class="nav-item" data-tab="shop">Магазин</div>
-        </nav>
-
-        <!-- Основной контент -->
+        <!-- Контент -->
         <div class="content">
             <!-- Главная страница -->
             <div id="main" class="tab-content active">
@@ -52,39 +44,40 @@
                         </div>
                     </div>
 
-                    <!-- Обновите карточку подписки на канал -->
-<div class="task-card">
-    <div class="task-header">
-        <div class="task-icon">📢</div>
-        <div class="task-info">
-            <div class="task-title">Подписка на канал</div>
-            <div class="task-status" id="subscriptionStatus">Не проверено</div>
-        </div>
-    </div>
-    <button class="task-button" onclick="claimSubscriptionReward()">
-        🎁 Забрать +15 монет
-    </button>
-    <div class="task-hint">
-        Подпишитесь на @CS2DropZone и получайте +15 монет каждые 2 минуты
-    </div>
-</div>
-
+                    <!-- Подписка на канал -->
                     <div class="task-card">
-    <div class="task-header">
-        <div class="task-icon">🔍</div>
-        <div class="task-info">
-            <div class="task-title">Имя бота в фамилии</div>
-            <div class="task-status" id="nameStatus">Не проверено</div>
-        </div>
-    </div>
-    <button class="task-button">
-        🔍 Проверить фамилию
-    </button>
-    <div class="task-hint">
-        Установите фамилию: @Testserver_CS2DropZone_bot<br>
-        +20 монет первый раз, затем +5 монет каждые 3 минуты
-    </div>
-</div>
+                        <div class="task-header">
+                            <div class="task-icon">📢</div>
+                            <div class="task-info">
+                                <div class="task-title">Подписка на канал</div>
+                                <div class="task-status" id="subscriptionStatus">Не проверено</div>
+                            </div>
+                        </div>
+                        <button class="task-button" onclick="claimSubscriptionReward()">
+                            🎁 Забрать +15 монет
+                        </button>
+                        <div class="task-hint">
+                            Подпишитесь на @CS2DropZone и получайте +15 монет каждые 2 минуты
+                        </div>
+                    </div>
+
+                    <!-- Имя бота в фамилии -->
+                    <div class="task-card">
+                        <div class="task-header">
+                            <div class="task-icon">🔍</div>
+                            <div class="task-info">
+                                <div class="task-title">Имя бота в фамилии</div>
+                                <div class="task-status" id="nameStatus">Не проверено</div>
+                            </div>
+                        </div>
+                        <button class="task-button">
+                            🔍 Проверить фамилию
+                        </button>
+                        <div class="task-hint">
+                            Установите фамилию: @Testserver_CS2DropZone_bot<br>
+                            +20 монет первый раз, затем +5 монет каждые 3 минуты
+                        </div>
+                    </div>
 
                     <!-- Приглашение друзей -->
                     <div class="task-card">
@@ -163,21 +156,183 @@
                 </div>
             </div>
 
-            <!-- Топ игроков -->
-            <div id="leaderboard" class="tab-content">
-                <div class="coming-soon">
-                    <div class="coming-soon-icon">🏆</div>
-                    <div class="coming-soon-title">Топ игроков</div>
-                    <div class="coming-soon-text">Скоро здесь появится рейтинг лучших игроков!</div>
+            <!-- Кейсы -->
+            <div id="cases" class="tab-content">
+                <div class="cases-section">
+                    <h3 class="section-title">Кейсы CS2</h3>
+                    <div class="cases-grid" id="casesGrid">
+                        <!-- Кейсы будут загружены через JavaScript -->
+                    </div>
                 </div>
             </div>
 
-            <!-- Магазин -->
-            <div id="shop" class="tab-content">
-                <div class="coming-soon">
-                    <div class="coming-soon-icon">🛍️</div>
-                    <div class="coming-soon-title">Магазин</div>
-                    <div class="coming-soon-text">Скоро здесь откроется магазин с крутыми предметами!</div>
+            <!-- Инвентарь -->
+            <div id="inventory" class="tab-content">
+                <div class="inventory-section">
+                    <h3 class="section-title">Ваш инвентарь</h3>
+                    <div class="inventory-stats">
+                        <div class="inventory-stat">
+                            <span class="stat-number" id="totalSkins">0</span>
+                            <span class="stat-label">Всего скинов</span>
+                        </div>
+                        <div class="inventory-stat">
+                            <span class="stat-number" id="totalValue">0</span>
+                            <span class="stat-label">Общая стоимость</span>
+                        </div>
+                    </div>
+                    <div class="inventory-grid" id="inventoryGrid">
+                        <!-- Скины будут загружены через JavaScript -->
+                    </div>
+                    <div class="empty-inventory" id="emptyInventory">
+                        <div class="empty-icon">🎮</div>
+                        <div class="empty-text">Ваш инвентарь пуст</div>
+                        <div class="empty-subtext">Открывайте кейсы чтобы получить скины!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Навигация внизу -->
+        <nav class="navbar bottom">
+            <div class="nav-item active" data-tab="main">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Главная</div>
+            </div>
+            <div class="nav-item" data-tab="cases">
+                <div class="nav-icon">🎁</div>
+                <div class="nav-label">Кейсы</div>
+            </div>
+            <div class="nav-item" data-tab="inventory">
+                <div class="nav-icon">🎒</div>
+                <div class="nav-label">Инвентарь</div>
+            </div>
+            <div class="nav-item" data-tab="profile">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Профиль</div>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Модальное окно кейса -->
+    <div id="caseModal" class="modal">
+        <div class="modal-content case-modal">
+            <div class="modal-header">
+                <h3 id="caseModalTitle">Открытие кейса</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="case-preview">
+                    <img id="caseModalImage" src="" alt="Кейс">
+                    <div class="case-info">
+                        <div class="case-name" id="caseModalName"></div>
+                        <div class="case-price">Стоимость: <span id="caseModalPrice">0</span> монет</div>
+                    </div>
+                </div>
+                <div class="case-items">
+                    <h4>Возможные выпадения:</h4>
+                    <div class="items-list" id="caseItemsList">
+                        <!-- Предметы кейса -->
+                    </div>
+                </div>
+                <button id="openCaseBtn" class="modal-button primary">Открыть кейс</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно рулетки -->
+    <div id="rouletteModal" class="modal">
+        <div class="modal-content roulette-modal">
+            <div class="modal-header">
+                <h3>Открытие кейса</h3>
+            </div>
+            <div class="modal-body">
+                <div class="roulette-container">
+                    <div class="roulette-line"></div>
+                    <div class="roulette-items" id="rouletteItems">
+                        <!-- Предметы для рулетки -->
+                    </div>
+                </div>
+                <div class="roulette-timer" id="rouletteTimer">7</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно результата -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content result-modal">
+            <div class="modal-header">
+                <h3>Поздравляем!</h3>
+            </div>
+            <div class="modal-body">
+                <div class="result-item">
+                    <img id="resultSkinImage" src="" alt="Выигрыш">
+                    <div class="result-info">
+                        <div class="result-name" id="resultSkinName"></div>
+                        <div class="result-rarity" id="resultSkinRarity"></div>
+                        <div class="result-chance">Шанс: <span id="resultSkinChance"></span></div>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button id="goToInventoryBtn" class="modal-button primary">Перейти в инвентарь</button>
+                    <button id="openAnotherCaseBtn" class="modal-button secondary">Открыть еще кейс</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно скина -->
+    <div id="skinModal" class="modal">
+        <div class="modal-content skin-modal">
+            <div class="modal-header">
+                <h3 id="skinModalTitle">Информация о скине</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="skin-preview">
+                    <img id="skinModalImage" src="" alt="Скин">
+                    <div class="skin-info">
+                        <div class="skin-name" id="skinModalName"></div>
+                        <div class="skin-rarity" id="skinModalRarity"></div>
+                        <div class="skin-value">Стоимость: <span id="skinModalValue">0</span> монет</div>
+                    </div>
+                </div>
+                <div class="skin-actions">
+                    <button id="sellSkinBtn" class="modal-button secondary">Продать за монеты</button>
+                    <button id="withdrawSkinBtn" class="modal-button primary">Вывести в Steam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно вывода -->
+    <div id="withdrawModal" class="modal">
+        <div class="modal-content withdraw-modal">
+            <div class="modal-header">
+                <h3>Вывод скина в Steam</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="withdraw-info">
+                    <img id="withdrawSkinImage" src="" alt="Скин">
+                    <div class="withdraw-details">
+                        <div class="withdraw-name" id="withdrawSkinName"></div>
+                        <div class="withdraw-value">Стоимость: <span id="withdrawSkinValue">0</span> монет</div>
+                    </div>
+                </div>
+                <div class="trade-link-input">
+                    <label for="tradeLink">Trade ссылка Steam:</label>
+                    <input type="text" id="tradeLink" placeholder="https://steamcommunity.com/tradeoffer/new/?partner=...">
+                    <div class="trade-link-help">
+                        Как получить trade ссылку?<br>
+                        1. Откройте Steam<br>
+                        2. Перейдите в Настройки → Инвентарь<br>
+                        3. Нажмите "Кто может мне отправлять обмены?"<br>
+                        4. Скопируйте ссылку
+                    </div>
+                </div>
+                <div class="withdraw-actions">
+                    <button id="confirmWithdrawBtn" class="modal-button primary">Вывести скин</button>
+                    <button id="cancelWithdrawBtn" class="modal-button secondary">Отмена</button>
                 </div>
             </div>
         </div>
@@ -186,5 +341,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
-
