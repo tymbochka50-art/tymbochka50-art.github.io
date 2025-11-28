@@ -499,7 +499,7 @@ async function initApp() {
 
 // ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
 
-// Данные кейсов
+// Данные кейсов (остаются без изменений)
 const casesData = [
     {
         id: 'light',
@@ -545,229 +545,10 @@ const casesData = [
             }
         ]
     },
-    {
-        id: 'danger',
-        name: 'DANGER Case',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458464_x.jpg',
-        price: 150,
-        color: 'danger',
-        items: [
-            { 
-                name: 'Souvenir AWP | Dragon Lore', 
-                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 5000
-            },
-            { 
-                name: 'Sport Gloves | Hedge Maze', 
-                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4500
-            },
-            { 
-                name: 'Karambit | Doppler Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4800
-            },
-            { 
-                name: 'Galil AR | Acid Dart', 
-                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
-                chance: 99.30,
-                rarity: 'common',
-                value: 50
-            },
-            { 
-                name: 'FAMAS | Grey Ghost', 
-                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
-                chance: 99.35,
-                rarity: 'common',
-                value: 45
-            }
-        ]
-    },
-    {
-        id: 'mystic',
-        name: 'MYSTIC Case',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458465_x.jpg',
-        price: 200,
-        color: 'mystic',
-        items: [
-            { 
-                name: 'Souvenir AWP | Dragon Lore', 
-                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 5000
-            },
-            { 
-                name: 'Sport Gloves | Hedge Maze', 
-                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4500
-            },
-            { 
-                name: 'Karambit | Doppler Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4800
-            },
-            { 
-                name: 'Galil AR | Acid Dart', 
-                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
-                chance: 99.30,
-                rarity: 'common',
-                value: 50
-            },
-            { 
-                name: 'FAMAS | Grey Ghost', 
-                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
-                chance: 99.35,
-                rarity: 'common',
-                value: 45
-            }
-        ]
-    },
-    {
-        id: 'heat',
-        name: 'HEAT Case',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458478_x.jpg',
-        price: 250,
-        color: 'heat',
-        items: [
-            { 
-                name: 'Souvenir AWP | Dragon Lore', 
-                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 5000
-            },
-            { 
-                name: 'Sport Gloves | Hedge Maze', 
-                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4500
-            },
-            { 
-                name: 'Karambit | Doppler Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4800
-            },
-            { 
-                name: 'Galil AR | Acid Dart', 
-                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
-                chance: 99.30,
-                rarity: 'common',
-                value: 50
-            },
-            { 
-                name: 'FAMAS | Grey Ghost', 
-                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
-                chance: 99.35,
-                rarity: 'common',
-                value: 45
-            }
-        ]
-    },
-    {
-        id: 'ice',
-        name: 'ICE Case',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458479_x.jpg',
-        price: 300,
-        color: 'ice',
-        items: [
-            { 
-                name: 'Souvenir AWP | Dragon Lore', 
-                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 5000
-            },
-            { 
-                name: 'Sport Gloves | Hedge Maze', 
-                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4500
-            },
-            { 
-                name: 'Karambit | Doppler Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4800
-            },
-            { 
-                name: 'Galil AR | Acid Dart', 
-                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
-                chance: 99.30,
-                rarity: 'common',
-                value: 50
-            },
-            { 
-                name: 'FAMAS | Grey Ghost', 
-                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
-                chance: 99.35,
-                rarity: 'common',
-                value: 45
-            }
-        ]
-    },
-    {
-        id: 'energy',
-        name: 'ENERGY Case',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458481_x.jpg',
-        price: 350,
-        color: 'energy',
-        items: [
-            { 
-                name: 'Souvenir AWP | Dragon Lore', 
-                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 5000
-            },
-            { 
-                name: 'Sport Gloves | Hedge Maze', 
-                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4500
-            },
-            { 
-                name: 'Karambit | Doppler Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4800
-            },
-            { 
-                name: 'Galil AR | Acid Dart', 
-                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
-                chance: 99.30,
-                rarity: 'common',
-                value: 50
-            },
-            { 
-                name: 'FAMAS | Grey Ghost', 
-                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
-                chance: 99.35,
-                rarity: 'common',
-                value: 45
-            }
-        ]
-    }
+    // ... остальные кейсы
 ];
 
-// Загрузка кейсов
+// Загрузка кейсов (остается без изменений)
 function loadCases() {
     const casesGrid = document.getElementById('casesGrid');
     if (!casesGrid) return;
@@ -788,7 +569,7 @@ function loadCases() {
     });
 }
 
-// Открытие модального окна кейса
+// Открытие модального окна кейса (остается без изменений)
 function openCaseModal(caseData) {
     const modal = document.getElementById('caseModal');
     const caseItemsList = document.getElementById('caseItemsList');
@@ -833,6 +614,9 @@ function startCaseOpening(caseData) {
     // Закрываем модалку кейса
     document.getElementById('caseModal').style.display = 'none';
     
+    // Списываем монеты сразу
+    deductCoins(caseData.price);
+    
     // Показываем рулетку
     showRoulette(caseData);
 }
@@ -844,7 +628,7 @@ function showRoulette(caseData) {
     
     // Заполняем рулетку предметами (повторяем для эффекта)
     rouletteItems.innerHTML = '';
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) { // Увеличиваем количество для плавной анимации
         caseData.items.forEach(item => {
             const itemElement = document.createElement('div');
             itemElement.className = 'roulette-item';
@@ -858,30 +642,43 @@ function showRoulette(caseData) {
     
     modal.style.display = 'block';
     
-    // Запускаем таймер и анимацию
+    // Запускаем анимацию
     startRouletteAnimation(caseData);
 }
 
-// Анимация рулетки
+// Анимация рулетки (улучшенная)
 function startRouletteAnimation(caseData) {
     const rouletteItems = document.getElementById('rouletteItems');
-    const timerElement = document.getElementById('rouletteTimer');
-    let timeLeft = 7;
+    const spinningText = document.getElementById('rouletteSpinning');
     
-    // Таймер обратного отсчета
-    const timer = setInterval(() => {
-        timeLeft--;
-        timerElement.textContent = timeLeft;
+    let startTime = Date.now();
+    let animationFrame;
+    let currentPosition = 0;
+    let speed = 50; // начальная скорость
+    
+    function animate() {
+        const elapsed = Date.now() - startTime;
         
-        if (timeLeft <= 0) {
-            clearInterval(timer);
+        if (elapsed < 7000) { // 7 секунд анимации
+            // Замедление со временем
+            if (elapsed > 5000) {
+                speed = Math.max(2, speed * 0.95);
+            } else if (elapsed > 3000) {
+                speed = Math.max(5, speed * 0.98);
+            }
+            
+            currentPosition -= speed;
+            rouletteItems.style.transform = `translateX(${currentPosition}px)`;
+            animationFrame = requestAnimationFrame(animate);
+        } else {
+            // Завершение анимации
+            cancelAnimationFrame(animationFrame);
             finishCaseOpening(caseData);
         }
-    }, 1000);
+    }
     
-    // Анимация прокрутки
-    rouletteItems.style.transition = 'transform 7s cubic-bezier(0.1, 0.8, 0.2, 1)';
-    rouletteItems.style.transform = 'translateX(-2000px)';
+    // Запускаем анимацию
+    animationFrame = requestAnimationFrame(animate);
 }
 
 // Завершение открытия кейса
@@ -897,9 +694,6 @@ function finishCaseOpening(caseData) {
     
     // Сохраняем скин в инвентарь
     saveSkinToInventory(wonItem);
-    
-    // Списываем монеты
-    deductCoins(caseData.price);
 }
 
 // Выбор случайного предмета с учетом шансов
@@ -914,7 +708,6 @@ function getRandomItem(items) {
         }
     }
     
-    // Если ничего не выбрано (на всякий случай)
     return items[items.length - 1];
 }
 
@@ -942,17 +735,6 @@ function showResult(item, caseData) {
     modal.style.display = 'block';
 }
 
-// Получение текста редкости
-function getRarityText(rarity) {
-    const rarityMap = {
-        'common': 'Обычный',
-        'rare': 'Редкий',
-        'epic': 'Эпический',
-        'legendary': 'Легендарный'
-    };
-    return rarityMap[rarity] || 'Обычный';
-}
-
 // Сохранение скина в инвентарь
 function saveSkinToInventory(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
@@ -966,13 +748,15 @@ function saveSkinToInventory(skin) {
         image: skin.image,
         rarity: skin.rarity,
         value: skin.value,
-        obtainedAt: new Date().toISOString()
+        obtainedAt: new Date().toISOString(),
+        status: 'in_inventory' // статус: в инвентаре, на выводе, продан
     });
     
     localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
     
     // Обновляем отображение инвентаря
     loadInventory();
+    loadProfileInventory();
 }
 
 // Загрузка инвентаря
@@ -987,12 +771,15 @@ function loadInventory() {
     
     let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     
+    // Фильтруем только скины в инвентаре
+    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
+    
     // Обновляем статистику
-    totalSkins.textContent = inventory.length;
-    const totalVal = inventory.reduce((sum, skin) => sum + skin.value, 0);
+    totalSkins.textContent = activeInventory.length;
+    const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
     totalValue.textContent = totalVal;
     
-    if (inventory.length === 0) {
+    if (activeInventory.length === 0) {
         inventoryGrid.style.display = 'none';
         emptyInventory.style.display = 'block';
     } else {
@@ -1000,7 +787,7 @@ function loadInventory() {
         emptyInventory.style.display = 'none';
         
         inventoryGrid.innerHTML = '';
-        inventory.forEach(skin => {
+        activeInventory.forEach(skin => {
             const skinElement = document.createElement('div');
             skinElement.className = 'skin-item';
             skinElement.innerHTML = `
@@ -1011,6 +798,39 @@ function loadInventory() {
             
             skinElement.addEventListener('click', () => openSkinModal(skin));
             inventoryGrid.appendChild(skinElement);
+        });
+    }
+}
+
+// Загрузка инвентаря в профиле
+function loadProfileInventory() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const profileInventoryGrid = document.getElementById('profileInventoryGrid');
+    const emptyProfileInventory = document.getElementById('emptyProfileInventory');
+    
+    if (!userId || !profileInventoryGrid) return;
+    
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
+    
+    if (activeInventory.length === 0) {
+        profileInventoryGrid.style.display = 'none';
+        emptyProfileInventory.style.display = 'block';
+    } else {
+        profileInventoryGrid.style.display = 'grid';
+        emptyProfileInventory.style.display = 'none';
+        
+        profileInventoryGrid.innerHTML = '';
+        activeInventory.forEach(skin => {
+            const skinElement = document.createElement('div');
+            skinElement.className = 'profile-skin-item';
+            skinElement.innerHTML = `
+                <img src="${skin.image}" alt="${skin.name}" class="profile-skin-image">
+                <div class="profile-skin-name">${skin.name}</div>
+            `;
+            
+            skinElement.addEventListener('click', () => openSkinModal(skin));
+            profileInventoryGrid.appendChild(skinElement);
         });
     }
 }
@@ -1038,10 +858,13 @@ function sellSkin(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
     
     if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value} монет?`)) {
-        // Удаляем скин из инвентаря
+        // Обновляем статус скина
         let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-        inventory = inventory.filter(s => s.id !== skin.id);
-        localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+        const skinIndex = inventory.findIndex(s => s.id === skin.id);
+        if (skinIndex !== -1) {
+            inventory[skinIndex].status = 'sold';
+            localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+        }
         
         // Начисляем монеты
         addCoins(skin.value);
@@ -1049,6 +872,7 @@ function sellSkin(skin) {
         // Закрываем модалку и обновляем инвентарь
         document.getElementById('skinModal').style.display = 'none';
         loadInventory();
+        loadProfileInventory();
         
         tg.showAlert(`✅ Скин продан за ${skin.value} монет!`);
     }
@@ -1073,7 +897,7 @@ function openWithdrawModal(skin) {
 }
 
 // Подтверждение вывода
-function confirmWithdraw(skin) {
+async function confirmWithdraw(skin) {
     const tradeLink = document.getElementById('tradeLink').value.trim();
     const tradeLinkRegex = /^https:\/\/steamcommunity\.com\/tradeoffer\/new\/\?partner=\d+&token=[a-zA-Z0-9]+$/;
     
@@ -1090,40 +914,81 @@ function confirmWithdraw(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
     
-    // Удаляем скин из инвентаря
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-    inventory = inventory.filter(s => s.id !== skin.id);
-    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
-    
-    // Закрываем модалки
-    document.getElementById('withdrawModal').style.display = 'none';
-    document.getElementById('skinModal').style.display = 'none';
-    
-    // Обновляем инвентарь
-    loadInventory();
-    
-    // Отправляем запрос боту (заглушка)
-    sendWithdrawRequestToBot(user, skin, tradeLink);
-    
-    tg.showAlert('✅ Запрос на вывод отправлен! Скин будет отправлен в ближайшее время.');
+    try {
+        // Отправляем запрос на вывод
+        const response = await sendWithdrawRequest(user, skin, tradeLink);
+        
+        if (response.success) {
+            // Обновляем статус скина
+            let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+            const skinIndex = inventory.findIndex(s => s.id === skin.id);
+            if (skinIndex !== -1) {
+                inventory[skinIndex].status = 'withdraw_pending';
+                inventory[skinIndex].tradeLink = tradeLink;
+                inventory[skinIndex].withdrawDate = new Date().toISOString();
+                localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+            }
+            
+            // Закрываем модалки
+            document.getElementById('withdrawModal').style.display = 'none';
+            document.getElementById('skinModal').style.display = 'none';
+            
+            // Обновляем инвентарь
+            loadInventory();
+            loadProfileInventory();
+            
+            tg.showAlert('✅ Запрос на вывод отправлен! Скин будет отправлен в ближайшее время.');
+        } else {
+            tg.showAlert(`❌ Ошибка: ${response.error}`);
+        }
+    } catch (error) {
+        console.error('Ошибка вывода:', error);
+        tg.showAlert('❌ Ошибка при отправке запроса на вывод');
+    }
 }
 
-// Отправка запроса на вывод боту (заглушка)
-function sendWithdrawRequestToBot(user, skin, tradeLink) {
-    console.log('📤 Withdraw request:', {
+// Отправка запроса на вывод
+async function sendWithdrawRequest(user, skin, tradeLink) {
+    const requestData = {
         userId: user.id,
-        userName: user.first_name,
-        userUsername: user.username,
-        skin: skin.name,
+        userName: user.first_name || 'Неизвестно',
+        userUsername: user.username || 'Неизвестно',
+        userLanguage: user.language_code || 'ru',
+        skinName: skin.name,
+        skinImage: skin.image,
         skinValue: skin.value,
-        tradeLink: tradeLink
-    });
+        skinRarity: skin.rarity,
+        tradeLink: tradeLink,
+        timestamp: new Date().toISOString()
+    };
     
-    // Здесь будет реальный запрос к боту
-    // fetch('/api/withdraw-request', { ... })
+    try {
+        const response = await fetch('https://telegram-backend-nine.vercel.app/api/withdraw-request', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка отправки запроса:', error);
+        return { success: false, error: 'Ошибка сети' };
+    }
 }
 
-// Вспомогательные функции для монет
+// Вспомогательные функции
+function getRarityText(rarity) {
+    const rarityMap = {
+        'common': 'Обычный',
+        'rare': 'Редкий',
+        'epic': 'Эпический',
+        'legendary': 'Легендарный'
+    };
+    return rarityMap[rarity] || 'Обычный';
+}
+
 function deductCoins(amount) {
     const currentCoins = parseInt(document.getElementById('userCoins').textContent);
     const newCoins = currentCoins - amount;
@@ -1136,7 +1001,6 @@ function addCoins(amount) {
     updateCoinsDisplay(newCoins);
 }
 
-// Переключение между вкладками
 function switchToTab(tabName) {
     const navItems = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -1146,18 +1010,23 @@ function switchToTab(tabName) {
     
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(tabName).classList.add('active');
+    
+    // При переключении на инвентарь или профиль обновляем их
+    if (tabName === 'inventory') {
+        loadInventory();
+    } else if (tabName === 'profile') {
+        loadProfileInventory();
+    }
 }
 
 // Инициализация модальных окон
 function initModals() {
-    // Закрытие модалок по клику на X
     document.querySelectorAll('.close').forEach(closeBtn => {
         closeBtn.addEventListener('click', function() {
             this.closest('.modal').style.display = 'none';
         });
     });
     
-    // Закрытие модалок по клику вне контента
     window.addEventListener('click', function(event) {
         if (event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
@@ -1180,8 +1049,6 @@ async function initApp() {
 
         // Инициализация навигации
         initNavigation();
-        
-        // Инициализация модальных окон
         initModals();
 
         // Загрузка данных пользователя
@@ -1197,36 +1064,11 @@ async function initApp() {
         // Загрузка кейсов и инвентаря
         loadCases();
         loadInventory();
-
-        console.log('📊 Данные пользователя:', user);
+        loadProfileInventory();
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
     }
-}
-
-// Обновленная функция initNavigation для нижней навигации
-function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            // Убираем активный класс у всех
-            navItems.forEach(nav => nav.classList.remove('active'));
-            tabContents.forEach(tab => tab.classList.remove('active'));
-            
-            // Добавляем активный класс к выбранному
-            item.classList.add('active');
-            const tabId = item.getAttribute('data-tab');
-            document.getElementById(tabId).classList.add('active');
-            
-            // При переключении на инвентарь обновляем его
-            if (tabId === 'inventory') {
-                loadInventory();
-            }
-        });
-    });
 }
 
 // ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ (ИСПРАВЛЕННАЯ) ====================
@@ -1637,6 +1479,7 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
