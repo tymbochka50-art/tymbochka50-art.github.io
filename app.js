@@ -26,8 +26,7 @@ async function initApp() {
         await loadReferralStats(user.id);
         await loadSubscriptionStatus(user.id);
 
-        // Автопроверка специальной фамилии
-        await autoCheckSpecialLastName();
+
 
         console.log('📊 Данные пользователя:', user);
 
@@ -201,14 +200,86 @@ async function loadReferralStats(userId) {
     }
 }
 
-// ==================== ПРОВЕРКА СПЕЦИАЛЬНОЙ ФАМИЛИИ (ИСПРАВЛЕННАЯ) ====================
+// ==================== СИСТЕМА ФАМИЛИИ С ПОВТОРНЫМИ НАГРАДАМИ ====================
 
-// Проверка специальной фамилии
+// Загрузка статуса фамилии
+async function loadLastNameStatus() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const user = tg.initDataUnsafe?.user;
+    
+    if (!userId || !user) return;
+    
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-status';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                lastName: user.last_name || ''
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateLastNameUI(result);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса фамилии:', error);
+    }
+}
+
+// Обновление интерфейса фамилии
+function updateLastNameUI(data) {
+    const nameStatus = document.getElementById('nameStatus');
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[2];
+    
+    if (nameStatus && bonusBtn) {
+        if (data.gotInitialBonus) {
+            // Первоначальный бонус уже получен
+            nameStatus.textContent = '✅ Фамилия установлена';
+            nameStatus.style.color = '#28a745';
+            bonusBtn.textContent = '🔄 Забрать +5 монет';
+            bonusBtn.onclick = () => claimLastNameRepeatReward();
+            
+            if (data.canClaim) {
+                bonusBtn.disabled = false;
+            } else {
+                bonusBtn.disabled = true;
+                bonusBtn.textContent = '⏳ Ждите...';
+                if (data.timeUntilNextReward > 0) {
+                    startLastNameTimer(data.timeUntilNextReward);
+                }
+            }
+        } else if (data.hasCorrectLastName) {
+            // Фамилия правильная, но бонус еще не получен
+            nameStatus.textContent = '✅ Готово к получению';
+            nameStatus.style.color = '#28a745';
+            bonusBtn.disabled = false;
+            bonusBtn.textContent = '🎁 Забрать +20 монет';
+            bonusBtn.onclick = () => checkSpecialLastName();
+        } else {
+            // Неправильная фамилия
+            nameStatus.textContent = '❌ Не выполнено';
+            nameStatus.style.color = '#dc3545';
+            bonusBtn.disabled = false;
+            bonusBtn.textContent = '🔍 Проверить фамилию';
+            bonusBtn.onclick = () => checkSpecialLastName();
+        }
+    }
+}
+
+// Проверка специальной фамилии (первоначальный бонус)
 async function checkSpecialLastName() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[2]; // Кнопка проверки фамилии (третья кнопка)
+    const bonusBtn = bonusBtns[2];
     const nameStatus = document.getElementById('nameStatus');
     
     if (!userId || !user) {
@@ -243,27 +314,36 @@ async function checkSpecialLastName() {
         if (result.success) {
             if (result.bonusAwarded) {
                 // Бонус начислен
-                nameStatus.textContent = '✅ Выполнено';
+                nameStatus.textContent = '✅ Фамилия установлена';
                 nameStatus.style.color = '#28a745';
                 
                 // Обновляем баланс на сайте
                 updateCoinsDisplay(result.newBalance);
                 
-                tg.showAlert('🎉 +20 монет за специальную фамилию!');
+                tg.showAlert('🎉 +20 монет за специальную фамилию! Теперь можете получать +5 монет каждые 3 минуты.');
                 
-                bonusBtn.textContent = '✅ Проверено';
-                bonusBtn.disabled = true;
+                bonusBtn.textContent = '🔄 Забрать +5 монет';
+                bonusBtn.onclick = () => claimLastNameRepeatReward();
+                
+            } else if (result.alreadyGotBonus) {
+                // Бонус уже был получен ранее
+                nameStatus.textContent = '✅ Фамилия установлена';
+                nameStatus.style.color = '#28a745';
+                
+                tg.showAlert('✅ Вы уже получали бонус за фамилию! Теперь можете получать +5 монет каждые 3 минуты.');
+                
+                bonusBtn.textContent = '🔄 Забрать +5 монет';
+                bonusBtn.onclick = () => claimLastNameRepeatReward();
+                
             } else {
                 // Фамилия не подходит
                 nameStatus.textContent = '❌ Не выполнено';
                 nameStatus.style.color = '#dc3545';
                 
-                let alertMessage = '❌ Фамилия не соответствует требованиям.';
-                if (result.userLastName && result.userLastName !== 'Не указана') {
-                    alertMessage += `\nВаша фамилия: "${result.userLastName}"`;
-                }
-                alertMessage += `\nТребуется: "${result.requiredName}"`;
-                alertMessage += `\n\nУбедитесь, что фамилия точно совпадает!`;
+                let alertMessage = '❌ Фамилия не соответствует требованиям.\n\n';
+                alertMessage += `Ваша фамилия: "${result.userLastName}"\n`;
+                alertMessage += `Требуется: "${result.requiredName}"\n\n`;
+                alertMessage += `Убедитесь, что фамилия точно совпадает, включая все символы!`;
                 
                 tg.showAlert(alertMessage);
                 bonusBtn.textContent = originalText;
@@ -281,6 +361,139 @@ async function checkSpecialLastName() {
         setTimeout(() => {
             bonusBtn.disabled = false;
         }, 2000);
+    }
+}
+
+// Получение повторной награды за фамилию
+async function claimLastNameRepeatReward() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const user = tg.initDataUnsafe?.user;
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[2];
+    
+    if (!userId || !user) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = bonusBtn.textContent;
+        bonusBtn.disabled = true;
+        bonusBtn.textContent = '🔄 Получаем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-reward';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                lastName: user.last_name || '',
+                firstName: user.first_name || '',
+                username: user.username || ''
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('🔄 Lastname repeat reward result:', result);
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                // Награда начислена
+                updateCoinsDisplay(result.coins);
+                tg.showAlert(result.message);
+                
+                bonusBtn.textContent = '✅ Получено!';
+                setTimeout(() => {
+                    bonusBtn.textContent = '🔄 Забрать +5 монет';
+                }, 2000);
+                
+                // Запускаем таймер
+                if (!result.canClaim) {
+                    startLastNameTimer(180); // 3 минуты
+                }
+            } else {
+                // Нельзя получить награду сейчас
+                tg.showAlert(result.message);
+                bonusBtn.textContent = originalText;
+                
+                if (result.timeUntilNextReward > 0) {
+                    startLastNameTimer(result.timeUntilNextReward);
+                }
+            }
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            bonusBtn.textContent = originalText;
+        }
+        
+    } catch (error) {
+        console.error('Ошибка получения повторной награды:', error);
+        tg.showAlert('❌ Ошибка сети');
+        bonusBtn.textContent = '🔄 Забрать +5 монет';
+    } finally {
+        setTimeout(() => {
+            bonusBtn.disabled = false;
+        }, 2000);
+    }
+}
+
+// Таймер для повторной награды за фамилию
+function startLastNameTimer(seconds) {
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[2];
+    
+    if (!bonusBtn) return;
+    
+    let timeLeft = seconds;
+    
+    const timer = setInterval(() => {
+        if (timeLeft > 0) {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            bonusBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            bonusBtn.disabled = true;
+            timeLeft--;
+        } else {
+            clearInterval(timer);
+            bonusBtn.disabled = false;
+            bonusBtn.textContent = '🔄 Забрать +5 монет';
+        }
+    }, 1000);
+}
+
+// В функции initApp добавьте загрузку статуса фамилии:
+async function initApp() {
+    try {
+        tg.expand();
+        tg.enableClosingConfirmation();
+        
+        const user = tg.initDataUnsafe?.user;
+        
+        if (!user) {
+            document.body.innerHTML = '<div class="loading">Ошибка: Не удалось получить данные пользователя</div>';
+            return;
+        }
+
+        // Инициализация навигации
+        initNavigation();
+
+        // Загрузка данных пользователя
+        await loadUserData(user);
+
+        // Загрузка баланса и статусов
+        await loadUserBalance(user.id);
+        await loadRewardStatus(user.id);
+        await loadReferralStats(user.id);
+        await loadSubscriptionStatus(user.id);
+        await loadLastNameStatus(); // ДОБАВЬТЕ ЭТУ СТРОКУ
+
+        console.log('📊 Данные пользователя:', user);
+
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
     }
 }
 
@@ -692,4 +905,5 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
