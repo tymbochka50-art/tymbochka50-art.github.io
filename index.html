@@ -106,6 +106,41 @@
                 </div>
             </div>
 
+            <!-- Кейсы -->
+            <div id="cases" class="tab-content">
+                <div class="cases-section">
+                    <h3 class="section-title">Кейсы CS2</h3>
+                    <div class="cases-grid" id="casesGrid">
+                        <!-- Кейсы будут загружены через JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Инвентарь -->
+            <div id="inventory" class="tab-content">
+                <div class="inventory-section">
+                    <h3 class="section-title">Ваш инвентарь</h3>
+                    <div class="inventory-stats">
+                        <div class="inventory-stat">
+                            <span class="stat-number" id="totalSkins">0</span>
+                            <span class="stat-label">Всего скинов</span>
+                        </div>
+                        <div class="inventory-stat">
+                            <span class="stat-number" id="totalValue">0</span>
+                            <span class="stat-label">Общая стоимость</span>
+                        </div>
+                    </div>
+                    <div class="inventory-grid" id="inventoryGrid">
+                        <!-- Скины будут загружены через JavaScript -->
+                    </div>
+                    <div class="empty-inventory" id="emptyInventory">
+                        <div class="empty-icon">🎮</div>
+                        <div class="empty-text">Ваш инвентарь пуст</div>
+                        <div class="empty-subtext">Открывайте кейсы чтобы получить скины!</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Профиль -->
             <div id="profile" class="tab-content">
                 <div class="profile-header">
@@ -154,39 +189,16 @@
                         <span id="profileUsername" class="detail-value">-</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- Кейсы -->
-            <div id="cases" class="tab-content">
-                <div class="cases-section">
-                    <h3 class="section-title">Кейсы CS2</h3>
-                    <div class="cases-grid" id="casesGrid">
-                        <!-- Кейсы будут загружены через JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Инвентарь -->
-            <div id="inventory" class="tab-content">
-                <div class="inventory-section">
-                    <h3 class="section-title">Ваш инвентарь</h3>
-                    <div class="inventory-stats">
-                        <div class="inventory-stat">
-                            <span class="stat-number" id="totalSkins">0</span>
-                            <span class="stat-label">Всего скинов</span>
-                        </div>
-                        <div class="inventory-stat">
-                            <span class="stat-number" id="totalValue">0</span>
-                            <span class="stat-label">Общая стоимость</span>
-                        </div>
-                    </div>
-                    <div class="inventory-grid" id="inventoryGrid">
+                <!-- Инвентарь в профиле -->
+                <div class="profile-inventory">
+                    <h4 class="inventory-title">Мой инвентарь</h4>
+                    <div class="profile-inventory-grid" id="profileInventoryGrid">
                         <!-- Скины будут загружены через JavaScript -->
                     </div>
-                    <div class="empty-inventory" id="emptyInventory">
-                        <div class="empty-icon">🎮</div>
-                        <div class="empty-text">Ваш инвентарь пуст</div>
-                        <div class="empty-subtext">Открывайте кейсы чтобы получить скины!</div>
+                    <div class="empty-profile-inventory" id="emptyProfileInventory">
+                        <div class="empty-icon">🎒</div>
+                        <div class="empty-text">Инвентарь пуст</div>
                     </div>
                 </div>
             </div>
@@ -213,6 +225,7 @@
         </nav>
     </div>
 
+    <!-- Модальные окна (остаются без изменений) -->
     <!-- Модальное окно кейса -->
     <div id="caseModal" class="modal">
         <div class="modal-content case-modal">
@@ -230,9 +243,7 @@
                 </div>
                 <div class="case-items">
                     <h4>Возможные выпадения:</h4>
-                    <div class="items-list" id="caseItemsList">
-                        <!-- Предметы кейса -->
-                    </div>
+                    <div class="items-list" id="caseItemsList"></div>
                 </div>
                 <button id="openCaseBtn" class="modal-button primary">Открыть кейс</button>
             </div>
@@ -248,11 +259,11 @@
             <div class="modal-body">
                 <div class="roulette-container">
                     <div class="roulette-line"></div>
-                    <div class="roulette-items" id="rouletteItems">
-                        <!-- Предметы для рулетки -->
+                    <div class="roulette-wheel">
+                        <div class="roulette-items" id="rouletteItems"></div>
                     </div>
                 </div>
-                <div class="roulette-timer" id="rouletteTimer">7</div>
+                <div class="roulette-spinning" id="rouletteSpinning">Крутим...</div>
             </div>
         </div>
     </div>
