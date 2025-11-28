@@ -497,6 +497,738 @@ async function initApp() {
     }
 }
 
+// ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
+
+// Данные кейсов
+const casesData = [
+    {
+        id: 'light',
+        name: 'LIGHT Case',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458462_x.jpg',
+        price: 100,
+        color: 'light',
+        items: [
+            { 
+                name: 'Souvenir AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 5000
+            },
+            { 
+                name: 'Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4500
+            },
+            { 
+                name: 'Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4800
+            },
+            { 
+                name: 'Galil AR | Acid Dart', 
+                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
+                chance: 99.30,
+                rarity: 'common',
+                value: 50
+            },
+            { 
+                name: 'FAMAS | Grey Ghost', 
+                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
+                chance: 99.35,
+                rarity: 'common',
+                value: 45
+            }
+        ]
+    },
+    {
+        id: 'danger',
+        name: 'DANGER Case',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458464_x.jpg',
+        price: 150,
+        color: 'danger',
+        items: [
+            { 
+                name: 'Souvenir AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 5000
+            },
+            { 
+                name: 'Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4500
+            },
+            { 
+                name: 'Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4800
+            },
+            { 
+                name: 'Galil AR | Acid Dart', 
+                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
+                chance: 99.30,
+                rarity: 'common',
+                value: 50
+            },
+            { 
+                name: 'FAMAS | Grey Ghost', 
+                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
+                chance: 99.35,
+                rarity: 'common',
+                value: 45
+            }
+        ]
+    },
+    {
+        id: 'mystic',
+        name: 'MYSTIC Case',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458465_x.jpg',
+        price: 200,
+        color: 'mystic',
+        items: [
+            { 
+                name: 'Souvenir AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 5000
+            },
+            { 
+                name: 'Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4500
+            },
+            { 
+                name: 'Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4800
+            },
+            { 
+                name: 'Galil AR | Acid Dart', 
+                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
+                chance: 99.30,
+                rarity: 'common',
+                value: 50
+            },
+            { 
+                name: 'FAMAS | Grey Ghost', 
+                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
+                chance: 99.35,
+                rarity: 'common',
+                value: 45
+            }
+        ]
+    },
+    {
+        id: 'heat',
+        name: 'HEAT Case',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458478_x.jpg',
+        price: 250,
+        color: 'heat',
+        items: [
+            { 
+                name: 'Souvenir AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 5000
+            },
+            { 
+                name: 'Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4500
+            },
+            { 
+                name: 'Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4800
+            },
+            { 
+                name: 'Galil AR | Acid Dart', 
+                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
+                chance: 99.30,
+                rarity: 'common',
+                value: 50
+            },
+            { 
+                name: 'FAMAS | Grey Ghost', 
+                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
+                chance: 99.35,
+                rarity: 'common',
+                value: 45
+            }
+        ]
+    },
+    {
+        id: 'ice',
+        name: 'ICE Case',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458479_x.jpg',
+        price: 300,
+        color: 'ice',
+        items: [
+            { 
+                name: 'Souvenir AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 5000
+            },
+            { 
+                name: 'Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4500
+            },
+            { 
+                name: 'Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4800
+            },
+            { 
+                name: 'Galil AR | Acid Dart', 
+                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
+                chance: 99.30,
+                rarity: 'common',
+                value: 50
+            },
+            { 
+                name: 'FAMAS | Grey Ghost', 
+                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
+                chance: 99.35,
+                rarity: 'common',
+                value: 45
+            }
+        ]
+    },
+    {
+        id: 'energy',
+        name: 'ENERGY Case',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458481_x.jpg',
+        price: 350,
+        color: 'energy',
+        items: [
+            { 
+                name: 'Souvenir AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 5000
+            },
+            { 
+                name: 'Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4500
+            },
+            { 
+                name: 'Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 0.009,
+                rarity: 'legendary',
+                value: 4800
+            },
+            { 
+                name: 'Galil AR | Acid Dart', 
+                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
+                chance: 99.30,
+                rarity: 'common',
+                value: 50
+            },
+            { 
+                name: 'FAMAS | Grey Ghost', 
+                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
+                chance: 99.35,
+                rarity: 'common',
+                value: 45
+            }
+        ]
+    }
+];
+
+// Загрузка кейсов
+function loadCases() {
+    const casesGrid = document.getElementById('casesGrid');
+    if (!casesGrid) return;
+    
+    casesGrid.innerHTML = '';
+    
+    casesData.forEach(caseData => {
+        const caseElement = document.createElement('div');
+        caseElement.className = `case-item ${caseData.color}`;
+        caseElement.innerHTML = `
+            <img src="${caseData.image}" alt="${caseData.name}" class="case-image">
+            <div class="case-name">${caseData.name}</div>
+            <div class="case-price">${caseData.price} монет</div>
+        `;
+        
+        caseElement.addEventListener('click', () => openCaseModal(caseData));
+        casesGrid.appendChild(caseElement);
+    });
+}
+
+// Открытие модального окна кейса
+function openCaseModal(caseData) {
+    const modal = document.getElementById('caseModal');
+    const caseItemsList = document.getElementById('caseItemsList');
+    
+    document.getElementById('caseModalTitle').textContent = caseData.name;
+    document.getElementById('caseModalImage').src = caseData.image;
+    document.getElementById('caseModalName').textContent = caseData.name;
+    document.getElementById('caseModalPrice').textContent = caseData.price;
+    
+    // Заполняем список предметов
+    caseItemsList.innerHTML = '';
+    caseData.items.forEach(item => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'item-preview';
+        itemElement.innerHTML = `
+            <img src="${item.image}" alt="${item.name}">
+            <div class="item-info">
+                <div class="item-name">${item.name}</div>
+                <div class="item-chance">Шанс: ${item.chance}%</div>
+            </div>
+        `;
+        caseItemsList.appendChild(itemElement);
+    });
+    
+    // Настройка кнопки открытия
+    const openBtn = document.getElementById('openCaseBtn');
+    openBtn.onclick = () => startCaseOpening(caseData);
+    
+    modal.style.display = 'block';
+}
+
+// Начало открытия кейса
+function startCaseOpening(caseData) {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent);
+    
+    if (currentCoins < caseData.price) {
+        tg.showAlert('❌ Недостаточно монет для открытия кейса!');
+        return;
+    }
+    
+    // Закрываем модалку кейса
+    document.getElementById('caseModal').style.display = 'none';
+    
+    // Показываем рулетку
+    showRoulette(caseData);
+}
+
+// Показ рулетки
+function showRoulette(caseData) {
+    const modal = document.getElementById('rouletteModal');
+    const rouletteItems = document.getElementById('rouletteItems');
+    
+    // Заполняем рулетку предметами (повторяем для эффекта)
+    rouletteItems.innerHTML = '';
+    for (let i = 0; i < 20; i++) {
+        caseData.items.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'roulette-item';
+            itemElement.innerHTML = `
+                <img src="${item.image}" alt="${item.name}">
+                <div class="roulette-item-name">${item.name}</div>
+            `;
+            rouletteItems.appendChild(itemElement);
+        });
+    }
+    
+    modal.style.display = 'block';
+    
+    // Запускаем таймер и анимацию
+    startRouletteAnimation(caseData);
+}
+
+// Анимация рулетки
+function startRouletteAnimation(caseData) {
+    const rouletteItems = document.getElementById('rouletteItems');
+    const timerElement = document.getElementById('rouletteTimer');
+    let timeLeft = 7;
+    
+    // Таймер обратного отсчета
+    const timer = setInterval(() => {
+        timeLeft--;
+        timerElement.textContent = timeLeft;
+        
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            finishCaseOpening(caseData);
+        }
+    }, 1000);
+    
+    // Анимация прокрутки
+    rouletteItems.style.transition = 'transform 7s cubic-bezier(0.1, 0.8, 0.2, 1)';
+    rouletteItems.style.transform = 'translateX(-2000px)';
+}
+
+// Завершение открытия кейса
+function finishCaseOpening(caseData) {
+    // Выбираем случайный предмет с учетом шансов
+    const wonItem = getRandomItem(caseData.items);
+    
+    // Закрываем рулетку
+    document.getElementById('rouletteModal').style.display = 'none';
+    
+    // Показываем результат
+    showResult(wonItem, caseData);
+    
+    // Сохраняем скин в инвентарь
+    saveSkinToInventory(wonItem);
+    
+    // Списываем монеты
+    deductCoins(caseData.price);
+}
+
+// Выбор случайного предмета с учетом шансов
+function getRandomItem(items) {
+    const random = Math.random() * 100;
+    let currentChance = 0;
+    
+    for (const item of items) {
+        currentChance += item.chance;
+        if (random <= currentChance) {
+            return item;
+        }
+    }
+    
+    // Если ничего не выбрано (на всякий случай)
+    return items[items.length - 1];
+}
+
+// Показ результата
+function showResult(item, caseData) {
+    const modal = document.getElementById('resultModal');
+    
+    document.getElementById('resultSkinImage').src = item.image;
+    document.getElementById('resultSkinName').textContent = item.name;
+    document.getElementById('resultSkinRarity').textContent = getRarityText(item.rarity);
+    document.getElementById('resultSkinRarity').className = `result-rarity skin-rarity ${item.rarity}`;
+    document.getElementById('resultSkinChance').textContent = `${item.chance}%`;
+    
+    // Настройка кнопок
+    document.getElementById('goToInventoryBtn').onclick = () => {
+        modal.style.display = 'none';
+        switchToTab('inventory');
+    };
+    
+    document.getElementById('openAnotherCaseBtn').onclick = () => {
+        modal.style.display = 'none';
+        openCaseModal(caseData);
+    };
+    
+    modal.style.display = 'block';
+}
+
+// Получение текста редкости
+function getRarityText(rarity) {
+    const rarityMap = {
+        'common': 'Обычный',
+        'rare': 'Редкий',
+        'epic': 'Эпический',
+        'legendary': 'Легендарный'
+    };
+    return rarityMap[rarity] || 'Обычный';
+}
+
+// Сохранение скина в инвентарь
+function saveSkinToInventory(skin) {
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (!userId) return;
+    
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    
+    inventory.push({
+        id: Date.now().toString(),
+        name: skin.name,
+        image: skin.image,
+        rarity: skin.rarity,
+        value: skin.value,
+        obtainedAt: new Date().toISOString()
+    });
+    
+    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+    
+    // Обновляем отображение инвентаря
+    loadInventory();
+}
+
+// Загрузка инвентаря
+function loadInventory() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const inventoryGrid = document.getElementById('inventoryGrid');
+    const emptyInventory = document.getElementById('emptyInventory');
+    const totalSkins = document.getElementById('totalSkins');
+    const totalValue = document.getElementById('totalValue');
+    
+    if (!userId || !inventoryGrid) return;
+    
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    
+    // Обновляем статистику
+    totalSkins.textContent = inventory.length;
+    const totalVal = inventory.reduce((sum, skin) => sum + skin.value, 0);
+    totalValue.textContent = totalVal;
+    
+    if (inventory.length === 0) {
+        inventoryGrid.style.display = 'none';
+        emptyInventory.style.display = 'block';
+    } else {
+        inventoryGrid.style.display = 'grid';
+        emptyInventory.style.display = 'none';
+        
+        inventoryGrid.innerHTML = '';
+        inventory.forEach(skin => {
+            const skinElement = document.createElement('div');
+            skinElement.className = 'skin-item';
+            skinElement.innerHTML = `
+                <img src="${skin.image}" alt="${skin.name}" class="skin-image">
+                <div class="skin-name">${skin.name}</div>
+                <div class="skin-rarity ${skin.rarity}">${getRarityText(skin.rarity)}</div>
+            `;
+            
+            skinElement.addEventListener('click', () => openSkinModal(skin));
+            inventoryGrid.appendChild(skinElement);
+        });
+    }
+}
+
+// Открытие модального окна скина
+function openSkinModal(skin) {
+    const modal = document.getElementById('skinModal');
+    
+    document.getElementById('skinModalTitle').textContent = skin.name;
+    document.getElementById('skinModalImage').src = skin.image;
+    document.getElementById('skinModalName').textContent = skin.name;
+    document.getElementById('skinModalRarity').textContent = getRarityText(skin.rarity);
+    document.getElementById('skinModalRarity').className = `skin-rarity ${skin.rarity}`;
+    document.getElementById('skinModalValue').textContent = skin.value;
+    
+    // Настройка кнопок
+    document.getElementById('sellSkinBtn').onclick = () => sellSkin(skin);
+    document.getElementById('withdrawSkinBtn').onclick = () => openWithdrawModal(skin);
+    
+    modal.style.display = 'block';
+}
+
+// Продажа скина
+function sellSkin(skin) {
+    const userId = tg.initDataUnsafe?.user?.id;
+    
+    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value} монет?`)) {
+        // Удаляем скин из инвентаря
+        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+        inventory = inventory.filter(s => s.id !== skin.id);
+        localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+        
+        // Начисляем монеты
+        addCoins(skin.value);
+        
+        // Закрываем модалку и обновляем инвентарь
+        document.getElementById('skinModal').style.display = 'none';
+        loadInventory();
+        
+        tg.showAlert(`✅ Скин продан за ${skin.value} монет!`);
+    }
+}
+
+// Открытие модального окна вывода
+function openWithdrawModal(skin) {
+    const modal = document.getElementById('withdrawModal');
+    
+    document.getElementById('withdrawSkinImage').src = skin.image;
+    document.getElementById('withdrawSkinName').textContent = skin.name;
+    document.getElementById('withdrawSkinValue').textContent = skin.value;
+    
+    // Настройка кнопок
+    document.getElementById('confirmWithdrawBtn').onclick = () => confirmWithdraw(skin);
+    document.getElementById('cancelWithdrawBtn').onclick = () => modal.style.display = 'none';
+    
+    // Очищаем поле ввода
+    document.getElementById('tradeLink').value = '';
+    
+    modal.style.display = 'block';
+}
+
+// Подтверждение вывода
+function confirmWithdraw(skin) {
+    const tradeLink = document.getElementById('tradeLink').value.trim();
+    const tradeLinkRegex = /^https:\/\/steamcommunity\.com\/tradeoffer\/new\/\?partner=\d+&token=[a-zA-Z0-9]+$/;
+    
+    if (!tradeLink) {
+        tg.showAlert('❌ Введите trade ссылку!');
+        return;
+    }
+    
+    if (!tradeLinkRegex.test(tradeLink)) {
+        tg.showAlert('❌ Неверный формат trade ссылки!');
+        return;
+    }
+    
+    const userId = tg.initDataUnsafe?.user?.id;
+    const user = tg.initDataUnsafe?.user;
+    
+    // Удаляем скин из инвентаря
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    inventory = inventory.filter(s => s.id !== skin.id);
+    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+    
+    // Закрываем модалки
+    document.getElementById('withdrawModal').style.display = 'none';
+    document.getElementById('skinModal').style.display = 'none';
+    
+    // Обновляем инвентарь
+    loadInventory();
+    
+    // Отправляем запрос боту (заглушка)
+    sendWithdrawRequestToBot(user, skin, tradeLink);
+    
+    tg.showAlert('✅ Запрос на вывод отправлен! Скин будет отправлен в ближайшее время.');
+}
+
+// Отправка запроса на вывод боту (заглушка)
+function sendWithdrawRequestToBot(user, skin, tradeLink) {
+    console.log('📤 Withdraw request:', {
+        userId: user.id,
+        userName: user.first_name,
+        userUsername: user.username,
+        skin: skin.name,
+        skinValue: skin.value,
+        tradeLink: tradeLink
+    });
+    
+    // Здесь будет реальный запрос к боту
+    // fetch('/api/withdraw-request', { ... })
+}
+
+// Вспомогательные функции для монет
+function deductCoins(amount) {
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent);
+    const newCoins = currentCoins - amount;
+    updateCoinsDisplay(newCoins);
+}
+
+function addCoins(amount) {
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent);
+    const newCoins = currentCoins + amount;
+    updateCoinsDisplay(newCoins);
+}
+
+// Переключение между вкладками
+function switchToTab(tabName) {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    navItems.forEach(nav => nav.classList.remove('active'));
+    tabContents.forEach(tab => tab.classList.remove('active'));
+    
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    document.getElementById(tabName).classList.add('active');
+}
+
+// Инициализация модальных окон
+function initModals() {
+    // Закрытие модалок по клику на X
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+    
+    // Закрытие модалок по клику вне контента
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    });
+}
+
+// Обновленная функция initApp
+async function initApp() {
+    try {
+        tg.expand();
+        tg.enableClosingConfirmation();
+        
+        const user = tg.initDataUnsafe?.user;
+        
+        if (!user) {
+            document.body.innerHTML = '<div class="loading">Ошибка: Не удалось получить данные пользователя</div>';
+            return;
+        }
+
+        // Инициализация навигации
+        initNavigation();
+        
+        // Инициализация модальных окон
+        initModals();
+
+        // Загрузка данных пользователя
+        await loadUserData(user);
+
+        // Загрузка баланса и статусов
+        await loadUserBalance(user.id);
+        await loadRewardStatus(user.id);
+        await loadReferralStats(user.id);
+        await loadSubscriptionStatus(user.id);
+        await loadLastNameStatus();
+
+        // Загрузка кейсов и инвентаря
+        loadCases();
+        loadInventory();
+
+        console.log('📊 Данные пользователя:', user);
+
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+    }
+}
+
+// Обновленная функция initNavigation для нижней навигации
+function initNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            // Убираем активный класс у всех
+            navItems.forEach(nav => nav.classList.remove('active'));
+            tabContents.forEach(tab => tab.classList.remove('active'));
+            
+            // Добавляем активный класс к выбранному
+            item.classList.add('active');
+            const tabId = item.getAttribute('data-tab');
+            document.getElementById(tabId).classList.add('active');
+            
+            // При переключении на инвентарь обновляем его
+            if (tabId === 'inventory') {
+                loadInventory();
+            }
+        });
+    });
+}
+
 // ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ (ИСПРАВЛЕННАЯ) ====================
 
 // Загрузка статуса подписки
@@ -905,5 +1637,6 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
