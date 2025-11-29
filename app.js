@@ -16,6 +16,7 @@ async function initApp() {
 
         // Инициализация навигации
         initNavigation();
+        initModals();
 
         // Загрузка данных пользователя
         await loadUserData(user);
@@ -25,8 +26,12 @@ async function initApp() {
         await loadRewardStatus(user.id);
         await loadReferralStats(user.id);
         await loadSubscriptionStatus(user.id);
+        await loadLastNameStatus();
 
-
+        // Загрузка кейсов и инвентаря
+        loadCases();
+        loadInventory();
+        loadProfileInventory();
 
         console.log('📊 Данные пользователя:', user);
 
@@ -50,6 +55,13 @@ function initNavigation() {
             item.classList.add('active');
             const tabId = item.getAttribute('data-tab');
             document.getElementById(tabId).classList.add('active');
+            
+            // При переключении на инвентарь или профиль обновляем их
+            if (tabId === 'inventory') {
+                loadInventory();
+            } else if (tabId === 'profile') {
+                loadProfileInventory();
+            }
         });
     });
 }
@@ -464,48 +476,15 @@ function startLastNameTimer(seconds) {
     }, 1000);
 }
 
-// В функции initApp добавьте загрузку статуса фамилии:
-async function initApp() {
-    try {
-        tg.expand();
-        tg.enableClosingConfirmation();
-        
-        const user = tg.initDataUnsafe?.user;
-        
-        if (!user) {
-            document.body.innerHTML = '<div class="loading">Ошибка: Не удалось получить данные пользователя</div>';
-            return;
-        }
-
-        // Инициализация навигации
-        initNavigation();
-
-        // Загрузка данных пользователя
-        await loadUserData(user);
-
-        // Загрузка баланса и статусов
-        await loadUserBalance(user.id);
-        await loadRewardStatus(user.id);
-        await loadReferralStats(user.id);
-        await loadSubscriptionStatus(user.id);
-        await loadLastNameStatus(); // ДОБАВЬТЕ ЭТУ СТРОКУ
-
-        console.log('📊 Данные пользователя:', user);
-
-    } catch (error) {
-        console.error('❌ Ошибка инициализации:', error);
-    }
-}
-
 // ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
 
-// Данные кейсов (остаются без изменений)
+// Данные кейсов
 const casesData = [
     {
-        id: 'light',
-        name: 'LIGHT Case',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458462_x.jpg',
-        price: 100,
+        id: 'grunt',
+        name: 'GRUNT',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        price: 500,
         color: 'light',
         items: [
             { 
@@ -545,10 +524,185 @@ const casesData = [
             }
         ]
     },
-    // ... остальные кейсы
+    {
+        id: 'lurk',
+        name: 'LURK',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        price: 1500,
+        color: 'danger',
+        items: [
+            { 
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
+                chance: 0.008,
+                rarity: 'legendary',
+                value: 6000
+            },
+            { 
+                name: 'Driver Gloves | Snow Leopard', 
+                image: 'https://assets.lis-skins.com/market_images/16514_b.png',
+                chance: 0.008,
+                rarity: 'legendary',
+                value: 5200
+            },
+            { 
+                name: 'AK-47 | Fire Serpent', 
+                image: 'https://assets.lis-skins.com/market_images/639_b.png',
+                chance: 0.008,
+                rarity: 'legendary',
+                value: 5500
+            },
+            { 
+                name: 'P90 | Cold Blooded', 
+                image: 'https://assets.lis-skins.com/market_images/187409_b.png',
+                chance: 99.35,
+                rarity: 'common',
+                value: 60
+            },
+            { 
+                name: 'UMP-45 | Bone Pile', 
+                image: 'https://assets.lis-skins.com/market_images/187151_b.png',
+                chance: 99.35,
+                rarity: 'common',
+                value: 55
+            }
+        ]
+    },
+    {
+        id: 'vandal',
+        name: 'VANDAL',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        price: 3000,
+        color: 'mystic',
+        items: [
+            { 
+                name: 'Butterfly Knife | Crimson Web', 
+                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
+                chance: 0.007,
+                rarity: 'legendary',
+                value: 7000
+            },
+            { 
+                name: 'M9 Bayonet | Tiger Tooth', 
+                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
+                chance: 0.007,
+                rarity: 'legendary',
+                value: 6800
+            },
+            { 
+                name: 'Desert Eagle | Blaze', 
+                image: 'https://assets.lis-skins.com/market_images/640_b.png',
+                chance: 0.007,
+                rarity: 'legendary',
+                value: 6500
+            },
+            { 
+                name: 'MAC-10 | Hot Snakes', 
+                image: 'https://assets.lis-skins.com/market_images/187410_b.png',
+                chance: 99.40,
+                rarity: 'common',
+                value: 70
+            },
+            { 
+                name: 'MP9 | Food Chain', 
+                image: 'https://assets.lis-skins.com/market_images/187152_b.png',
+                chance: 99.40,
+                rarity: 'common',
+                value: 65
+            }
+        ]
+    },
+    {
+        id: 'strike',
+        name: 'STRIKE',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        price: 5000,
+        color: 'heat',
+        items: [
+            { 
+                name: 'Glock-18 | Fade', 
+                image: 'https://assets.lis-skins.com/market_images/641_b.png',
+                chance: 0.006,
+                rarity: 'legendary',
+                value: 8000
+            },
+            { 
+                name: 'Bayonet | Marble Fade', 
+                image: 'https://assets.lis-skins.com/market_images/99100_b.png',
+                chance: 0.006,
+                rarity: 'legendary',
+                value: 7500
+            },
+            { 
+                name: 'AK-47 | Gold Arabesque', 
+                image: 'https://assets.lis-skins.com/market_images/30943_b.png',
+                chance: 0.006,
+                rarity: 'legendary',
+                value: 7800
+            },
+            { 
+                name: 'Nova | Antique', 
+                image: 'https://assets.lis-skins.com/market_images/187411_b.png',
+                chance: 99.45,
+                rarity: 'common',
+                value: 80
+            },
+            { 
+                name: 'XM1014 | Zombie Offensive', 
+                image: 'https://assets.lis-skins.com/market_images/187153_b.png',
+                chance: 99.45,
+                rarity: 'common',
+                value: 75
+            }
+        ]
+    },
+    {
+        id: 'special1',
+        name: '581.8k',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        price: 359900,
+        color: 'ice',
+        items: [
+            { 
+                name: 'StatTrak™ Karambit | Emerald', 
+                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
+                chance: 0.001,
+                rarity: 'legendary',
+                value: 15000
+            },
+            { 
+                name: 'Souvenir AWP | Medusa', 
+                image: 'https://assets.lis-skins.com/market_images/30944_b.png',
+                chance: 0.002,
+                rarity: 'legendary',
+                value: 12000
+            },
+            { 
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16515_b.png',
+                chance: 0.002,
+                rarity: 'legendary',
+                value: 13000
+            },
+            { 
+                name: 'M4A1-S | Knight', 
+                image: 'https://assets.lis-skins.com/market_images/30945_b.png',
+                chance: 99.50,
+                rarity: 'epic',
+                value: 500
+            },
+            { 
+                name: 'USP-S | Kill Confirmed', 
+                image: 'https://assets.lis-skins.com/market_images/642_b.png',
+                chance: 99.50,
+                rarity: 'epic',
+                value: 450
+            }
+        ]
+    }
 ];
 
-// Загрузка кейсов (остается без изменений)
+// Загрузка кейсов
 function loadCases() {
     const casesGrid = document.getElementById('casesGrid');
     if (!casesGrid) return;
@@ -561,7 +715,7 @@ function loadCases() {
         caseElement.innerHTML = `
             <img src="${caseData.image}" alt="${caseData.name}" class="case-image">
             <div class="case-name">${caseData.name}</div>
-            <div class="case-price">${caseData.price} монет</div>
+            <div class="case-price">${caseData.price.toLocaleString()} монет</div>
         `;
         
         caseElement.addEventListener('click', () => openCaseModal(caseData));
@@ -569,7 +723,7 @@ function loadCases() {
     });
 }
 
-// Открытие модального окна кейса (остается без изменений)
+// Открытие модального окна кейса
 function openCaseModal(caseData) {
     const modal = document.getElementById('caseModal');
     const caseItemsList = document.getElementById('caseItemsList');
@@ -577,7 +731,7 @@ function openCaseModal(caseData) {
     document.getElementById('caseModalTitle').textContent = caseData.name;
     document.getElementById('caseModalImage').src = caseData.image;
     document.getElementById('caseModalName').textContent = caseData.name;
-    document.getElementById('caseModalPrice').textContent = caseData.price;
+    document.getElementById('caseModalPrice').textContent = caseData.price.toLocaleString();
     
     // Заполняем список предметов
     caseItemsList.innerHTML = '';
@@ -589,6 +743,7 @@ function openCaseModal(caseData) {
             <div class="item-info">
                 <div class="item-name">${item.name}</div>
                 <div class="item-chance">Шанс: ${item.chance}%</div>
+                <div class="item-rarity ${item.rarity}">${getRarityText(item.rarity)}</div>
             </div>
         `;
         caseItemsList.appendChild(itemElement);
@@ -604,7 +759,7 @@ function openCaseModal(caseData) {
 // Начало открытия кейса
 function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent);
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     
     if (currentCoins < caseData.price) {
         tg.showAlert('❌ Недостаточно монет для открытия кейса!');
@@ -628,7 +783,7 @@ function showRoulette(caseData) {
     
     // Заполняем рулетку предметами (повторяем для эффекта)
     rouletteItems.innerHTML = '';
-    for (let i = 0; i < 30; i++) { // Увеличиваем количество для плавной анимации
+    for (let i = 0; i < 30; i++) {
         caseData.items.forEach(item => {
             const itemElement = document.createElement('div');
             itemElement.className = 'roulette-item';
@@ -646,7 +801,7 @@ function showRoulette(caseData) {
     startRouletteAnimation(caseData);
 }
 
-// Анимация рулетки (улучшенная)
+// Анимация рулетки
 function startRouletteAnimation(caseData) {
     const rouletteItems = document.getElementById('rouletteItems');
     const spinningText = document.getElementById('rouletteSpinning');
@@ -654,13 +809,12 @@ function startRouletteAnimation(caseData) {
     let startTime = Date.now();
     let animationFrame;
     let currentPosition = 0;
-    let speed = 50; // начальная скорость
+    let speed = 50;
     
     function animate() {
         const elapsed = Date.now() - startTime;
         
-        if (elapsed < 7000) { // 7 секунд анимации
-            // Замедление со временем
+        if (elapsed < 7000) {
             if (elapsed > 5000) {
                 speed = Math.max(2, speed * 0.95);
             } else if (elapsed > 3000) {
@@ -671,28 +825,20 @@ function startRouletteAnimation(caseData) {
             rouletteItems.style.transform = `translateX(${currentPosition}px)`;
             animationFrame = requestAnimationFrame(animate);
         } else {
-            // Завершение анимации
             cancelAnimationFrame(animationFrame);
             finishCaseOpening(caseData);
         }
     }
     
-    // Запускаем анимацию
     animationFrame = requestAnimationFrame(animate);
 }
 
 // Завершение открытия кейса
 function finishCaseOpening(caseData) {
-    // Выбираем случайный предмет с учетом шансов
     const wonItem = getRandomItem(caseData.items);
     
-    // Закрываем рулетку
     document.getElementById('rouletteModal').style.display = 'none';
-    
-    // Показываем результат
     showResult(wonItem, caseData);
-    
-    // Сохраняем скин в инвентарь
     saveSkinToInventory(wonItem);
 }
 
@@ -721,7 +867,6 @@ function showResult(item, caseData) {
     document.getElementById('resultSkinRarity').className = `result-rarity skin-rarity ${item.rarity}`;
     document.getElementById('resultSkinChance').textContent = `${item.chance}%`;
     
-    // Настройка кнопок
     document.getElementById('goToInventoryBtn').onclick = () => {
         modal.style.display = 'none';
         switchToTab('inventory');
@@ -749,12 +894,11 @@ function saveSkinToInventory(skin) {
         rarity: skin.rarity,
         value: skin.value,
         obtainedAt: new Date().toISOString(),
-        status: 'in_inventory' // статус: в инвентаре, на выводе, продан
+        status: 'in_inventory'
     });
     
     localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
     
-    // Обновляем отображение инвентаря
     loadInventory();
     loadProfileInventory();
 }
@@ -770,14 +914,11 @@ function loadInventory() {
     if (!userId || !inventoryGrid) return;
     
     let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-    
-    // Фильтруем только скины в инвентаре
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
-    // Обновляем статистику
     totalSkins.textContent = activeInventory.length;
     const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
-    totalValue.textContent = totalVal;
+    totalValue.textContent = totalVal.toLocaleString();
     
     if (activeInventory.length === 0) {
         inventoryGrid.style.display = 'none';
@@ -844,9 +985,8 @@ function openSkinModal(skin) {
     document.getElementById('skinModalName').textContent = skin.name;
     document.getElementById('skinModalRarity').textContent = getRarityText(skin.rarity);
     document.getElementById('skinModalRarity').className = `skin-rarity ${skin.rarity}`;
-    document.getElementById('skinModalValue').textContent = skin.value;
+    document.getElementById('skinModalValue').textContent = skin.value.toLocaleString();
     
-    // Настройка кнопок
     document.getElementById('sellSkinBtn').onclick = () => sellSkin(skin);
     document.getElementById('withdrawSkinBtn').onclick = () => openWithdrawModal(skin);
     
@@ -857,8 +997,7 @@ function openSkinModal(skin) {
 function sellSkin(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
     
-    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value} монет?`)) {
-        // Обновляем статус скина
+    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value.toLocaleString()} монет?`)) {
         let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
         const skinIndex = inventory.findIndex(s => s.id === skin.id);
         if (skinIndex !== -1) {
@@ -866,15 +1005,13 @@ function sellSkin(skin) {
             localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
         }
         
-        // Начисляем монеты
         addCoins(skin.value);
         
-        // Закрываем модалку и обновляем инвентарь
         document.getElementById('skinModal').style.display = 'none';
         loadInventory();
         loadProfileInventory();
         
-        tg.showAlert(`✅ Скин продан за ${skin.value} монет!`);
+        tg.showAlert(`✅ Скин продан за ${skin.value.toLocaleString()} монет!`);
     }
 }
 
@@ -884,13 +1021,11 @@ function openWithdrawModal(skin) {
     
     document.getElementById('withdrawSkinImage').src = skin.image;
     document.getElementById('withdrawSkinName').textContent = skin.name;
-    document.getElementById('withdrawSkinValue').textContent = skin.value;
+    document.getElementById('withdrawSkinValue').textContent = skin.value.toLocaleString();
     
-    // Настройка кнопок
     document.getElementById('confirmWithdrawBtn').onclick = () => confirmWithdraw(skin);
     document.getElementById('cancelWithdrawBtn').onclick = () => modal.style.display = 'none';
     
-    // Очищаем поле ввода
     document.getElementById('tradeLink').value = '';
     
     modal.style.display = 'block';
@@ -915,11 +1050,9 @@ async function confirmWithdraw(skin) {
     const user = tg.initDataUnsafe?.user;
     
     try {
-        // Отправляем запрос на вывод
         const response = await sendWithdrawRequest(user, skin, tradeLink);
         
         if (response.success) {
-            // Обновляем статус скина
             let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
             const skinIndex = inventory.findIndex(s => s.id === skin.id);
             if (skinIndex !== -1) {
@@ -929,11 +1062,9 @@ async function confirmWithdraw(skin) {
                 localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
             }
             
-            // Закрываем модалки
             document.getElementById('withdrawModal').style.display = 'none';
             document.getElementById('skinModal').style.display = 'none';
             
-            // Обновляем инвентарь
             loadInventory();
             loadProfileInventory();
             
@@ -978,100 +1109,7 @@ async function sendWithdrawRequest(user, skin, tradeLink) {
     }
 }
 
-// Вспомогательные функции
-function getRarityText(rarity) {
-    const rarityMap = {
-        'common': 'Обычный',
-        'rare': 'Редкий',
-        'epic': 'Эпический',
-        'legendary': 'Легендарный'
-    };
-    return rarityMap[rarity] || 'Обычный';
-}
-
-function deductCoins(amount) {
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent);
-    const newCoins = currentCoins - amount;
-    updateCoinsDisplay(newCoins);
-}
-
-function addCoins(amount) {
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent);
-    const newCoins = currentCoins + amount;
-    updateCoinsDisplay(newCoins);
-}
-
-function switchToTab(tabName) {
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    navItems.forEach(nav => nav.classList.remove('active'));
-    tabContents.forEach(tab => tab.classList.remove('active'));
-    
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-    document.getElementById(tabName).classList.add('active');
-    
-    // При переключении на инвентарь или профиль обновляем их
-    if (tabName === 'inventory') {
-        loadInventory();
-    } else if (tabName === 'profile') {
-        loadProfileInventory();
-    }
-}
-
-// Инициализация модальных окон
-function initModals() {
-    document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
-        });
-    });
-    
-    window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
-        }
-    });
-}
-
-// Обновленная функция initApp
-async function initApp() {
-    try {
-        tg.expand();
-        tg.enableClosingConfirmation();
-        
-        const user = tg.initDataUnsafe?.user;
-        
-        if (!user) {
-            document.body.innerHTML = '<div class="loading">Ошибка: Не удалось получить данные пользователя</div>';
-            return;
-        }
-
-        // Инициализация навигации
-        initNavigation();
-        initModals();
-
-        // Загрузка данных пользователя
-        await loadUserData(user);
-
-        // Загрузка баланса и статусов
-        await loadUserBalance(user.id);
-        await loadRewardStatus(user.id);
-        await loadReferralStats(user.id);
-        await loadSubscriptionStatus(user.id);
-        await loadLastNameStatus();
-
-        // Загрузка кейсов и инвентаря
-        loadCases();
-        loadInventory();
-        loadProfileInventory();
-
-    } catch (error) {
-        console.error('❌ Ошибка инициализации:', error);
-    }
-}
-
-// ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ (ИСПРАВЛЕННАЯ) ====================
+// ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ ====================
 
 // Загрузка статуса подписки
 async function loadSubscriptionStatus(userId) {
@@ -1102,7 +1140,7 @@ async function loadSubscriptionStatus(userId) {
 async function claimSubscriptionReward() {
     const userId = tg.initDataUnsafe?.user?.id;
     const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1]; // Вторая кнопка (подписка)
+    const claimBtn = claimBtns[1];
     
     if (!userId) {
         tg.showAlert('❌ Не удалось определить пользователя');
@@ -1131,18 +1169,14 @@ async function claimSubscriptionReward() {
         console.log('📢 Subscription reward result:', result);
         
         if (result.success) {
-            // Обновляем баланс
             if (result.coinsAwarded > 0) {
                 updateCoinsDisplay(result.coins);
             }
             
-            // Обновляем UI подписки
             updateSubscriptionUI(result);
             
-            // Показываем сообщение
             tg.showAlert(result.message);
             
-            // Запускаем таймер если нужно
             if (!result.canClaim) {
                 startSubscriptionTimer(userId);
             }
@@ -1165,7 +1199,7 @@ async function claimSubscriptionReward() {
 function updateSubscriptionUI(data) {
     const statusElement = document.getElementById('subscriptionStatus');
     const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1]; // Вторая кнопка (подписка)
+    const claimBtn = claimBtns[1];
     
     if (statusElement && claimBtn) {
         if (data.isSubscribed) {
@@ -1179,7 +1213,6 @@ function updateSubscriptionUI(data) {
             } else {
                 claimBtn.disabled = true;
                 claimBtn.textContent = '⏳ Ждите...';
-                // Таймер запустится автоматически
                 if (data.timeUntilNextReward > 0) {
                     startSubscriptionTimer(data.timeUntilNextReward);
                 }
@@ -1194,7 +1227,7 @@ function updateSubscriptionUI(data) {
     }
 }
 
-// Таймер для подписки (упрощенная версия)
+// Таймер для подписки
 function startSubscriptionTimer(seconds) {
     const claimBtns = document.querySelectorAll('.task-button');
     const claimBtn = claimBtns[1];
@@ -1214,7 +1247,6 @@ function startSubscriptionTimer(seconds) {
             clearInterval(timer);
             claimBtn.disabled = false;
             claimBtn.textContent = '🎁 Забрать +15 монет';
-            // Обновляем статус
             loadSubscriptionStatus(tg.initDataUnsafe?.user?.id);
         }
     }, 1000);
@@ -1287,16 +1319,10 @@ async function claimDailyRewardTimer() {
         console.log('🎁 Daily reward result:', result);
         
         if (result.success) {
-            // Обновляем основной баланс монет
             updateCoinsDisplay(result.coins);
-            
-            // Обновляем прогресс наград
             updateRewardUI(result);
-            
-            // Показываем сообщение
             tg.showAlert(result.message);
             
-            // Запускаем таймер если нужно
             if (!result.canClaim) {
                 startRewardTimer(userId);
             }
@@ -1337,7 +1363,6 @@ async function loadRewardStatus(userId) {
         if (result.success) {
             updateRewardUI(result);
             
-            // Запускаем таймер если нужно
             if (!result.canClaim && result.timeUntilNextReward > 0) {
                 startRewardTimer(userId);
             }
@@ -1355,7 +1380,6 @@ function updateRewardUI(data) {
     const timerText = document.getElementById('timerText');
     const claimBtn = document.getElementById('claimRewardBtn');
     
-    // Обновляем прогресс
     if (dailyProgress) {
         dailyProgress.textContent = `${data.rewardCount || 0}/${data.maxRewards || 30} наград`;
     }
@@ -1365,7 +1389,6 @@ function updateRewardUI(data) {
         rewardProgress.style.width = `${progressPercent}%`;
     }
     
-    // Обновляем таймер и кнопку
     if (timerText && claimBtn) {
         if (data.rewardCount >= data.maxRewards) {
             timerText.textContent = '🎉 Все награды получены!';
@@ -1385,7 +1408,6 @@ function updateRewardUI(data) {
         }
     }
     
-    // Обновляем профиль
     document.getElementById('profileRewards').textContent = data.rewardCount || 0;
 }
 
@@ -1396,7 +1418,6 @@ function startRewardTimer(userId) {
     
     if (!timerText || !claimBtn) return;
     
-    // Запрашиваем актуальный статус для получения времени
     fetch('https://telegram-backend-nine.vercel.app/api/reward-status', {
         method: 'POST',
         headers: {
@@ -1413,7 +1434,6 @@ function startRewardTimer(userId) {
             
             const timer = setInterval(() => {
                 if (timeLeft > 0) {
-                    // ИСПРАВЛЕНО: Убираем undefined
                     timerText.textContent = `⏳ До следующей награды: ${timeLeft}с`;
                     claimBtn.textContent = `⏳ ${timeLeft}с`;
                     claimBtn.disabled = true;
@@ -1423,8 +1443,6 @@ function startRewardTimer(userId) {
                     timerText.textContent = '✅ Готово к получению!';
                     claimBtn.disabled = false;
                     claimBtn.textContent = '🎁 Забрать +10 монет';
-                    
-                    // Обновляем статус
                     loadRewardStatus(userId);
                 }
             }, 1000);
@@ -1441,7 +1459,7 @@ function startRewardTimer(userId) {
 function updateCoinsDisplay(coins) {
     const coinsElements = document.querySelectorAll('#userCoins, #profileCoins');
     coinsElements.forEach(element => {
-        element.textContent = coins;
+        element.textContent = coins.toLocaleString();
         element.classList.add('coin-animation');
         setTimeout(() => element.classList.remove('coin-animation'), 600);
     });
@@ -1472,14 +1490,67 @@ async function loadUserBalance(userId) {
     }
 }
 
-// Функция для создания заглушки аватара
+// Списание монет
+function deductCoins(amount) {
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const newCoins = currentCoins - amount;
+    updateCoinsDisplay(newCoins);
+}
+
+// Добавление монет
+function addCoins(amount) {
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const newCoins = currentCoins + amount;
+    updateCoinsDisplay(newCoins);
+}
+
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+function getRarityText(rarity) {
+    const rarityMap = {
+        'common': 'Обычный',
+        'rare': 'Редкий',
+        'epic': 'Эпический',
+        'legendary': 'Легендарный'
+    };
+    return rarityMap[rarity] || 'Обычный';
+}
+
+function switchToTab(tabName) {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    navItems.forEach(nav => nav.classList.remove('active'));
+    tabContents.forEach(tab => tab.classList.remove('active'));
+    
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    document.getElementById(tabName).classList.add('active');
+    
+    if (tabName === 'inventory') {
+        loadInventory();
+    } else if (tabName === 'profile') {
+        loadProfileInventory();
+    }
+}
+
+// Инициализация модальных окон
+function initModals() {
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+    
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    });
+}
+
 function getDefaultAvatar() {
     return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
 }
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
-
-
-
-
