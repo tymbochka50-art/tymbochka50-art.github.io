@@ -478,12 +478,12 @@ function startLastNameTimer(seconds) {
 
 // ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
 
-// Данные кейсов
+// Данные кейсов с правильными названиями и картинками
 const casesData = [
     {
-        id: 'grunt',
-        name: 'GRUNT',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        id: 'light',
+        name: 'LIGHT',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458462_x.jpg',
         price: 10,
         color: 'light',
         items: [
@@ -525,9 +525,9 @@ const casesData = [
         ]
     },
     {
-        id: 'lurk',
-        name: 'LURK',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        id: 'danger',
+        name: 'DANGER',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458464_x.jpg',
         price: 1500,
         color: 'danger',
         items: [
@@ -569,9 +569,9 @@ const casesData = [
         ]
     },
     {
-        id: 'vandal',
-        name: 'VANDAL',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        id: 'mystic',
+        name: 'MYSTIC',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458465_x.jpg',
         price: 3000,
         color: 'mystic',
         items: [
@@ -613,9 +613,9 @@ const casesData = [
         ]
     },
     {
-        id: 'strike',
-        name: 'STRIKE',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        id: 'heat',
+        name: 'HEAT',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458478_x.jpg',
         price: 5000,
         color: 'heat',
         items: [
@@ -657,9 +657,9 @@ const casesData = [
         ]
     },
     {
-        id: 'special1',
-        name: '581.8k',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
+        id: 'ice',
+        name: 'ICE',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458479_x.jpg',
         price: 359900,
         color: 'ice',
         items: [
@@ -699,6 +699,50 @@ const casesData = [
                 value: 450
             }
         ]
+    },
+    {
+        id: 'energy',
+        name: 'ENERGY',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458481_x.jpg',
+        price: 7500,
+        color: 'energy',
+        items: [
+            { 
+                name: 'Specialist Gloves | Emerald Web', 
+                image: 'https://assets.lis-skins.com/market_images/16516_b.png',
+                chance: 0.005,
+                rarity: 'legendary',
+                value: 9000
+            },
+            { 
+                name: 'Talon Knife | Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
+                chance: 0.005,
+                rarity: 'legendary',
+                value: 8500
+            },
+            { 
+                name: 'AWP | Gungnir', 
+                image: 'https://assets.lis-skins.com/market_images/30946_b.png',
+                chance: 0.005,
+                rarity: 'legendary',
+                value: 8800
+            },
+            { 
+                name: 'MP7 | Bloodsport', 
+                image: 'https://assets.lis-skins.com/market_images/187412_b.png',
+                chance: 99.55,
+                rarity: 'rare',
+                value: 200
+            },
+            { 
+                name: 'P250 | Asiimov', 
+                image: 'https://assets.lis-skins.com/market_images/187154_b.png',
+                chance: 99.55,
+                rarity: 'rare',
+                value: 180
+            }
+        ]
     }
 ];
 
@@ -733,7 +777,7 @@ function openCaseModal(caseData) {
     document.getElementById('caseModalName').textContent = caseData.name;
     document.getElementById('caseModalPrice').textContent = caseData.price.toLocaleString();
     
-    // Заполняем список предметов
+    // Заполняем сетку предметов
     caseItemsList.innerHTML = '';
     caseData.items.forEach(item => {
         const itemElement = document.createElement('div');
@@ -1554,4 +1598,3 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
-
