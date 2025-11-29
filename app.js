@@ -484,7 +484,7 @@ const casesData = [
         id: 'grunt',
         name: 'GRUNT',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/main/photo_5280825340735458462_x.jpg',
-        price: 500,
+        price: 10,
         color: 'light',
         items: [
             { 
@@ -1554,3 +1554,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
