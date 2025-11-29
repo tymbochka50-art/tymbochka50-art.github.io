@@ -106,6 +106,21 @@
                         <div class="task-reward">+30 монет за каждого друга</div>
                     </div>
                 </div>
+
+                <!-- Инвентарь на главной -->
+                <div class="inventory-section">
+                    <h3 class="section-title">Ваш инвентарь</h3>
+                    <div class="inventory-stats">
+                        <div class="inventory-stat">
+                            <span class="stat-number" id="totalSkinsMain">0</span>
+                            <span class="stat-label">Всего скинов</span>
+                        </div>
+                        <div class="inventory-stat">
+                            <span class="stat-number" id="totalValueMain">0</span>
+                            <span class="stat-label">Общая стоимость</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Кейсы -->
@@ -114,6 +129,21 @@
                     <h3 class="section-title">Кейсы CS2</h3>
                     <div class="cases-grid" id="casesGrid">
                         <!-- Кейсы будут загружены через JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Инвентарь в кейсах -->
+                <div class="inventory-section">
+                    <h3 class="section-title">Ваш инвентарь</h3>
+                    <div class="inventory-stats">
+                        <div class="inventory-stat">
+                            <span class="stat-number" id="totalSkinsCases">0</span>
+                            <span class="stat-label">Всего скинов</span>
+                        </div>
+                        <div class="inventory-stat">
+                            <span class="stat-number" id="totalValueCases">0</span>
+                            <span class="stat-label">Общая стоимость</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -257,7 +287,7 @@
             </div>
             <div class="modal-body">
                 <div class="case-preview">
-                    <img id="caseModalImage" src="" alt="Кейс">
+                    <img id="caseModalImage" src="" alt="Кейс" class="case-modal-image">
                     <div class="case-info">
                         <div class="case-name" id="caseModalName"></div>
                         <div class="case-price">
@@ -268,11 +298,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="case-items">
-                    <h4>Возможные выпадения:</h4>
-                    <div class="items-grid" id="caseItemsList"></div>
-                </div>
-                <button id="openCaseBtn" class="modal-button primary">Открыть кейс</button>
+                <button id="openCaseBtn" class="modal-button primary open-case-btn">Открыть кейс</button>
             </div>
         </div>
     </div>
