@@ -64,6 +64,180 @@ body {
     padding-bottom: 80px;
 }
 
+/* Стили для главной страницы */
+.balance-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.balance-title {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.balance-amount {
+    font-size: 32px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.coins-icon {
+    font-size: 28px;
+}
+
+.tasks-section {
+    margin-top: 25px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: white;
+}
+
+.task-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.task-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.task-icon {
+    font-size: 24px;
+    margin-right: 12px;
+}
+
+.task-info {
+    flex: 1;
+}
+
+.task-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.task-progress, .task-status {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.task-status {
+    color: #28a745;
+}
+
+.task-timer {
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 12px;
+    color: #ffd700;
+    font-weight: 500;
+}
+
+.task-button {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+}
+
+.task-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.task-button.primary {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.task-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-pulse {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.task-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 12px 0;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.stat-label {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.task-hint {
+    font-size: 11px;
+    opacity: 0.7;
+    line-height: 1.4;
+    margin-top: 8px;
+}
+
+.task-reward {
+    font-size: 12px;
+    color: #ffd700;
+    text-align: center;
+    margin-top: 8px;
+    font-weight: 500;
+}
+
 /* Стили для кейсов */
 .cases-grid {
     display: grid;
@@ -80,11 +254,28 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.case-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s;
+}
+
+.case-item:hover::before {
+    left: 100%;
 }
 
 .case-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 .case-item.light { border-color: #28a745; }
@@ -153,6 +344,23 @@ body {
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.skin-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s;
+}
+
+.skin-item:hover::before {
+    left: 100%;
 }
 
 .skin-item:hover {
@@ -183,10 +391,22 @@ body {
     display: inline-block;
 }
 
-.skin-rarity.legendary { background: #ff6b35; color: white; }
-.skin-rarity.epic { background: #9c27b0; color: white; }
-.skin-rarity.rare { background: #2196f3; color: white; }
-.skin-rarity.common { background: #4caf50; color: white; }
+.skin-rarity.legendary { 
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: white; 
+}
+.skin-rarity.epic { 
+    background: linear-gradient(135deg, #9c27b0, #673ab7);
+    color: white; 
+}
+.skin-rarity.rare { 
+    background: linear-gradient(135deg, #2196f3, #03a9f4);
+    color: white; 
+}
+.skin-rarity.common { 
+    background: linear-gradient(135deg, #4caf50, #8bc34a);
+    color: white; 
+}
 
 .empty-inventory {
     text-align: center;
@@ -211,6 +431,108 @@ body {
 }
 
 /* Стили для профиля */
+.profile-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+}
+
+.profile-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin-right: 15px;
+    border: 3px solid #667eea;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.profile-id {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.stat-info {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd700;
+    display: block;
+}
+
+.stat-label {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.profile-details {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 25px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.detail-value {
+    font-size: 14px;
+    font-weight: 500;
+}
+
 .profile-inventory {
     margin-top: 25px;
 }
@@ -233,6 +555,12 @@ body {
     border-radius: 6px;
     padding: 8px;
     text-align: center;
+    transition: all 0.3s ease;
+}
+
+.profile-skin-item:hover {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .profile-skin-image {
@@ -279,6 +607,7 @@ body {
     max-height: 90vh;
     overflow-y: auto;
     border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
@@ -287,11 +616,13 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .modal-header h3 {
     margin: 0;
     font-size: 18px;
+    font-weight: 600;
 }
 
 .close {
@@ -299,6 +630,7 @@ body {
     font-size: 24px;
     font-weight: bold;
     cursor: pointer;
+    transition: color 0.3s ease;
 }
 
 .close:hover {
@@ -332,7 +664,7 @@ body {
 }
 
 .modal-button:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
@@ -344,6 +676,7 @@ body {
     background: rgba(0, 0, 0, 0.3);
     border-radius: 12px;
     margin-bottom: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .roulette-line {
@@ -401,35 +734,6 @@ body {
     color: #ffd700;
     margin-bottom: 20px;
     animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 0.6; }
-    50% { opacity: 1; }
-    100% { opacity: 0.6; }
-}
-
-/* Анимация рулетки */
-@keyframes rouletteSlowdown {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-2000px); }
-}
-
-.roulette-slowdown {
-    animation: rouletteSlowdown 7s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
-}
-
-.roulette-item-name {
-    font-size: 10px;
-    text-align: center;
-}
-
-.roulette-timer {
-    text-align: center;
-    font-size: 32px;
-    font-weight: bold;
-    color: #ffd700;
-    margin-bottom: 20px;
 }
 
 /* Стили для результата */
@@ -498,6 +802,7 @@ body {
 .trade-link-input input:focus {
     outline: none;
     border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
 }
 
 .trade-link-help {
@@ -549,13 +854,14 @@ body {
 }
 
 /* Анимации */
-@keyframes rouletteSpin {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-1000px); }
+@keyframes coinAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
 }
 
-.roulette-spin {
-    animation: rouletteSpin 7s cubic-bezier(0.1, 0.8, 0.2, 1);
+.coin-animation {
+    animation: coinAnimation 0.6s ease;
 }
 
 /* Адаптивность */
@@ -568,14 +874,12 @@ body {
         grid-template-columns: repeat(2, 1fr);
     }
     
+    .profile-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
     .modal-content {
         width: 95%;
         margin: 2% auto;
     }
-    
-    .case-preview {
-        flex-direction: column;
-        text-align: center;
-    }
 }
-
