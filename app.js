@@ -43,21 +43,40 @@ async function initApp() {
     }
 }
 
-// Инициализация навигации
+// Исправленная функция инициализации навигации
 function initNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
     
+    // Сначала скрываем все вкладки кроме активной
+    tabContents.forEach(tab => {
+        if (!tab.classList.contains('active')) {
+            tab.style.display = 'none';
+        }
+    });
+    
     navItems.forEach(item => {
         item.addEventListener('click', () => {
-            // Убираем активный класс у всех
-            navItems.forEach(nav => nav.classList.remove('active'));
-            tabContents.forEach(tab => tab.classList.remove('active'));
-            
-            // Добавляем активный класс к выбранному
-            item.classList.add('active');
             const tabId = item.getAttribute('data-tab');
-            document.getElementById(tabId).classList.add('active');
+            
+            // Скрываем все вкладки
+            tabContents.forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
+            
+            // Убираем активный класс у всех кнопок
+            navItems.forEach(nav => nav.classList.remove('active'));
+            
+            // Показываем выбранную вкладку
+            const activeTab = document.getElementById(tabId);
+            if (activeTab) {
+                activeTab.style.display = 'block';
+                activeTab.classList.add('active');
+            }
+            
+            // Добавляем активный класс к выбранной кнопке
+            item.classList.add('active');
             
             // Обновляем статистику при переключении
             updateInventoryStats();
@@ -1547,15 +1566,35 @@ function getRarityText(rarity) {
     return rarityMap[rarity] || 'Обычный';
 }
 
+// Обновите функцию switchToTab
 function switchToTab(tabName) {
     const navItems = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
     
-    navItems.forEach(nav => nav.classList.remove('active'));
-    tabContents.forEach(tab => tab.classList.remove('active'));
+    // Скрываем все вкладки
+    tabContents.forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
     
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-    document.getElementById(tabName).classList.add('active');
+    // Убираем активный класс у всех кнопок
+    navItems.forEach(nav => nav.classList.remove('active'));
+    
+    // Показываем выбранную вкладку
+    const activeTab = document.getElementById(tabName);
+    if (activeTab) {
+        activeTab.style.display = 'block';
+        activeTab.classList.add('active');
+    }
+    
+    // Активируем соответствующую кнопку навигации
+    const activeNav = document.querySelector(`[data-tab="${tabName}"]`);
+    if (activeNav) {
+        activeNav.classList.add('active');
+    }
+    
+    // Обновляем статистику
+    updateInventoryStats();
     
     if (tabName === 'inventory') {
         loadInventory();
@@ -1585,3 +1624,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
