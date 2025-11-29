@@ -972,6 +972,113 @@ body {
     animation: coinAnimation 0.6s ease;
 }
 
+/* Оптимизация модальных окон скинов */
+.skin-modal-image {
+    width: 100%;
+    height: 200px;
+    object-fit: contain;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.result-skin-image {
+    width: 100%;
+    height: 180px;
+    object-fit: contain;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.withdraw-skin-image {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+/* Убираем скролл в модальных окнах скинов */
+.skin-modal .modal-body,
+.result-modal .modal-body,
+.withdraw-modal .modal-body {
+    max-height: 80vh;
+    overflow-y: auto;
+    padding-bottom: 20px;
+}
+
+/* Оптимизация для модального окна кейса */
+.case-modal-image {
+    width: 100%;
+    height: 150px;
+    object-fit: contain;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.case-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-bottom: 20px;
+}
+
+/* Улучшаем отображение контента в модальных окнах */
+.modal-body {
+    padding: 20px;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 380px) {
+    .skin-modal-image {
+        height: 150px;
+    }
+    
+    .result-skin-image {
+        height: 140px;
+    }
+    
+    .withdraw-skin-image {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .case-modal-image {
+        height: 120px;
+    }
+}
+
+/* Убираем горизонтальный скролл */
+.modal-content {
+    max-width: 95%;
+    margin: 5% auto;
+}
+
+/* Улучшаем отображение кнопок в модальных окнах */
+.modal-button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+}
+
+.modal-button.primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.modal-button.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.modal-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
 /* Адаптивность */
 @media (max-width: 380px) {
     .content {
@@ -1096,4 +1203,5 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
 
