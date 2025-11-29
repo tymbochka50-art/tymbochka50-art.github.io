@@ -17,7 +17,9 @@
                 <div class="balance-card">
                     <div class="balance-title">Ваш баланс</div>
                     <div class="balance-amount">
-                        <span class="coins-icon">🪙</span>
+                        <svg class="coins-icon" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 405.3V448c0 35.3 86 64 192 64s192-28.7 192-64v-42.7C342.7 434.4 267.2 448 192 448S41.3 434.4 0 405.3zM320 128c106 0 192-28.7 192-64S426 0 320 0 128 28.7 128 64s86 64 192 64zM0 300.4V352c0 35.3 86 64 192 64s192-28.7 192-64v-51.6c-41.3 34-116.9 51.6-192 51.6S41.3 334.4 0 300.4zm416 11c57.3-11.1 96-31.7 96-55.4v-42.7c-23.2 16.4-57.3 27.6-96 34.5v63.6zM192 160C86 160 0 195.8 0 240s86 80 192 80 192-35.8 192-80-86-80-192-80zm219.3 56.3c60-10.8 100.7-32 100.7-56.3v-42.7c-35.5 25.1-96.5 38.6-160.7 41.8 29.5 14.3 51.2 33.5 60 57.2z"></path>
+                        </svg>
                         <span id="userCoins">0</span> монет
                     </div>
                 </div>
@@ -35,7 +37,7 @@
                                 <div class="task-progress" id="dailyProgress">0/30 наград</div>
                             </div>
                         </div>
-                        <div class="task-timer" id="timerText">Готово к получению!</div>
+                        <div class="task-timer" id="timerText">✅ Готово к получению!</div>
                         <button id="claimRewardBtn" onclick="claimDailyRewardTimer()" class="task-button">
                             🎁 Забрать +10 монет
                         </button>
@@ -50,7 +52,7 @@
                             <div class="task-icon">📢</div>
                             <div class="task-info">
                                 <div class="task-title">Подписка на канал</div>
-                                <div class="task-status" id="subscriptionStatus">Не проверено</div>
+                                <div class="task-status" id="subscriptionStatus">✅ Подписан (0 раз)</div>
                             </div>
                         </div>
                         <button class="task-button" onclick="claimSubscriptionReward()">
@@ -67,11 +69,11 @@
                             <div class="task-icon">🔍</div>
                             <div class="task-info">
                                 <div class="task-title">Имя бота в фамилии</div>
-                                <div class="task-status" id="nameStatus">Не проверено</div>
+                                <div class="task-status" id="nameStatus">✅ Готово к получению</div>
                             </div>
                         </div>
                         <button class="task-button" onclick="checkSpecialLastName()">
-                            🔍 Проверить фамилию
+                            🎁 Забрать +20 монет
                         </button>
                         <div class="task-hint">
                             Установите фамилию: @Testserver_CS2DropZone_bot<br>
@@ -153,7 +155,11 @@
 
                 <div class="profile-stats">
                     <div class="stat-card">
-                        <div class="stat-icon">🪙</div>
+                        <div class="stat-icon">
+                            <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 405.3V448c0 35.3 86 64 192 64s192-28.7 192-64v-42.7C342.7 434.4 267.2 448 192 448S41.3 434.4 0 405.3zM320 128c106 0 192-28.7 192-64S426 0 320 0 128 28.7 128 64s86 64 192 64zM0 300.4V352c0 35.3 86 64 192 64s192-28.7 192-64v-51.6c-41.3 34-116.9 51.6-192 51.6S41.3 334.4 0 300.4zm416 11c57.3-11.1 96-31.7 96-55.4v-42.7c-23.2 16.4-57.3 27.6-96 34.5v63.6zM192 160C86 160 0 195.8 0 240s86 80 192 80 192-35.8 192-80-86-80-192-80zm219.3 56.3c60-10.8 100.7-32 100.7-56.3v-42.7c-35.5 25.1-96.5 38.6-160.7 41.8 29.5 14.3 51.2 33.5 60 57.2z"></path>
+                            </svg>
+                        </div>
                         <div class="stat-info">
                             <div class="stat-value" id="profileCoins">0</div>
                             <div class="stat-label">Всего монет</div>
@@ -207,19 +213,35 @@
         <!-- Навигация внизу -->
         <nav class="navbar bottom">
             <div class="nav-item active" data-tab="main">
-                <div class="nav-icon">🏠</div>
+                <div class="nav-icon">
+                    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 576 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47L488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z"></path>
+                    </svg>
+                </div>
                 <div class="nav-label">Главная</div>
             </div>
             <div class="nav-item" data-tab="cases">
-                <div class="nav-icon">🎁</div>
+                <div class="nav-icon">
+                    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M457.03 213.037L416.514 100.24C425 77.232 433.27 68.075 437.527 64.633c3.162-2.563 5.922-3.534 8.185-2.904 4.134 1.168 8.775 7.7 12.278 17.456 11.266 31.347 10.377 87.094-.96 133.85zm-324.287-17.9l312.804 34.84-43.82-122.1L145.558 79.34c2.593 36.102-1.913 79.913-12.817 115.796zM128.98 77.5l-45.06-5.02 37.03 103.123c7.773-32.06 10.625-68.357 8.03-98.102zM101.46 27.19c-3.793 3.1-10.77 10.666-18.25 28.566L402.23 91.3c5.333-13.695 11.37-24.702 17.88-32.495L108.796 24.13c-2.573-.29-5.415 1.51-7.338 3.06zm280.63 283.338l.61 169.352 66.352-53.63-.61-169.35zM366.163 487.9L46.62 452.306 46 278.396l319.553 35.594zM216.726 337.648a9.777 9.777 0 0 0 5.168-9.405c-.248-6.367-5.364-12.092-11.43-12.857h-.125c-6.14-.693-10.904 3.927-10.646 10.335a13.973 13.973 0 0 0 5.767 10.543l-2.17 25.073 17.57 2.005zm219.28-91.983l-307.46-34.25v59.54l242.712 27.037zM58.31 263.13l54.34 6.058v-49.98z"></path>
+                    </svg>
+                </div>
                 <div class="nav-label">Кейсы</div>
             </div>
             <div class="nav-item" data-tab="inventory">
-                <div class="nav-icon">🎒</div>
+                <div class="nav-icon">
+                    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M336 64h-80c0-35.3-28.7-64-64-64s-64 28.7-64 64H48C21.5 64 0 85.5 0 112v352c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48V112c0-26.5-21.5-48-48-48zM96 424c-13.3 0-24-10.7-24-24s10.7-24 24-24 24 10.7 24 24-10.7 24-24 24zm0-96c-13.3 0-24-10.7-24-24s10.7-24 24-24 24 10.7 24 24-10.7 24-24 24zm0-96c-13.3 0-24-10.7-24-24s10.7-24 24-24 24 10.7 24 24-10.7 24-24 24zm96-192c13.3 0 24 10.7 24 24s-10.7 24-24 24-24-10.7-24-24 10.7-24 24-24zm128 368c0 4.4-3.6 8-8 8H168c-4.4 0-8-3.6-8-8v-16c0-4.4 3.6-8 8-8h144c4.4 0 8 3.6 8 8v16zm0-96c0 4.4-3.6 8-8 8H168c-4.4 0-8-3.6-8-8v-16c0-4.4 3.6-8 8-8h144c4.4 0 8 3.6 8 8v16zm0-96c0 4.4-3.6 8-8 8H168c-4.4 0-8-3.6-8-8v-16c0-4.4 3.6-8 8-8h144c4.4 0 8 3.6 8 8v16z"></path>
+                    </svg>
+                </div>
                 <div class="nav-label">Инвентарь</div>
             </div>
             <div class="nav-item" data-tab="profile">
-                <div class="nav-icon">👤</div>
+                <div class="nav-icon">
+                    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M224 256c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"></path>
+                    </svg>
+                </div>
                 <div class="nav-label">Профиль</div>
             </div>
         </nav>
@@ -238,12 +260,17 @@
                     <img id="caseModalImage" src="" alt="Кейс">
                     <div class="case-info">
                         <div class="case-name" id="caseModalName"></div>
-                        <div class="case-price">Стоимость: <span id="caseModalPrice">0</span> монет</div>
+                        <div class="case-price">
+                            <svg class="coins-icon" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 405.3V448c0 35.3 86 64 192 64s192-28.7 192-64v-42.7C342.7 434.4 267.2 448 192 448S41.3 434.4 0 405.3zM320 128c106 0 192-28.7 192-64S426 0 320 0 128 28.7 128 64s86 64 192 64zM0 300.4V352c0 35.3 86 64 192 64s192-28.7 192-64v-51.6c-41.3 34-116.9 51.6-192 51.6S41.3 334.4 0 300.4zm416 11c57.3-11.1 96-31.7 96-55.4v-42.7c-23.2 16.4-57.3 27.6-96 34.5v63.6zM192 160C86 160 0 195.8 0 240s86 80 192 80 192-35.8 192-80-86-80-192-80zm219.3 56.3c60-10.8 100.7-32 100.7-56.3v-42.7c-35.5 25.1-96.5 38.6-160.7 41.8 29.5 14.3 51.2 33.5 60 57.2z"></path>
+                            </svg>
+                            Стоимость: <span id="caseModalPrice">0</span> монет
+                        </div>
                     </div>
                 </div>
                 <div class="case-items">
                     <h4>Возможные выпадения:</h4>
-                    <div class="items-list" id="caseItemsList"></div>
+                    <div class="items-grid" id="caseItemsList"></div>
                 </div>
                 <button id="openCaseBtn" class="modal-button primary">Открыть кейс</button>
             </div>
@@ -304,7 +331,12 @@
                     <div class="skin-info">
                         <div class="skin-name" id="skinModalName"></div>
                         <div class="skin-rarity" id="skinModalRarity"></div>
-                        <div class="skin-value">Стоимость: <span id="skinModalValue">0</span> монет</div>
+                        <div class="skin-value">
+                            <svg class="coins-icon" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 405.3V448c0 35.3 86 64 192 64s192-28.7 192-64v-42.7C342.7 434.4 267.2 448 192 448S41.3 434.4 0 405.3zM320 128c106 0 192-28.7 192-64S426 0 320 0 128 28.7 128 64s86 64 192 64zM0 300.4V352c0 35.3 86 64 192 64s192-28.7 192-64v-51.6c-41.3 34-116.9 51.6-192 51.6S41.3 334.4 0 300.4zm416 11c57.3-11.1 96-31.7 96-55.4v-42.7c-23.2 16.4-57.3 27.6-96 34.5v63.6zM192 160C86 160 0 195.8 0 240s86 80 192 80 192-35.8 192-80-86-80-192-80zm219.3 56.3c60-10.8 100.7-32 100.7-56.3v-42.7c-35.5 25.1-96.5 38.6-160.7 41.8 29.5 14.3 51.2 33.5 60 57.2z"></path>
+                            </svg>
+                            Стоимость: <span id="skinModalValue">0</span> монет
+                        </div>
                     </div>
                 </div>
                 <div class="skin-actions">
@@ -327,7 +359,12 @@
                     <img id="withdrawSkinImage" src="" alt="Скин">
                     <div class="withdraw-details">
                         <div class="withdraw-name" id="withdrawSkinName"></div>
-                        <div class="withdraw-value">Стоимость: <span id="withdrawSkinValue">0</span> монет</div>
+                        <div class="withdraw-value">
+                            <svg class="coins-icon" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 405.3V448c0 35.3 86 64 192 64s192-28.7 192-64v-42.7C342.7 434.4 267.2 448 192 448S41.3 434.4 0 405.3zM320 128c106 0 192-28.7 192-64S426 0 320 0 128 28.7 128 64s86 64 192 64zM0 300.4V352c0 35.3 86 64 192 64s192-28.7 192-64v-51.6c-41.3 34-116.9 51.6-192 51.6S41.3 334.4 0 300.4zm416 11c57.3-11.1 96-31.7 96-55.4v-42.7c-23.2 16.4-57.3 27.6-96 34.5v63.6zM192 160C86 160 0 195.8 0 240s86 80 192 80 192-35.8 192-80-86-80-192-80zm219.3 56.3c60-10.8 100.7-32 100.7-56.3v-42.7c-35.5 25.1-96.5 38.6-160.7 41.8 29.5 14.3 51.2 33.5 60 57.2z"></path>
+                            </svg>
+                            Стоимость: <span id="withdrawSkinValue">0</span> монет
+                        </div>
                     </div>
                 </div>
                 <div class="trade-link-input">
