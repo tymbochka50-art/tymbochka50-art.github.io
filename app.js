@@ -33,6 +33,9 @@ async function initApp() {
         loadInventory();
         loadProfileInventory();
 
+        // Обновляем статистику инвентаря
+        updateInventoryStats();
+
         console.log('📊 Данные пользователя:', user);
 
     } catch (error) {
@@ -55,6 +58,9 @@ function initNavigation() {
             item.classList.add('active');
             const tabId = item.getAttribute('data-tab');
             document.getElementById(tabId).classList.add('active');
+            
+            // Обновляем статистику при переключении
+            updateInventoryStats();
             
             // При переключении на инвентарь или профиль обновляем их
             if (tabId === 'inventory') {
@@ -83,6 +89,30 @@ async function loadUserData(user) {
     document.getElementById('profileFirstName').textContent = user.first_name || 'Не указано';
     document.getElementById('profileLastName').textContent = user.last_name || 'Не указано';
     document.getElementById('profileUsername').textContent = user.username ? '@' + user.username : 'Не указано';
+}
+
+// ==================== ОБНОВЛЕНИЕ СТАТИСТИКИ ИНВЕНТАРЯ ====================
+
+// Обновление статистики инвентаря для всех разделов
+function updateInventoryStats() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (!userId) return;
+    
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
+    const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
+    
+    // Обновляем все разделы
+    const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain, #totalSkinsCases');
+    const totalValueElements = document.querySelectorAll('#totalValue, #totalValueMain, #totalValueCases');
+    
+    totalSkinsElements.forEach(element => {
+        element.textContent = activeInventory.length;
+    });
+    
+    totalValueElements.forEach(element => {
+        element.textContent = totalVal.toLocaleString();
+    });
 }
 
 // ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
@@ -478,11 +508,11 @@ function startLastNameTimer(seconds) {
 
 // ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
 
-// Данные кейсов с правильными названиями и картинками
+// Данные кейсов с обновленными названиями
 const casesData = [
     {
-        id: 'light',
-        name: 'LIGHT',
+        id: 'grunt',
+        name: 'GRUNT',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458462_x.jpg',
         price: 10,
         color: 'light',
@@ -525,8 +555,8 @@ const casesData = [
         ]
     },
     {
-        id: 'danger',
-        name: 'DANGER',
+        id: 'lurk',
+        name: 'LURK',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458464_x.jpg',
         price: 1500,
         color: 'danger',
@@ -569,8 +599,8 @@ const casesData = [
         ]
     },
     {
-        id: 'mystic',
-        name: 'MYSTIC',
+        id: 'vandal',
+        name: 'VANDAL',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458465_x.jpg',
         price: 3000,
         color: 'mystic',
@@ -613,8 +643,8 @@ const casesData = [
         ]
     },
     {
-        id: 'heat',
-        name: 'HEAT',
+        id: 'strike',
+        name: 'STRIKE',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458478_x.jpg',
         price: 5000,
         color: 'heat',
@@ -658,7 +688,7 @@ const casesData = [
     },
     {
         id: 'ice',
-        name: 'ICE',
+        name: '581.8k',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458479_x.jpg',
         price: 359900,
         color: 'ice',
@@ -699,50 +729,6 @@ const casesData = [
                 value: 450
             }
         ]
-    },
-    {
-        id: 'energy',
-        name: 'ENERGY',
-        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458481_x.jpg',
-        price: 7500,
-        color: 'energy',
-        items: [
-            { 
-                name: 'Specialist Gloves | Emerald Web', 
-                image: 'https://assets.lis-skins.com/market_images/16516_b.png',
-                chance: 0.005,
-                rarity: 'legendary',
-                value: 9000
-            },
-            { 
-                name: 'Talon Knife | Doppler', 
-                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
-                chance: 0.005,
-                rarity: 'legendary',
-                value: 8500
-            },
-            { 
-                name: 'AWP | Gungnir', 
-                image: 'https://assets.lis-skins.com/market_images/30946_b.png',
-                chance: 0.005,
-                rarity: 'legendary',
-                value: 8800
-            },
-            { 
-                name: 'MP7 | Bloodsport', 
-                image: 'https://assets.lis-skins.com/market_images/187412_b.png',
-                chance: 99.55,
-                rarity: 'rare',
-                value: 200
-            },
-            { 
-                name: 'P250 | Asiimov', 
-                image: 'https://assets.lis-skins.com/market_images/187154_b.png',
-                chance: 99.55,
-                rarity: 'rare',
-                value: 180
-            }
-        ]
     }
 ];
 
@@ -770,28 +756,11 @@ function loadCases() {
 // Открытие модального окна кейса
 function openCaseModal(caseData) {
     const modal = document.getElementById('caseModal');
-    const caseItemsList = document.getElementById('caseItemsList');
     
-    document.getElementById('caseModalTitle').textContent = caseData.name;
+    document.getElementById('caseModalTitle').textContent = `Кейс ${caseData.name}`;
     document.getElementById('caseModalImage').src = caseData.image;
     document.getElementById('caseModalName').textContent = caseData.name;
     document.getElementById('caseModalPrice').textContent = caseData.price.toLocaleString();
-    
-    // Заполняем сетку предметов
-    caseItemsList.innerHTML = '';
-    caseData.items.forEach(item => {
-        const itemElement = document.createElement('div');
-        itemElement.className = 'item-preview';
-        itemElement.innerHTML = `
-            <img src="${item.image}" alt="${item.name}">
-            <div class="item-info">
-                <div class="item-name">${item.name}</div>
-                <div class="item-chance">Шанс: ${item.chance}%</div>
-                <div class="item-rarity ${item.rarity}">${getRarityText(item.rarity)}</div>
-            </div>
-        `;
-        caseItemsList.appendChild(itemElement);
-    });
     
     // Настройка кнопки открытия
     const openBtn = document.getElementById('openCaseBtn');
@@ -943,6 +912,8 @@ function saveSkinToInventory(skin) {
     
     localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
     
+    // Обновляем все разделы
+    updateInventoryStats();
     loadInventory();
     loadProfileInventory();
 }
@@ -952,17 +923,11 @@ function loadInventory() {
     const userId = tg.initDataUnsafe?.user?.id;
     const inventoryGrid = document.getElementById('inventoryGrid');
     const emptyInventory = document.getElementById('emptyInventory');
-    const totalSkins = document.getElementById('totalSkins');
-    const totalValue = document.getElementById('totalValue');
     
     if (!userId || !inventoryGrid) return;
     
     let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
-    
-    totalSkins.textContent = activeInventory.length;
-    const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
-    totalValue.textContent = totalVal.toLocaleString();
     
     if (activeInventory.length === 0) {
         inventoryGrid.style.display = 'none';
@@ -1052,6 +1017,9 @@ function sellSkin(skin) {
         addCoins(skin.value);
         
         document.getElementById('skinModal').style.display = 'none';
+        
+        // Обновляем статистику
+        updateInventoryStats();
         loadInventory();
         loadProfileInventory();
         
@@ -1109,6 +1077,8 @@ async function confirmWithdraw(skin) {
             document.getElementById('withdrawModal').style.display = 'none';
             document.getElementById('skinModal').style.display = 'none';
             
+            // Обновляем статистику
+            updateInventoryStats();
             loadInventory();
             loadProfileInventory();
             
