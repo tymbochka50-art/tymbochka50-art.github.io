@@ -107,11 +107,11 @@ function updateInventoryStats() {
     const totalValueElements = document.querySelectorAll('#totalValue, #totalValueMain, #totalValueCases');
     
     totalSkinsElements.forEach(element => {
-        element.textContent = activeInventory.length;
+        if (element) element.textContent = activeInventory.length;
     });
     
     totalValueElements.forEach(element => {
-        element.textContent = totalVal.toLocaleString();
+        if (element) element.textContent = totalVal.toLocaleString();
     });
 }
 
@@ -756,11 +756,28 @@ function loadCases() {
 // Открытие модального окна кейса
 function openCaseModal(caseData) {
     const modal = document.getElementById('caseModal');
+    const caseItemsList = document.getElementById('caseItemsList');
     
     document.getElementById('caseModalTitle').textContent = `Кейс ${caseData.name}`;
     document.getElementById('caseModalImage').src = caseData.image;
     document.getElementById('caseModalName').textContent = caseData.name;
     document.getElementById('caseModalPrice').textContent = caseData.price.toLocaleString();
+    
+    // Заполняем сетку предметов
+    caseItemsList.innerHTML = '';
+    caseData.items.forEach(item => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'item-preview';
+        itemElement.innerHTML = `
+            <img src="${item.image}" alt="${item.name}">
+            <div class="item-info">
+                <div class="item-name">${item.name}</div>
+                <div class="item-chance">Шанс: ${item.chance}%</div>
+                <div class="item-rarity ${item.rarity}">${getRarityText(item.rarity)}</div>
+            </div>
+        `;
+        caseItemsList.appendChild(itemElement);
+    });
     
     // Настройка кнопки открытия
     const openBtn = document.getElementById('openCaseBtn');
