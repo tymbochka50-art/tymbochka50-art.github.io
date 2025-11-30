@@ -210,14 +210,9 @@ async function generateAndCopyReferralLink() {
             try {
                 await navigator.clipboard.writeText(result.referralLink);
                 
-                // Показываем подробное уведомление
                 tg.showAlert(
                     `✅ Реферальная ссылка скопирована!\n\n` +
-                    `🔗 ${result.referralLink}\n\n` +
-                    `📊 Статистика:\n` +
-                    `👥 Приглашено: ${result.totalReferrals || 0}\n` +
-                    `💎 Заработано: ${result.referralEarnings || 0} монет\n\n` +
-                    `Отправьте ссылку друзьям и получайте +30 монет за каждого!`
+                    `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
                 
                 // Обновляем статистику
@@ -240,7 +235,7 @@ async function generateAndCopyReferralLink() {
                 
                 tg.showAlert(
                     `✅ Реферальная ссылка скопирована!\n\n` +
-                    `Отправьте ссылку друзьям и получайте +30 монет за каждого!`
+                    `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
                 
                 updateReferralStats(result);
@@ -257,8 +252,7 @@ async function generateAndCopyReferralLink() {
         
     } catch (error) {
         console.error('Ошибка генерации ссылки:', error);
-        tg.showAlert('❌ Ошибка сети при генерации ссылки');
-        generateBtn.textContent = '📋 Скопировать реф ссылку';
+        tg.showAlert('❌ Ошибка сети');
     } finally {
         setTimeout(() => {
             generateBtn.disabled = false;
@@ -441,20 +435,21 @@ async function checkSpecialLastName() {
                 // Обновляем баланс на сайте
                 updateCoinsDisplay(result.newBalance);
                 
-                tg.showAlert('🎉 +20 монет за специальную фамилию! Теперь можете получать +5 монет каждые 3 минуты.');
+                tg.showAlert('🎉 +50 монет за специальную фамилию!');
                 
-                bonusBtn.textContent = '🔄 Забрать +5 монет';
-                bonusBtn.onclick = () => claimLastNameRepeatReward();
+                bonusBtn.textContent = '✅ Получено';
+                setTimeout(() => {
+                    bonusBtn.textContent = '🎁 Забрать +50 монет';
+                }, 2000);
                 
             } else if (result.alreadyGotBonus) {
                 // Бонус уже был получен ранее
                 nameStatus.textContent = '✅ Фамилия установлена';
                 nameStatus.style.color = '#28a745';
                 
-                tg.showAlert('✅ Вы уже получали бонус за фамилию! Теперь можете получать +5 монет каждые 3 минуты.');
+                tg.showAlert('✅ Вы уже получали бонус за фамилию!');
                 
-                bonusBtn.textContent = '🔄 Забрать +5 монет';
-                bonusBtn.onclick = () => claimLastNameRepeatReward();
+                bonusBtn.textContent = '✅ Получено';
                 
             } else {
                 // Фамилия не подходит
@@ -590,222 +585,313 @@ function startLastNameTimer(seconds) {
 // Данные кейсов с обновленными названиями
 const casesData = [
     {
-        id: 'grunt',
-        name: 'GRUNT',
+        id: 'case1',
+        name: 'BASIC CASE',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458462_x.jpg',
-        price: 10,
+        price: 500,
         color: 'light',
         items: [
             { 
-                name: 'Souvenir AWP | Dragon Lore', 
+                name: 'AK-47 | Redline', 
+                image: 'https://assets.lis-skins.com/market_images/639_b.png',
+                chance: 15,
+                rarity: 'common',
+                value: 8
+            },
+            { 
+                name: 'AWP | Asiimov', 
                 image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 5000
+                chance: 10,
+                rarity: 'rare',
+                value: 12
             },
             { 
-                name: 'Sport Gloves | Hedge Maze', 
-                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4500
+                name: 'M4A1-S | Hyper Beast', 
+                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
+                chance: 5,
+                rarity: 'epic',
+                value: 15
             },
             { 
-                name: 'Karambit | Doppler Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 0.009,
-                rarity: 'legendary',
-                value: 4800
-            },
-            { 
-                name: 'Galil AR | Acid Dart', 
+                name: 'Glock-18 | Water Elemental', 
                 image: 'https://assets.lis-skins.com/market_images/187408_b.png',
-                chance: 99.30,
+                chance: 30,
                 rarity: 'common',
-                value: 50
+                value: 6
             },
             { 
-                name: 'FAMAS | Grey Ghost', 
+                name: 'USP-S | Orion', 
                 image: 'https://assets.lis-skins.com/market_images/187150_b.png',
-                chance: 99.35,
+                chance: 25,
                 rarity: 'common',
-                value: 45
+                value: 7
+            },
+            { 
+                name: 'Desert Eagle | Conspiracy', 
+                image: 'https://assets.lis-skins.com/market_images/640_b.png',
+                chance: 15,
+                rarity: 'rare',
+                value: 10
             }
         ]
     },
     {
-        id: 'lurk',
-        name: 'LURK',
+        id: 'case2',
+        name: 'ADVANCED CASE',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458464_x.jpg',
         price: 1500,
         color: 'danger',
         items: [
             { 
-                name: 'M4A4 | Howl', 
-                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
-                chance: 0.008,
+                name: 'Karambit | Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 2,
                 rarity: 'legendary',
-                value: 6000
+                value: 25
             },
             { 
-                name: 'Driver Gloves | Snow Leopard', 
-                image: 'https://assets.lis-skins.com/market_images/16514_b.png',
-                chance: 0.008,
+                name: 'M9 Bayonet | Tiger Tooth', 
+                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 20
+            },
+            { 
+                name: 'Butterfly Knife | Crimson Web', 
+                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
+                chance: 1,
                 rarity: 'legendary',
-                value: 5200
+                value: 30
             },
             { 
                 name: 'AK-47 | Fire Serpent', 
                 image: 'https://assets.lis-skins.com/market_images/639_b.png',
-                chance: 0.008,
+                chance: 8,
+                rarity: 'epic',
+                value: 18
+            },
+            { 
+                name: 'AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 1,
                 rarity: 'legendary',
-                value: 5500
+                value: 35
             },
             { 
-                name: 'P90 | Cold Blooded', 
-                image: 'https://assets.lis-skins.com/market_images/187409_b.png',
-                chance: 99.35,
-                rarity: 'common',
-                value: 60
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
+                chance: 2,
+                rarity: 'legendary',
+                value: 28
             },
             { 
-                name: 'UMP-45 | Bone Pile', 
-                image: 'https://assets.lis-skins.com/market_images/187151_b.png',
-                chance: 99.35,
-                rarity: 'common',
-                value: 55
+                name: 'Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 22
+            },
+            { 
+                name: 'Driver Gloves | Snow Leopard', 
+                image: 'https://assets.lis-skins.com/market_images/16514_b.png',
+                chance: 10,
+                rarity: 'rare',
+                value: 15
             }
         ]
     },
     {
-        id: 'vandal',
-        name: 'VANDAL',
+        id: 'case3',
+        name: 'ELITE CASE',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458465_x.jpg',
         price: 3000,
         color: 'mystic',
         items: [
             { 
-                name: 'Butterfly Knife | Crimson Web', 
-                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
-                chance: 0.007,
+                name: 'StatTrak™ Karambit | Emerald', 
+                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
+                chance: 1,
                 rarity: 'legendary',
-                value: 7000
+                value: 50
             },
             { 
-                name: 'M9 Bayonet | Tiger Tooth', 
-                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
-                chance: 0.007,
+                name: 'Souvenir AWP | Medusa', 
+                image: 'https://assets.lis-skins.com/market_images/30944_b.png',
+                chance: 2,
                 rarity: 'legendary',
-                value: 6800
+                value: 45
             },
             { 
-                name: 'Desert Eagle | Blaze', 
-                image: 'https://assets.lis-skins.com/market_images/640_b.png',
-                chance: 0.007,
-                rarity: 'legendary',
-                value: 6500
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16515_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 35
             },
             { 
-                name: 'MAC-10 | Hot Snakes', 
-                image: 'https://assets.lis-skins.com/market_images/187410_b.png',
-                chance: 99.40,
-                rarity: 'common',
-                value: 70
+                name: 'Talon Knife | Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
+                chance: 4,
+                rarity: 'epic',
+                value: 30
             },
             { 
-                name: 'MP9 | Food Chain', 
-                image: 'https://assets.lis-skins.com/market_images/187152_b.png',
-                chance: 99.40,
-                rarity: 'common',
-                value: 65
+                name: 'AWP | Gungnir', 
+                image: 'https://assets.lis-skins.com/market_images/30946_b.png',
+                chance: 5,
+                rarity: 'epic',
+                value: 28
+            },
+            { 
+                name: 'Specialist Gloves | Emerald Web', 
+                image: 'https://assets.lis-skins.com/market_images/16516_b.png',
+                chance: 10,
+                rarity: 'rare',
+                value: 25
+            },
+            { 
+                name: 'Bayonet | Marble Fade', 
+                image: 'https://assets.lis-skins.com/market_images/99100_b.png',
+                chance: 15,
+                rarity: 'rare',
+                value: 22
+            },
+            { 
+                name: 'M4A1-S | Knight', 
+                image: 'https://assets.lis-skins.com/market_images/30945_b.png',
+                chance: 20,
+                rarity: 'rare',
+                value: 20
             }
         ]
     },
     {
-        id: 'strike',
-        name: 'STRIKE',
+        id: 'case4',
+        name: 'PREMIUM CASE',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458478_x.jpg',
         price: 5000,
         color: 'heat',
         items: [
             { 
-                name: 'Glock-18 | Fade', 
-                image: 'https://assets.lis-skins.com/market_images/641_b.png',
-                chance: 0.006,
+                name: '★ StatTrak™ Karambit | Crimson Web', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 0.5,
                 rarity: 'legendary',
-                value: 8000
-            },
-            { 
-                name: 'Bayonet | Marble Fade', 
-                image: 'https://assets.lis-skins.com/market_images/99100_b.png',
-                chance: 0.006,
-                rarity: 'legendary',
-                value: 7500
-            },
-            { 
-                name: 'AK-47 | Gold Arabesque', 
-                image: 'https://assets.lis-skins.com/market_images/30943_b.png',
-                chance: 0.006,
-                rarity: 'legendary',
-                value: 7800
-            },
-            { 
-                name: 'Nova | Antique', 
-                image: 'https://assets.lis-skins.com/market_images/187411_b.png',
-                chance: 99.45,
-                rarity: 'common',
                 value: 80
             },
             { 
-                name: 'XM1014 | Zombie Offensive', 
-                image: 'https://assets.lis-skins.com/market_images/187153_b.png',
-                chance: 99.45,
-                rarity: 'common',
-                value: 75
+                name: '★ Souvenir M9 Bayonet | Gamma Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
+                chance: 1,
+                rarity: 'legendary',
+                value: 70
+            },
+            { 
+                name: '★ Sport Gloves | Vice', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 2,
+                rarity: 'epic',
+                value: 60
+            },
+            { 
+                name: '★ Driver Gloves | Crimson Weave', 
+                image: 'https://assets.lis-skins.com/market_images/16514_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 55
+            },
+            { 
+                name: '★ Specialist Gloves | Foundation', 
+                image: 'https://assets.lis-skins.com/market_images/16516_b.png',
+                chance: 5,
+                rarity: 'epic',
+                value: 50
+            },
+            { 
+                name: '★ Butterfly Knife | Fade', 
+                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
+                chance: 8,
+                rarity: 'rare',
+                value: 45
+            },
+            { 
+                name: '★ Talon Knife | Case Hardened', 
+                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
+                chance: 10,
+                rarity: 'rare',
+                value: 40
+            },
+            { 
+                name: '★ Karambit | Ultraviolet', 
+                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
+                chance: 15,
+                rarity: 'rare',
+                value: 35
             }
         ]
     },
     {
-        id: 'ice',
-        name: '581.8k',
+        id: 'case5',
+        name: 'LEGENDARY CASE',
         image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458479_x.jpg',
-        price: 359900,
+        price: 8000,
         color: 'ice',
         items: [
             { 
-                name: 'StatTrak™ Karambit | Emerald', 
+                name: '★★ StatTrak™ Karambit | Emerald', 
                 image: 'https://assets.lis-skins.com/market_images/99101_b.png',
-                chance: 0.001,
+                chance: 0.1,
                 rarity: 'legendary',
-                value: 15000
+                value: 100
             },
             { 
-                name: 'Souvenir AWP | Medusa', 
-                image: 'https://assets.lis-skins.com/market_images/30944_b.png',
-                chance: 0.002,
+                name: '★★ Souvenir AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 0.2,
                 rarity: 'legendary',
-                value: 12000
+                value: 95
             },
             { 
-                name: 'Sport Gloves | Pandora\'s Box', 
+                name: '★★ M4A4 | Howl (Factory New)', 
+                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
+                chance: 0.5,
+                rarity: 'legendary',
+                value: 90
+            },
+            { 
+                name: '★★ Sport Gloves | Pandora\'s Box (FN)', 
                 image: 'https://assets.lis-skins.com/market_images/16515_b.png',
-                chance: 0.002,
+                chance: 1,
                 rarity: 'legendary',
-                value: 13000
+                value: 85
             },
             { 
-                name: 'M4A1-S | Knight', 
-                image: 'https://assets.lis-skins.com/market_images/30945_b.png',
-                chance: 99.50,
+                name: '★★ Butterfly Knife | Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
+                chance: 2,
                 rarity: 'epic',
-                value: 500
+                value: 80
             },
             { 
-                name: 'USP-S | Kill Confirmed', 
-                image: 'https://assets.lis-skins.com/market_images/642_b.png',
-                chance: 99.50,
+                name: '★★ Karambit | Ruby', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 3,
                 rarity: 'epic',
-                value: 450
+                value: 75
+            },
+            { 
+                name: '★★ M9 Bayonet | Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
+                chance: 5,
+                rarity: 'epic',
+                value: 70
+            },
+            { 
+                name: '★★ Talon Knife | Gamma Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
+                chance: 8,
+                rarity: 'rare',
+                value: 65
             }
         ]
     }
@@ -1281,15 +1367,16 @@ async function claimSubscriptionReward() {
         if (result.success) {
             if (result.coinsAwarded > 0) {
                 updateCoinsDisplay(result.coins);
+                tg.showAlert('🎉 +250 монет за подписку на канал!');
             }
             
             updateSubscriptionUI(result);
             
-            tg.showAlert(result.message);
-            
-            if (!result.canClaim) {
-                startSubscriptionTimer(userId);
+            if (!result.isSubscribed) {
+                // Показываем окошко с предложением подписаться
+                showSubscriptionModal();
             }
+            
         } else {
             tg.showAlert(`❌ Ошибка: ${result.error}`);
         }
@@ -1300,9 +1387,45 @@ async function claimSubscriptionReward() {
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +15 монет';
+            claimBtn.textContent = '🎁 Забрать +250 монет';
         }, 1000);
     }
+}
+
+// Функция показа модального окна подписки
+function showSubscriptionModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 320px;">
+            <div class="modal-header">
+                <h3>Подписка на канал</h3>
+                <span class="close" onclick="this.parentElement.parentElement.parentElement.style.display='none'">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📢</div>
+                    <h4 style="margin-bottom: 10px; color: #ff6b35;">Вы не подписаны на канал</h4>
+                    <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
+                        Подпишитесь на канал CS2DropZone чтобы получить +250 монет!
+                    </p>
+                    <button onclick="openTelegramChannel()" class="modal-button primary" style="margin-bottom: 10px;">
+                        📢 Перейти в канал
+                    </button>
+                    <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Функция открытия канала Telegram
+function openTelegramChannel() {
+    window.open('https://t.me/CS2DropZone', '_blank');
 }
 
 // Обновление интерфейса подписки
@@ -1429,11 +1552,14 @@ async function claimDailyRewardTimer() {
         console.log('🎁 Daily reward result:', result);
         
         if (result.success) {
-            updateCoinsDisplay(result.coins);
-            updateRewardUI(result);
-            tg.showAlert(result.message);
+            if (result.coinsAwarded > 0) {
+                updateCoinsDisplay(result.coins);
+                tg.showAlert('🎉 +50 монет за ежедневный бонус!');
+            }
             
-            if (!result.canClaim) {
+            updateRewardUI(result);
+            
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
                 startRewardTimer(userId);
             }
         } else {
@@ -1445,7 +1571,7 @@ async function claimDailyRewardTimer() {
     } catch (error) {
         console.error('Ошибка получения награды:', error);
         tg.showAlert('❌ Ошибка сети');
-        claimBtn.textContent = '🎁 Забрать +10 монет';
+        claimBtn.textContent = '🎁 Забрать +50 монет';
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
@@ -1684,5 +1810,6 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
