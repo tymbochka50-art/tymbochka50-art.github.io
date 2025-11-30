@@ -14,6 +14,9 @@ async function initApp() {
             return;
         }
 
+        // ПЕРВОЕ: Проверяем реферальный переход
+        await checkReferralOnStart(user.id);
+
         // Инициализация навигации
         initNavigation();
         initModals();
@@ -40,6 +43,41 @@ async function initApp() {
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
+    }
+}
+
+// Добавьте функцию проверки реферала при старте
+async function checkReferralOnStart(userId) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-referral-on-start';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('🔍 Referral check on start result:', result);
+        
+        if (result.success && result.referralProcessed) {
+            // Показываем уведомление о успешном реферале
+            tg.showAlert(`🎉 Вы были приглашены другом! Владелец ссылки получил +${result.reward} монет.`);
+            
+            // Обновляем статистику если это владелец ссылки
+            if (result.referrerId === userId.toString()) {
+                await loadReferralStats(userId);
+                await loadUserBalance(userId);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Ошибка проверки реферала при старте:', error);
     }
 }
 
@@ -171,7 +209,16 @@ async function generateAndCopyReferralLink() {
             // Копируем ссылку в буфер обмена
             try {
                 await navigator.clipboard.writeText(result.referralLink);
-                tg.showAlert('✅ Реферальная ссылка скопирована в буфер обмена!');
+                
+                // Показываем подробное уведомление
+                tg.showAlert(
+                    `✅ Реферальная ссылка скопирована!\n\n` +
+                    `🔗 ${result.referralLink}\n\n` +
+                    `📊 Статистика:\n` +
+                    `👥 Приглашено: ${result.totalReferrals || 0}\n` +
+                    `💎 Заработано: ${result.referralEarnings || 0} монет\n\n` +
+                    `Отправьте ссылку друзьям и получайте +30 монет за каждого!`
+                );
                 
                 // Обновляем статистику
                 updateReferralStats(result);
@@ -191,7 +238,11 @@ async function generateAndCopyReferralLink() {
                 document.execCommand('copy');
                 document.body.removeChild(tempInput);
                 
-                tg.showAlert('✅ Реферальная ссылка скопирована!');
+                tg.showAlert(
+                    `✅ Реферальная ссылка скопирована!\n\n` +
+                    `Отправьте ссылку друзьям и получайте +30 монет за каждого!`
+                );
+                
                 updateReferralStats(result);
                 
                 generateBtn.textContent = '✅ Скопировано!';
@@ -206,7 +257,8 @@ async function generateAndCopyReferralLink() {
         
     } catch (error) {
         console.error('Ошибка генерации ссылки:', error);
-        tg.showAlert('❌ Ошибка сети');
+        tg.showAlert('❌ Ошибка сети при генерации ссылки');
+        generateBtn.textContent = '📋 Скопировать реф ссылку';
     } finally {
         setTimeout(() => {
             generateBtn.disabled = false;
@@ -233,7 +285,15 @@ function updateReferralStats(data) {
     }
     
     // Обновляем профиль
-    document.getElementById('profileReferrals').textContent = data.totalReferrals || 0;
+    const profileReferrals = document.getElementById('profileReferrals');
+    if (profileReferrals) {
+        profileReferrals.textContent = data.totalReferrals || 0;
+    }
+    
+    console.log('📊 Updated referral stats:', {
+        totalReferrals: data.totalReferrals,
+        referralEarnings: data.referralEarnings
+    });
 }
 
 // Загрузка реферальной статистики
@@ -1624,4 +1684,5 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
