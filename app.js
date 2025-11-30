@@ -44,6 +44,15 @@ async function initApp() {
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
     }
+
+    // Добавьте эту строку в конец функции
+    await updateAllTimers();
+    
+    console.log('📊 Данные пользователя:', user);
+  } catch (error) {
+    console.error('❌ Ошибка инициализации:', error);
+  }
+}
 }
 
 // Добавьте функцию проверки реферала при старте
@@ -376,7 +385,7 @@ function updateLastNameUI(data) {
             nameStatus.textContent = '✅ Готово к получению';
             nameStatus.style.color = '#28a745';
             bonusBtn.disabled = false;
-            bonusBtn.textContent = '🎁 Забрать +20 монет';
+            bonusBtn.textContent = '🎁 Забрать +50 монет';
             bonusBtn.onclick = () => checkSpecialLastName();
         } else {
             // Неправильная фамилия
@@ -1441,7 +1450,7 @@ function updateSubscriptionUI(data) {
             
             if (data.canClaim) {
                 claimBtn.disabled = false;
-                claimBtn.textContent = '🎁 Забрать +15 монет';
+                claimBtn.textContent = '🎁 Забрать +250 монет';
                 claimBtn.onclick = () => claimSubscriptionReward();
             } else {
                 claimBtn.disabled = true;
@@ -1479,7 +1488,7 @@ function startSubscriptionTimer(seconds) {
         } else {
             clearInterval(timer);
             claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +15 монет';
+            claimBtn.textContent = '🎁 Забрать +250 монет';
             loadSubscriptionStatus(tg.initDataUnsafe?.user?.id);
         }
     }, 1000);
@@ -1634,7 +1643,7 @@ function updateRewardUI(data) {
         } else if (data.canClaim) {
             timerText.textContent = '✅ Готово к получению!';
             claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +10 монет';
+            claimBtn.textContent = '🎁 Забрать +50 монет';
             if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
         } else {
             timerText.textContent = `⏳ До следующей награды: ${data.timeUntilNextReward}с`;
@@ -1678,7 +1687,7 @@ function startRewardTimer(userId) {
                     clearInterval(timer);
                     timerText.textContent = '✅ Готово к получению!';
                     claimBtn.disabled = false;
-                    claimBtn.textContent = '🎁 Забрать +10 монет';
+                    claimBtn.textContent = '🎁 Забрать +50 монет';
                     loadRewardStatus(userId);
                 }
             }, 1000);
@@ -1810,6 +1819,7 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
