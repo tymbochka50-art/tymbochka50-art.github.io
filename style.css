@@ -868,6 +868,33 @@ body {
     line-height: 1.4;
 }
 
+/* Стили для модального окна подписки */
+.subscription-modal {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 20px;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.subscription-modal .modal-header {
+    background: rgba(255, 107, 53, 0.2);
+    border-bottom: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.subscription-modal h3 {
+    color: #ff6b35;
+    margin: 0;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 380px) {
+    .subscription-modal {
+        margin: 10% auto;
+        width: 95%;
+    }
+}
+
 .withdraw-info {
     display: flex;
     align-items: center;
@@ -1203,5 +1230,6 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
 
 
