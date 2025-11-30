@@ -53,7 +53,6 @@ async function initApp() {
     console.error('❌ Ошибка инициализации:', error);
   }
 }
-}
 
 // Добавьте функцию проверки реферала при старте
 async function checkReferralOnStart(userId) {
@@ -87,6 +86,24 @@ async function checkReferralOnStart(userId) {
         
     } catch (error) {
         console.error('Ошибка проверки реферала при старте:', error);
+    }
+}
+
+// Функция для обновления всех таймеров
+async function updateAllTimers() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (!userId) return;
+
+    try {
+        // Обновляем статусы для корректного отображения таймеров
+        await loadRewardStatus(userId);
+        await loadSubscriptionStatus(userId);
+        await loadLastNameStatus();
+        
+        console.log('✅ Таймеры обновлены');
+
+    } catch (error) {
+        console.error('❌ Error updating timers:', error);
     }
 }
 
@@ -1819,6 +1836,7 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
