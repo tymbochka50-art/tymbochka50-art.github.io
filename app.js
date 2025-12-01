@@ -410,7 +410,7 @@ function updateLastNameUI(data) {
     }
 }
 
-// Проверка специальной фамилии (первоначальный бонус)
+// Обновленная функция для фамилии (убрана повторная награда)
 async function checkSpecialLastName() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
@@ -448,157 +448,168 @@ async function checkSpecialLastName() {
         console.log('🔍 Special lastname check result:', result);
         
         if (result.success) {
-            if (result.bonusAwarded) {
-                // Бонус начислен
-                nameStatus.textContent = '✅ Фамилия установлена';
-                nameStatus.style.color = '#28a745';
-                
-                // Обновляем баланс на сайте
+            if (result.coinsAwarded > 0) {
                 updateCoinsDisplay(result.newBalance);
-                
-                tg.showAlert('🎉 +50 монет за специальную фамилию!');
-                
-                bonusBtn.textContent = '✅ Получено';
-                setTimeout(() => {
-                    bonusBtn.textContent = '🎁 Забрать +50 монет';
-                }, 2000);
-                
-            } else if (result.alreadyGotBonus) {
-                // Бонус уже был получен ранее
-                nameStatus.textContent = '✅ Фамилия установлена';
-                nameStatus.style.color = '#28a745';
-                
-                tg.showAlert('✅ Вы уже получали бонус за фамилию!');
-                
-                bonusBtn.textContent = '✅ Получено';
-                
+                tg.showAlert(result.message);
             } else {
-                // Фамилия не подходит
-                nameStatus.textContent = '❌ Не выполнено';
-                nameStatus.style.color = '#dc3545';
-                
-                let alertMessage = '❌ Фамилия не соответствует требованиям.\n\n';
-                alertMessage += `Ваша фамилия: "${result.userLastName}"\n`;
-                alertMessage += `Требуется: "${result.requiredName}"\n\n`;
-                alertMessage += `Убедитесь, что фамилия точно совпадает, включая все символы!`;
-                
-                tg.showAlert(alertMessage);
-                bonusBtn.textContent = originalText;
+                tg.showAlert(result.message);
             }
+            
+            // Обновляем UI и запускаем таймер
+            await loadLastNameStatus();
+            
         } else {
             tg.showAlert(`❌ Ошибка: ${result.error}`);
-            bonusBtn.textContent = originalText;
         }
         
     } catch (error) {
         console.error('Ошибка проверки фамилии:', error);
         tg.showAlert('❌ Ошибка сети');
-        bonusBtn.textContent = '🔍 Проверить фамилию';
     } finally {
         setTimeout(() => {
             bonusBtn.disabled = false;
-        }, 2000);
+        }, 1000);
     }
 }
 
-// Получение повторной награды за фамилию
-async function claimLastNameRepeatReward() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const user = tg.initDataUnsafe?.user;
+// Обновленная функция обновления UI фамилии
+function updateLastNameUI(data) {
+    const nameStatus = document.getElementById('nameStatus');
     const bonusBtns = document.querySelectorAll('.task-button');
     const bonusBtn = bonusBtns[2];
     
-    if (!userId || !user) {
-        tg.showAlert('❌ Не удалось определить пользователя');
-        return;
-    }
-    
-    try {
-        const originalText = bonusBtn.textContent;
-        bonusBtn.disabled = true;
-        bonusBtn.textContent = '🔄 Получаем...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-reward';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                lastName: user.last_name || '',
-                firstName: user.first_name || '',
-                username: user.username || ''
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('🔄 Lastname repeat reward result:', result);
-        
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                // Награда начислена
-                updateCoinsDisplay(result.coins);
-                tg.showAlert(result.message);
-                
-                bonusBtn.textContent = '✅ Получено!';
-                setTimeout(() => {
-                    bonusBtn.textContent = '🔄 Забрать +5 монет';
-                }, 2000);
-                
-                // Запускаем таймер
-                if (!result.canClaim) {
-                    startLastNameTimer(180); // 3 минуты
-                }
+    if (nameStatus && bonusBtn) {
+        if (data.hasCorrectLastName) {
+            nameStatus.textContent = '✅ Фамилия установлена';
+            nameStatus.style.color = '#28a745';
+            
+            if (data.canClaim) {
+                bonusBtn.disabled = false;
+                bonusBtn.textContent = '🎁 Забрать +50 монет';
+                bonusBtn.onclick = () => checkSpecialLastName();
             } else {
-                // Нельзя получить награду сейчас
-                tg.showAlert(result.message);
-                bonusBtn.textContent = originalText;
-                
-                if (result.timeUntilNextReward > 0) {
-                    startLastNameTimer(result.timeUntilNextReward);
+                bonusBtn.disabled = true;
+                bonusBtn.textContent = '⏳ Ждите...';
+                if (data.timeUntilNextReward > 0) {
+                    startLastNameTimer(data.timeUntilNextReward);
                 }
             }
         } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
-            bonusBtn.textContent = originalText;
-        }
-        
-    } catch (error) {
-        console.error('Ошибка получения повторной награды:', error);
-        tg.showAlert('❌ Ошибка сети');
-        bonusBtn.textContent = '🔄 Забрать +5 монет';
-    } finally {
-        setTimeout(() => {
+            nameStatus.textContent = '❌ Не выполнено';
+            nameStatus.style.color = '#dc3545';
             bonusBtn.disabled = false;
-        }, 2000);
+            bonusBtn.textContent = '🔍 Проверить фамилию';
+            bonusBtn.onclick = () => checkSpecialLastName();
+        }
     }
 }
 
-// Таймер для повторной награды за фамилию
+// Обновленные функции таймеров
+function startRewardTimer(seconds) {
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (!timerText || !claimBtn) return;
+    
+    startUniversalTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет', '✅ Готово к получению!');
+}
+
+function startSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
+    
+    if (!claimBtn) return;
+    
+    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет', '🎁 Забрать +250 монет');
+}
+
 function startLastNameTimer(seconds) {
     const bonusBtns = document.querySelectorAll('.task-button');
     const bonusBtn = bonusBtns[2];
     
     if (!bonusBtn) return;
     
+    startUniversalTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет', '🎁 Забрать +50 монет');
+}
+
+// Универсальная функция таймера
+function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, readyText) {
     let timeLeft = seconds;
+    
+    buttonElement.disabled = true;
     
     const timer = setInterval(() => {
         if (timeLeft > 0) {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            bonusBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            bonusBtn.disabled = true;
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const secs = timeLeft % 60;
+            
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            if (timerElement) {
+                timerElement.textContent = `⏳ До следующей награды: ${timeString}`;
+            }
+            
+            buttonElement.textContent = `⏳ ${timeString}`;
             timeLeft--;
         } else {
             clearInterval(timer);
-            bonusBtn.disabled = false;
-            bonusBtn.textContent = '🔄 Забрать +5 монет';
+            
+            if (timerElement) {
+                timerElement.textContent = readyText;
+            }
+            
+            buttonElement.disabled = false;
+            buttonElement.textContent = buttonText;
         }
     }, 1000);
+}
+
+// Обновленная функция обновления UI наград
+function updateRewardUI(data) {
+    const dailyProgress = document.getElementById('dailyProgress');
+    const rewardProgress = document.getElementById('rewardProgress');
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (dailyProgress) {
+        dailyProgress.textContent = `${data.rewardCount || 0} наград получено`;
+    }
+    
+    if (rewardProgress) {
+        const progressPercent = 100; // Убираем прогресс-бар для 24 часов
+        rewardProgress.style.width = `${progressPercent}%`;
+    }
+    
+    if (timerText && claimBtn) {
+        if (data.canClaim) {
+            timerText.textContent = '✅ Готово к получению!';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +50 монет';
+            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
+        } else {
+            timerText.textContent = `⏳ До следующей награды: ${formatTime(data.timeUntilNextReward)}`;
+            claimBtn.disabled = true;
+            claimBtn.textContent = `⏳ ${formatTime(data.timeUntilNextReward)}`;
+            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
+            
+            // Запускаем таймер
+            startRewardTimer(data.timeUntilNextReward);
+        }
+    }
+    
+    document.getElementById('profileRewards').textContent = data.rewardCount || 0;
+}
+
+// Функция форматирования времени
+function formatTime(seconds) {
+    if (!seconds || seconds <= 0) return '00:00:00';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 // ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
@@ -1353,7 +1364,7 @@ async function loadSubscriptionStatus(userId) {
     }
 }
 
-// Получение награды за подписку
+// Обновленная функция для подписки
 async function claimSubscriptionReward() {
     const userId = tg.initDataUnsafe?.user?.id;
     const claimBtns = document.querySelectorAll('.task-button');
@@ -1388,13 +1399,15 @@ async function claimSubscriptionReward() {
         if (result.success) {
             if (result.coinsAwarded > 0) {
                 updateCoinsDisplay(result.coins);
-                tg.showAlert('🎉 +250 монет за подписку на канал!');
+                tg.showAlert(result.message);
+            } else {
+                tg.showAlert(result.message);
             }
             
-            updateSubscriptionUI(result);
+            // Обновляем UI и запускаем таймер
+            await loadSubscriptionStatus(userId);
             
             if (!result.isSubscribed) {
-                // Показываем окошко с предложением подписаться
                 showSubscriptionModal();
             }
             
@@ -1408,7 +1421,6 @@ async function claimSubscriptionReward() {
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +250 монет';
         }, 1000);
     }
 }
@@ -1541,7 +1553,7 @@ async function checkSubscriptionOnly() {
 
 // ==================== СИСТЕМА ЕЖЕДНЕВНЫХ НАГРАД ====================
 
-// Запрос ежедневной награды
+// Обновленная функция для ежедневного бонуса
 async function claimDailyRewardTimer() {
     const userId = tg.initDataUnsafe?.user?.id;
     const claimBtn = document.getElementById('claimRewardBtn');
@@ -1575,30 +1587,28 @@ async function claimDailyRewardTimer() {
         if (result.success) {
             if (result.coinsAwarded > 0) {
                 updateCoinsDisplay(result.coins);
-                tg.showAlert('🎉 +50 монет за ежедневный бонус!');
+                tg.showAlert(result.message);
+            } else {
+                tg.showAlert(result.message);
             }
             
-            updateRewardUI(result);
+            // Обновляем UI и запускаем таймер
+            await loadRewardStatus(userId);
             
-            if (!result.canClaim && result.timeUntilNextReward > 0) {
-                startRewardTimer(userId);
-            }
         } else {
             tg.showAlert(`❌ Ошибка: ${result.error}`);
         }
         
-        claimBtn.textContent = originalText;
-        
     } catch (error) {
         console.error('Ошибка получения награды:', error);
         tg.showAlert('❌ Ошибка сети');
-        claimBtn.textContent = '🎁 Забрать +50 монет';
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
         }, 1000);
     }
 }
+
 
 // Загрузка статуса ежедневных наград
 async function loadRewardStatus(userId) {
@@ -1831,3 +1841,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
