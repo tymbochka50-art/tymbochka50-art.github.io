@@ -1143,63 +1143,103 @@ function showResult(item, caseData) {
     modal.style.display = 'block';
 }
 
-// Сохранение скина в инвентарь
-function saveSkinToInventory(skin) {
-    const userId = tg.initDataUnsafe?.user?.id;
-    if (!userId) return;
-    
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-    
-    inventory.push({
-        id: Date.now().toString(),
-        name: skin.name,
-        image: skin.image,
-        rarity: skin.rarity,
-        value: skin.value,
-        obtainedAt: new Date().toISOString(),
-        status: 'in_inventory'
+// Обновленная функция сохранения скина в инвентарь
+async function saveSkinToInventory(skin) {
+  const userId = tg.initDataUnsafe?.user?.id;
+  if (!userId) return;
+  
+  try {
+    const response = await fetch('https://telegram-backend-nine.vercel.app/api/add-skin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        skin: {
+          name: skin.name,
+          image: skin.image,
+          rarity: skin.rarity,
+          value: skin.value
+        }
+      })
     });
     
-    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+    const result = await response.json();
     
-    // Обновляем все разделы
-    updateInventoryStats();
-    loadInventory();
-    loadProfileInventory();
+    if (result.success) {
+      // Обновляем все разделы
+      updateInventoryStats();
+      loadInventory();
+      loadProfileInventory();
+    }
+  } catch (error) {
+    console.error('Ошибка сохранения скина:', error);
+  }
 }
 
-// Загрузка инвентаря
-function loadInventory() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const inventoryGrid = document.getElementById('inventoryGrid');
-    const emptyInventory = document.getElementById('emptyInventory');
+async function loadInventory() {
+  const userId = tg.initDataUnsafe?.user?.id;
+  const inventoryGrid = document.getElementById('inventoryGrid');
+  const emptyInventory = document.getElementById('emptyInventory');
+  
+  if (!userId || !inventoryGrid) return;
+  
+  try {
+    const response = await fetch('https://telegram-backend-nine.vercel.app/api/get-inventory', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: userId })
+    });
     
-    if (!userId || !inventoryGrid) return;
+    const result = await response.json();
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
-    
-    if (activeInventory.length === 0) {
+    if (result.success) {
+      const inventory = result.inventory || [];
+      
+      if (inventory.length === 0) {
         inventoryGrid.style.display = 'none';
         emptyInventory.style.display = 'block';
-    } else {
+      } else {
         inventoryGrid.style.display = 'grid';
         emptyInventory.style.display = 'none';
         
         inventoryGrid.innerHTML = '';
-        activeInventory.forEach(skin => {
-            const skinElement = document.createElement('div');
-            skinElement.className = 'skin-item';
-            skinElement.innerHTML = `
-                <img src="${skin.image}" alt="${skin.name}" class="skin-image">
-                <div class="skin-name">${skin.name}</div>
-                <div class="skin-rarity ${skin.rarity}">${getRarityText(skin.rarity)}</div>
-            `;
-            
-            skinElement.addEventListener('click', () => openSkinModal(skin));
-            inventoryGrid.appendChild(skinElement);
+        inventory.forEach(skin => {
+          const skinElement = document.createElement('div');
+          skinElement.className = 'skin-item';
+          skinElement.innerHTML = `
+            <img src="${skin.skin_image}" alt="${skin.skin_name}" class="skin-image">
+            <div class="skin-name">${skin.skin_name}</div>
+            <div class="skin-rarity ${skin.rarity}">${getRarityText(skin.rarity)}</div>
+          `;
+          
+          skinElement.addEventListener('click', () => openSkinModal(skin));
+          inventoryGrid.appendChild(skinElement);
         });
+        
+        // Обновляем статистику
+        updateInventoryStatsFromAPI(result.stats);
+      }
     }
+  } catch (error) {
+    console.error('Ошибка загрузки инвентаря:', error);
+  }
+}
+
+function updateInventoryStatsFromAPI(stats) {
+  const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain');
+  const totalValueElements = document.querySelectorAll('#totalValue, #totalValueMain');
+  
+  totalSkinsElements.forEach(element => {
+    if (element) element.textContent = stats.totalSkins || 0;
+  });
+  
+  totalValueElements.forEach(element => {
+    if (element) element.textContent = (stats.totalValue || 0).toLocaleString();
+  });
 }
 
 // Загрузка инвентаря в профиле
@@ -1252,29 +1292,43 @@ function openSkinModal(skin) {
     modal.style.display = 'block';
 }
 
-// Продажа скина
-function sellSkin(skin) {
-    const userId = tg.initDataUnsafe?.user?.id;
-    
-    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value.toLocaleString()} монет?`)) {
-        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-        const skinIndex = inventory.findIndex(s => s.id === skin.id);
-        if (skinIndex !== -1) {
-            inventory[skinIndex].status = 'sold';
-            localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
-        }
-        
-        addCoins(skin.value);
-        
+async function sellSkin(skin) {
+  const userId = tg.initDataUnsafe?.user?.id;
+  
+  if (confirm(`Вы уверены, что хотите продать "${skin.skin_name}" за ${skin.value.toLocaleString()} монет?`)) {
+    try {
+      const response = await fetch('https://telegram-backend-nine.vercel.app/api/sell-skin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          skinId: skin.id
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
         document.getElementById('skinModal').style.display = 'none';
         
-        // Обновляем статистику
-        updateInventoryStats();
+        // Обновляем баланс
+        await loadUserBalance(userId);
+        
+        // Обновляем инвентарь
         loadInventory();
         loadProfileInventory();
         
         tg.showAlert(`✅ Скин продан за ${skin.value.toLocaleString()} монет!`);
+      } else {
+        tg.showAlert(`❌ Ошибка: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Ошибка продажи скина:', error);
+      tg.showAlert('❌ Ошибка сети');
     }
+  }
 }
 
 // Открытие модального окна вывода
@@ -2002,6 +2056,7 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
