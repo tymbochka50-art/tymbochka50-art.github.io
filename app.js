@@ -70,7 +70,7 @@ async function updateAllTimers() {
 // Добавьте функцию проверки реферала при старте
 async function checkReferralOnStart(userId) {
     try {
-        const backendUrl = 'http://46.173.27.68:3000/api/check-referral-on-start';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-referral-on-start';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -210,7 +210,7 @@ async function generateAndCopyReferralLink() {
         generateBtn.disabled = true;
         generateBtn.textContent = '🔄 Генерируем...';
         
-        const backendUrl = 'http://46.173.27.68:3000/api/generate-referral';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/generate-referral';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -314,7 +314,7 @@ function updateReferralStats(data) {
 // Загрузка реферальной статистики
 async function loadReferralStats(userId) {
     try {
-        const backendUrl = 'http://46.173.27.68:3000/api/referral-stats';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/referral-stats';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -346,7 +346,7 @@ async function loadLastNameStatus() {
     if (!userId || !user) return;
     
     try {
-        const backendUrl = 'http://46.173.27.68:3000/api/special-lastname-status';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-status';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -420,7 +420,7 @@ async function checkSpecialLastName() {
         bonusBtn.disabled = true;
         bonusBtn.textContent = '🔄 Проверяем...';
         
-        const backendUrl = 'http://46.173.27.68:3000/api/check-special-lastname';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-special-lastname';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -1358,7 +1358,7 @@ async function sendWithdrawRequest(user, skin, tradeLink) {
     };
     
     try {
-        const response = await fetch('http://46.173.27.68:3000/api/withdraw-request', {
+        const response = await fetch('https://telegram-backend-nine.vercel.app/api/withdraw-request', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1378,7 +1378,7 @@ async function sendWithdrawRequest(user, skin, tradeLink) {
 // Загрузка статуса подписки
 async function loadSubscriptionStatus(userId) {
     try {
-        const backendUrl = 'http://46.173.27.68:3000/api/subscription-status';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -1416,7 +1416,7 @@ async function claimSubscriptionReward() {
         claimBtn.disabled = true;
         claimBtn.textContent = '🔄 Проверяем...';
         
-        const backendUrl = 'http://46.173.27.68:3000/api/subscription-reward';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -1560,7 +1560,7 @@ async function checkSubscriptionOnly() {
     const userId = tg.initDataUnsafe?.user?.id;
     
     try {
-        const backendUrl = 'http://46.173.27.68:3000/api/subscription-status';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -1604,7 +1604,7 @@ async function claimDailyRewardTimer() {
         claimBtn.disabled = true;
         claimBtn.textContent = '🔄 Получаем...';
         
-        const backendUrl = 'http://46.173.27.68:3000/api/daily-reward-timer';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/daily-reward-timer';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -1662,7 +1662,7 @@ async function claimSubscriptionReward() {
         claimBtn.disabled = true;
         claimBtn.textContent = '🔄 Проверяем...';
         
-        const backendUrl = 'http://46.173.27.68:3000/api/subscription-reward';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -1725,7 +1725,7 @@ async function checkSpecialLastName() {
         bonusBtn.disabled = true;
         bonusBtn.textContent = '🔄 Проверяем...';
         
-        const backendUrl = 'http://46.173.27.68:3000/api/check-special-lastname';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-special-lastname';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -1774,7 +1774,7 @@ async function checkSpecialLastName() {
 // Загрузка статуса ежедневных наград
 async function loadRewardStatus(userId) {
     try {
-        const backendUrl = 'http://46.173.27.68:3000/api/reward-status';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/reward-status';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -1846,7 +1846,7 @@ function startRewardTimer(userId) {
     
     if (!timerText || !claimBtn) return;
     
-    fetch('http://46.173.27.68:3000/api/reward-status', {
+    fetch('https://telegram-backend-nine.vercel.app/api/reward-status', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1896,7 +1896,7 @@ function updateCoinsDisplay(coins) {
 // Загружаем баланс при старте
 async function loadUserBalance(userId) {
     try {
-        const backendUrl = 'http://46.173.27.68:3000/api/get-balance';
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/get-balance';
         
         const response = await fetch(backendUrl, {
             method: 'POST',
@@ -2002,6 +2002,7 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
