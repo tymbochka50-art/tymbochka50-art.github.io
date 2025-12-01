@@ -376,31 +376,23 @@ function updateLastNameUI(data) {
     const bonusBtn = bonusBtns[2];
     
     if (nameStatus && bonusBtn) {
-        if (data.gotInitialBonus) {
-            // Первоначальный бонус уже получен
+        if (data.hasCorrectLastName) {
             nameStatus.textContent = '✅ Фамилия установлена';
             nameStatus.style.color = '#28a745';
-            bonusBtn.textContent = '🔄 Забрать +5 монет';
-            bonusBtn.onclick = () => claimLastNameRepeatReward();
             
             if (data.canClaim) {
                 bonusBtn.disabled = false;
+                bonusBtn.textContent = '🎁 Забрать +50 монет';
+                bonusBtn.onclick = () => checkSpecialLastName();
             } else {
                 bonusBtn.disabled = true;
-                bonusBtn.textContent = '⏳ Ждите...';
+                // Используем отформатированное время из бэкенда
+                bonusBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
                 if (data.timeUntilNextReward > 0) {
                     startLastNameTimer(data.timeUntilNextReward);
                 }
             }
-        } else if (data.hasCorrectLastName) {
-            // Фамилия правильная, но бонус еще не получен
-            nameStatus.textContent = '✅ Готово к получению';
-            nameStatus.style.color = '#28a745';
-            bonusBtn.disabled = false;
-            bonusBtn.textContent = '🎁 Забрать +50 монет';
-            bonusBtn.onclick = () => checkSpecialLastName();
         } else {
-            // Неправильная фамилия
             nameStatus.textContent = '❌ Не выполнено';
             nameStatus.style.color = '#dc3545';
             bonusBtn.disabled = false;
@@ -489,7 +481,8 @@ function updateLastNameUI(data) {
                 bonusBtn.onclick = () => checkSpecialLastName();
             } else {
                 bonusBtn.disabled = true;
-                bonusBtn.textContent = '⏳ Ждите...';
+                // Используем отформатированное время из бэкенда
+                bonusBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
                 if (data.timeUntilNextReward > 0) {
                     startLastNameTimer(data.timeUntilNextReward);
                 }
@@ -504,7 +497,6 @@ function updateLastNameUI(data) {
     }
 }
 
-// Обновленные функции таймеров
 function startRewardTimer(seconds) {
     const timerText = document.getElementById('timerText');
     const claimBtn = document.getElementById('claimRewardBtn');
@@ -532,29 +524,26 @@ function startLastNameTimer(seconds) {
     startUniversalTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет', '🎁 Забрать +50 монет');
 }
 
-// Универсальная функция таймера
+// Универсальная функция таймера с форматированием времени
 function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, readyText) {
     let timeLeft = seconds;
     
     buttonElement.disabled = true;
     
-    const timer = setInterval(() => {
+    const updateTimerDisplay = () => {
         if (timeLeft > 0) {
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const secs = timeLeft % 60;
-            
-            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            const timeInfo = formatTimeRemaining(timeLeft);
             
             if (timerElement) {
-                timerElement.textContent = `⏳ До следующей награды: ${timeString}`;
+                timerElement.textContent = `⏳ До следующей награды: ${timeInfo.formattedHM}`;
             }
             
-            buttonElement.textContent = `⏳ ${timeString}`;
+            buttonElement.textContent = `⏳ ${timeInfo.formatted}`;
             timeLeft--;
-        } else {
-            clearInterval(timer);
             
+            // Планируем следующее обновление
+            setTimeout(updateTimerDisplay, 1000);
+        } else {
             if (timerElement) {
                 timerElement.textContent = readyText;
             }
@@ -562,7 +551,50 @@ function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, r
             buttonElement.disabled = false;
             buttonElement.textContent = buttonText;
         }
-    }, 1000);
+    };
+    
+    // Начинаем обновление
+    updateTimerDisplay();
+}
+
+// Функция форматирования времени в HH:MM:SS
+function formatTime(seconds) {
+    if (!seconds || seconds <= 0) return '00:00:00';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Функция форматирования времени в Xч Yм
+function formatTimeHM(seconds) {
+    if (!seconds || seconds <= 0) return '0ч 0м';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    return `${hours}ч ${minutes}м`;
+}
+
+// Функция форматирования времени с полной информацией
+function formatTimeRemaining(seconds) {
+    if (!seconds || seconds <= 0) {
+        return {
+            formatted: '00:00:00',
+            formattedHM: '0ч 0м'
+        };
+    }
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    return {
+        formatted: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`,
+        formattedHM: `${hours}ч ${minutes}м`
+    };
 }
 
 // Обновленная функция обновления UI наград
@@ -577,7 +609,7 @@ function updateRewardUI(data) {
     }
     
     if (rewardProgress) {
-        const progressPercent = 100; // Убираем прогресс-бар для 24 часов
+        const progressPercent = 100;
         rewardProgress.style.width = `${progressPercent}%`;
     }
     
@@ -588,13 +620,17 @@ function updateRewardUI(data) {
             claimBtn.textContent = '🎁 Забрать +50 монет';
             if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
         } else {
-            timerText.textContent = `⏳ До следующей награды: ${formatTime(data.timeUntilNextReward)}`;
+            // Используем отформатированное время из бэкенда
+            const timeDisplay = data.timeFormattedHM || formatTimeHM(data.timeUntilNextReward);
+            timerText.textContent = `⏳ До следующей награды: ${timeDisplay}`;
             claimBtn.disabled = true;
-            claimBtn.textContent = `⏳ ${formatTime(data.timeUntilNextReward)}`;
+            claimBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
             if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
             
-            // Запускаем таймер
-            startRewardTimer(data.timeUntilNextReward);
+            // Запускаем таймер с обновлением каждую секунду
+            if (data.timeUntilNextReward > 0) {
+                startRewardTimer(data.timeUntilNextReward);
+            }
         }
     }
     
@@ -1478,7 +1514,8 @@ function updateSubscriptionUI(data) {
                 claimBtn.onclick = () => claimSubscriptionReward();
             } else {
                 claimBtn.disabled = true;
-                claimBtn.textContent = '⏳ Ждите...';
+                // Используем отформатированное время из бэкенда
+                claimBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
                 if (data.timeUntilNextReward > 0) {
                     startSubscriptionTimer(data.timeUntilNextReward);
                 }
@@ -1553,7 +1590,6 @@ async function checkSubscriptionOnly() {
 
 // ==================== СИСТЕМА ЕЖЕДНЕВНЫХ НАГРАД ====================
 
-// Обновленная функция для ежедневного бонуса
 async function claimDailyRewardTimer() {
     const userId = tg.initDataUnsafe?.user?.id;
     const claimBtn = document.getElementById('claimRewardBtn');
@@ -1605,6 +1641,131 @@ async function claimDailyRewardTimer() {
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +50 монет';
+        }, 1000);
+    }
+}
+
+// Обновленная функция для подписки
+async function claimSubscriptionReward() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
+    
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Проверяем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('📢 Subscription reward result:', result);
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                updateCoinsDisplay(result.coins);
+                tg.showAlert(result.message);
+            } else {
+                tg.showAlert(result.message);
+            }
+            
+            // Обновляем UI и запускаем таймер
+            await loadSubscriptionStatus(userId);
+            
+            if (!result.isSubscribed) {
+                showSubscriptionModal();
+            }
+            
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка получения награды за подписку:', error);
+        tg.showAlert('❌ Ошибка сети');
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +250 монет';
+        }, 1000);
+    }
+}
+
+// Обновленная функция для фамилии
+async function checkSpecialLastName() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const user = tg.initDataUnsafe?.user;
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[2];
+    
+    if (!userId || !user) {
+        tg.showAlert('❌ Не удалось получить данные пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = bonusBtn.textContent;
+        bonusBtn.disabled = true;
+        bonusBtn.textContent = '🔄 Проверяем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-special-lastname';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                lastName: user.last_name || '',
+                firstName: user.first_name || '',
+                username: user.username || ''
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('🔍 Special lastname check result:', result);
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                updateCoinsDisplay(result.newBalance);
+                tg.showAlert(result.message);
+            } else {
+                tg.showAlert(result.message);
+            }
+            
+            // Обновляем UI и запускаем таймер
+            await loadLastNameStatus();
+            
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка проверки фамилии:', error);
+        tg.showAlert('❌ Ошибка сети');
+    } finally {
+        setTimeout(() => {
+            bonusBtn.disabled = false;
+            bonusBtn.textContent = '🎁 Забрать +50 монет';
         }, 1000);
     }
 }
@@ -1841,4 +2002,5 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
