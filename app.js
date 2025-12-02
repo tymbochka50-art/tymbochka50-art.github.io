@@ -23,7 +23,10 @@ async function initApp() {
         // Загрузка данных пользователя
         await loadUserData(user);
 
-        // Загрузка баланса и статусов с локальным кешированием
+        // Инициализируем пользователя локально
+        await initLocalUser(user.id);
+
+        // Загрузка баланса и статусов (локально)
         await loadUserBalance(user.id);
         await loadRewardStatus(user.id);
         await loadReferralStats(user.id);
@@ -39,8 +42,7 @@ async function initApp() {
         // Обновляем статистику инвентаря
         updateInventoryStats();
 
-        // Обновляем таймеры
-        await updateAllTimers();
+        console.log('✅ Приложение инициализировано');
         
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
@@ -48,24 +50,35 @@ async function initApp() {
     }
 }
 
-// Функция для обновления всех таймеров
-async function updateAllTimers() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const user = tg.initDataUnsafe?.user;
-    
-    if (!userId) return;
-
+// Инициализация пользователя в локальном хранилище
+async function initLocalUser(userId) {
     try {
-        // Обновляем статусы для корректного отображения таймеров
-        await loadRewardStatus(userId);
-        await loadSubscriptionStatus(userId);
-        await loadLastNameStatus(user);
-        await loadDarenCs2Status(userId);
+        // Проверяем, инициализирован ли уже пользователь
+        const userInitialized = localStorage.getItem(`user_initialized_${userId}`);
         
-        console.log('✅ Таймеры обновлены');
-
+        if (!userInitialized) {
+            console.log('👤 Инициализируем нового пользователя локально');
+            
+            // Устанавливаем начальный баланс
+            localStorage.setItem(`coins_${userId}`, '1000');
+            
+            // Инициализируем счетчики
+            localStorage.setItem(`reward_count_${userId}`, '0');
+            localStorage.setItem(`subscription_count_${userId}`, '0');
+            localStorage.setItem(`darencs2_count_${userId}`, '0');
+            
+            // Генерируем реферальный код
+            const referralCode = generateLocalReferralCode(userId);
+            localStorage.setItem(`referral_code_${userId}`, referralCode);
+            
+            // Отмечаем как инициализированного
+            localStorage.setItem(`user_initialized_${userId}`, 'true');
+            
+            console.log('✅ Пользователь инициализирован локально');
+        }
+        
     } catch (error) {
-        console.error('❌ Error updating timers:', error);
+        console.error('Ошибка инициализации пользователя:', error);
     }
 }
 
@@ -120,20 +133,38 @@ function initNavigation() {
 // Загрузка данных пользователя
 async function loadUserData(user) {
     // Основные данные
-    document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
+    const debugUserId = document.getElementById('debugUserId');
+    if (debugUserId) {
+        debugUserId.textContent = user.id || 'Не доступен';
+    }
     
     // Аватар
     const avatar = document.getElementById('userAvatar');
-    avatar.src = user.photo_url || getDefaultAvatar();
+    if (avatar) {
+        avatar.src = user.photo_url || getDefaultAvatar();
+    }
 
     // Имя пользователя
     const userName = document.getElementById('userName');
-    userName.textContent = user.first_name || 'Пользователь';
+    if (userName) {
+        userName.textContent = user.first_name || 'Пользователь';
+    }
 
     // Данные профиля
-    document.getElementById('profileFirstName').textContent = user.first_name || 'Не указано';
-    document.getElementById('profileLastName').textContent = user.last_name || 'Не указано';
-    document.getElementById('profileUsername').textContent = user.username ? '@' + user.username : 'Не указано';
+    const profileFirstName = document.getElementById('profileFirstName');
+    if (profileFirstName) {
+        profileFirstName.textContent = user.first_name || 'Не указано';
+    }
+    
+    const profileLastName = document.getElementById('profileLastName');
+    if (profileLastName) {
+        profileLastName.textContent = user.last_name || 'Не указано';
+    }
+    
+    const profileUsername = document.getElementById('profileUsername');
+    if (profileUsername) {
+        profileUsername.textContent = user.username ? '@' + user.username : 'Не указано';
+    }
 }
 
 // ==================== ОБНОВЛЕНИЕ СТАТИСТИКИ ИНВЕНТАРЯ ====================
@@ -177,12 +208,14 @@ async function generateAndCopyReferralLink() {
         generateBtn.disabled = true;
         generateBtn.textContent = '🔄 Генерируем...';
         
-        // Генерируем реферальную ссылку локально если бэкенд недоступен
-        const referralCode = generateLocalReferralCode(userId);
+        // Генерируем реферальную ссылку локально
+        const referralCode = localStorage.getItem(`referral_code_${userId}`) || generateLocalReferralCode(userId);
         const referralLink = `https://t.me/CS2DropsGiveawayBot?start=${referralCode}`;
         
-        // Сохраняем код локально
-        localStorage.setItem(`referral_code_${userId}`, referralCode);
+        // Сохраняем код локально если еще не сохранен
+        if (!localStorage.getItem(`referral_code_${userId}`)) {
+            localStorage.setItem(`referral_code_${userId}`, referralCode);
+        }
         
         // Копируем ссылку в буфер обмена
         try {
@@ -245,7 +278,7 @@ async function generateAndCopyReferralLink() {
 
 // Генерация реферального кода локально
 function generateLocalReferralCode(userId) {
-    return `ref_${userId}_${Date.now().toString(36)}`;
+    return `ref_${userId}_${Date.now().toString(36).substr(2, 8)}`;
 }
 
 // Обновление реферальной статистики
@@ -281,47 +314,28 @@ function updateReferralStats(data) {
 // Загрузка реферальной статистики
 async function loadReferralStats(userId) {
     try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/referral-stats';
+        // Локальная реализация
+        const referralCode = localStorage.getItem(`referral_code_${userId}`) || 'Не сгенерирован';
+        const totalReferrals = parseInt(localStorage.getItem(`referrals_count_${userId}`) || '0');
+        const referralEarnings = totalReferrals * 500; // 500 монет за каждого реферала
         
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId
-            })
+        updateReferralStats({
+            totalReferrals: totalReferrals,
+            referralEarnings: referralEarnings,
+            referralCode: referralCode
         });
-
-        const result = await response.json();
         
-        console.log('👥 Результат загрузки реферальной статистики:', result);
-        
-        if (result.success) {
-            updateReferralStats(result);
-        } else {
-            console.warn('⚠️ Бэкенд недоступен, используем локальные данные');
-            // Используем локальные данные
-            const localCode = localStorage.getItem(`referral_code_${userId}`) || 'Не сгенерирован';
-            updateReferralStats({
-                totalReferrals: 0,
-                referralEarnings: 0,
-                referralCode: localCode
-            });
-        }
     } catch (error) {
         console.error('Ошибка загрузки реферальной статистики:', error);
-        // Используем локальные данные при ошибке сети
-        const localCode = localStorage.getItem(`referral_code_${userId}`) || 'Не сгенерирован';
         updateReferralStats({
             totalReferrals: 0,
             referralEarnings: 0,
-            referralCode: localCode
+            referralCode: 'Ошибка загрузки'
         });
     }
 }
 
-// ==================== СИСТЕМА ФАМИЛИИ С ПОВТОРНЫМИ НАГРАДАМИ ====================
+// ==================== СИСТЕМА ФАМИЛИИ ====================
 
 // Загрузка статуса фамилии
 async function loadLastNameStatus(user) {
@@ -337,45 +351,41 @@ async function loadLastNameStatus(user) {
     }
     
     try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-status';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                lastName: user.last_name || ''
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('📛 Результат загрузки статуса фамилии:', result);
-        
-        if (result.success) {
-            updateLastNameUI(result);
-        } else {
-            console.warn('⚠️ Бэкенд недоступен, проверяем фамилию локально');
-            // Проверяем локально
-            const hasLastName = !!(user.last_name && user.last_name.trim() !== '');
-            updateLastNameUI({
-                hasCorrectLastName: hasLastName,
-                canClaim: hasLastName, // Можно получить награду если есть фамилия
-                timeUntilNextReward: 0,
-                timeFormatted: '00:00:00'
-            });
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки статуса фамилии:', error);
-        // Проверяем локально при ошибке сети
+        // Локальная проверка фамилии
         const hasLastName = !!(user.last_name && user.last_name.trim() !== '');
+        const lastClaimTime = localStorage.getItem(`last_name_reward_${userId}`);
+        const now = Date.now();
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        
+        let canClaim = false;
+        let timeUntilNextReward = 0;
+        
+        if (hasLastName) {
+            if (!lastClaimTime) {
+                canClaim = true;
+            } else {
+                const timeSinceLastClaim = now - parseInt(lastClaimTime);
+                if (timeSinceLastClaim > twentyFourHours) {
+                    canClaim = true;
+                } else {
+                    timeUntilNextReward = Math.floor((twentyFourHours - timeSinceLastClaim) / 1000);
+                }
+            }
+        }
+        
         updateLastNameUI({
             hasCorrectLastName: hasLastName,
-            canClaim: hasLastName,
-            timeUntilNextReward: 0,
-            timeFormatted: '00:00:00'
+            canClaim: canClaim,
+            timeUntilNextReward: timeUntilNextReward,
+            timeFormatted: formatTime(timeUntilNextReward)
+        });
+        
+    } catch (error) {
+        console.error('Ошибка загрузки статуса фамилии:', error);
+        updateLastNameUI({
+            hasCorrectLastName: false,
+            canClaim: false,
+            timeUntilNextReward: 0
         });
     }
 }
@@ -418,7 +428,6 @@ async function checkSpecialLastName() {
     const user = tg.initDataUnsafe?.user;
     const bonusBtns = document.querySelectorAll('.task-button');
     const bonusBtn = bonusBtns[2];
-    const nameStatus = document.getElementById('nameStatus');
     
     if (!userId || !user) {
         showSafeAlert('❌ Не удалось получить данные пользователя');
@@ -434,12 +443,17 @@ async function checkSpecialLastName() {
         const hasLastName = !!(user.last_name && user.last_name.trim() !== '');
         const lastClaimTime = localStorage.getItem(`last_name_reward_${userId}`);
         const now = Date.now();
-        const canClaim = !lastClaimTime || (now - parseInt(lastClaimTime)) > 24 * 60 * 60 * 1000;
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        const canClaim = !lastClaimTime || (now - parseInt(lastClaimTime)) > twentyFourHours;
         
         if (hasLastName && canClaim) {
             // Начисляем награду локально
             addCoins(50);
             localStorage.setItem(`last_name_reward_${userId}`, now.toString());
+            
+            // Увеличиваем счетчик
+            const currentCount = parseInt(localStorage.getItem(`name_reward_count_${userId}`) || '0');
+            localStorage.setItem(`name_reward_count_${userId}`, (currentCount + 1).toString());
             
             showSafeAlert('✅ Награда получена! +50 монет за установленную фамилию');
             
@@ -447,7 +461,7 @@ async function checkSpecialLastName() {
             updateLastNameUI({
                 hasCorrectLastName: true,
                 canClaim: false,
-                timeUntilNextReward: 24 * 60 * 60, // 24 часа
+                timeUntilNextReward: 24 * 60 * 60,
                 timeFormatted: '24:00:00'
             });
             
@@ -455,7 +469,7 @@ async function checkSpecialLastName() {
             startLastNameTimer(24 * 60 * 60);
             
         } else if (hasLastName && !canClaim) {
-            const timeLeft = 24 * 60 * 60 * 1000 - (now - parseInt(lastClaimTime));
+            const timeLeft = twentyFourHours - (now - parseInt(lastClaimTime));
             const hoursLeft = Math.floor(timeLeft / (60 * 60 * 1000));
             const minutesLeft = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
             
@@ -486,6 +500,8 @@ async function checkSpecialLastName() {
         }, 1000);
     }
 }
+
+// ==================== ТАЙМЕРЫ ====================
 
 function startRewardTimer(seconds) {
     const timerText = document.getElementById('timerText');
@@ -526,7 +542,9 @@ function startDarenCs2Timer(seconds) {
 function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, readyText) {
     let timeLeft = seconds;
     
-    buttonElement.disabled = true;
+    if (buttonElement) {
+        buttonElement.disabled = true;
+    }
     
     const updateTimerDisplay = () => {
         if (timeLeft > 0) {
@@ -536,7 +554,9 @@ function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, r
                 timerElement.textContent = `⏳ До следующей награды: ${timeInfo.formattedHM}`;
             }
             
-            buttonElement.textContent = `⏳ ${timeInfo.formatted}`;
+            if (buttonElement) {
+                buttonElement.textContent = `⏳ ${timeInfo.formatted}`;
+            }
             timeLeft--;
             
             // Планируем следующее обновление
@@ -546,8 +566,10 @@ function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, r
                 timerElement.textContent = readyText;
             }
             
-            buttonElement.disabled = false;
-            buttonElement.textContent = buttonText;
+            if (buttonElement) {
+                buttonElement.disabled = false;
+                buttonElement.textContent = buttonText;
+            }
         }
     };
     
@@ -618,7 +640,6 @@ function updateRewardUI(data) {
             claimBtn.textContent = '🎁 Забрать +50 монет';
             if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
         } else {
-            // Используем отформатированное время из бэкенда
             const timeDisplay = data.timeFormattedHM || formatTimeHM(data.timeUntilNextReward);
             timerText.textContent = `⏳ До следующей награды: ${timeDisplay}`;
             claimBtn.disabled = true;
@@ -705,60 +726,34 @@ async function claimDailyRewardTimer() {
 // Загрузка статуса ежедневных наград
 async function loadRewardStatus(userId) {
     try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/reward-status';
+        // Локальная реализация
+        const lastRewardTime = localStorage.getItem(`daily_reward_${userId}`);
+        const now = Date.now();
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        const canClaim = !lastRewardTime || (now - parseInt(lastRewardTime)) > twentyFourHours;
+        const rewardCount = parseInt(localStorage.getItem(`reward_count_${userId}`) || '0');
         
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('🎁 Результат загрузки статуса наград:', result);
-        
-        if (result.success) {
-            updateRewardUI(result);
-            
-            if (!result.canClaim && result.timeUntilNextReward > 0) {
-                startRewardTimer(userId);
-            }
+        if (canClaim) {
+            updateRewardUI({
+                canClaim: true,
+                rewardCount: rewardCount,
+                timeUntilNextReward: 0,
+                timeFormatted: '00:00:00',
+                timeFormattedHM: '0ч 0м'
+            });
         } else {
-            console.warn('⚠️ Бэкенд недоступен, используем локальные данные');
-            // Используем локальные данные
-            const lastRewardTime = localStorage.getItem(`daily_reward_${userId}`);
-            const now = Date.now();
-            const twentyFourHours = 24 * 60 * 60 * 1000;
-            const canClaim = !lastRewardTime || (now - parseInt(lastRewardTime)) > twentyFourHours;
-            const rewardCount = parseInt(localStorage.getItem(`reward_count_${userId}`) || '0');
-            
-            if (canClaim) {
-                updateRewardUI({
-                    canClaim: true,
-                    rewardCount: rewardCount,
-                    timeUntilNextReward: 0,
-                    timeFormatted: '00:00:00',
-                    timeFormattedHM: '0ч 0м'
-                });
-            } else {
-                const timeLeft = twentyFourHours - (now - parseInt(lastRewardTime));
-                const secondsLeft = Math.floor(timeLeft / 1000);
-                updateRewardUI({
-                    canClaim: false,
-                    rewardCount: rewardCount,
-                    timeUntilNextReward: secondsLeft,
-                    timeFormatted: formatTime(secondsLeft),
-                    timeFormattedHM: formatTimeHM(secondsLeft)
-                });
-            }
+            const timeLeft = twentyFourHours - (now - parseInt(lastRewardTime));
+            const secondsLeft = Math.floor(timeLeft / 1000);
+            updateRewardUI({
+                canClaim: false,
+                rewardCount: rewardCount,
+                timeUntilNextReward: secondsLeft,
+                timeFormatted: formatTime(secondsLeft),
+                timeFormattedHM: formatTimeHM(secondsLeft)
+            });
         }
     } catch (error) {
         console.error('Ошибка загрузки статуса наград:', error);
-        // Используем локальные данные при ошибке сети
         const rewardCount = parseInt(localStorage.getItem(`reward_count_${userId}`) || '0');
         updateRewardUI({
             canClaim: false,
@@ -770,40 +765,19 @@ async function loadRewardStatus(userId) {
     }
 }
 
-// ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ ====================
+// ==================== СИСТЕМА ПОДПИСКИ ====================
 
 // Загрузка статуса подписки
 async function loadSubscriptionStatus(userId) {
     try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId
-            })
+        // Локальная реализация - всегда показываем как не подписан
+        updateSubscriptionUI({
+            isSubscribed: false,
+            canClaim: false,
+            rewardCount: parseInt(localStorage.getItem(`subscription_count_${userId}`) || '0'),
+            timeUntilNextReward: 0,
+            timeFormatted: '00:00:00'
         });
-
-        const result = await response.json();
-        
-        console.log('📢 Результат загрузки статуса подписки:', result);
-        
-        if (result.success) {
-            updateSubscriptionUI(result);
-        } else {
-            console.warn('⚠️ Бэкенд недоступен, используем локальные данные');
-            // Используем локальные данные - предполагаем что пользователь не подписан
-            updateSubscriptionUI({
-                isSubscribed: false,
-                canClaim: false,
-                rewardCount: 0,
-                timeUntilNextReward: 0,
-                timeFormatted: '00:00:00'
-            });
-        }
     } catch (error) {
         console.error('Ошибка загрузки статуса подписки:', error);
         updateSubscriptionUI({
@@ -933,35 +907,14 @@ async function checkSubscriptionOnly() {
 // Статус подписки на @DarenCs2
 async function loadDarenCs2Status(userId) {
   try {
-    const backendUrl = 'https://telegram-backend-nine.vercel.app/api/darencs2-status';
-    
-    const response = await fetch(backendUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId: userId
-      })
+    // Локальная реализация - всегда показываем как не подписан
+    updateDarenCs2UI({
+      isSubscribed: false,
+      canClaim: false,
+      rewardCount: parseInt(localStorage.getItem(`darencs2_count_${userId}`) || '0'),
+      timeUntilNextReward: 0,
+      timeFormatted: '00:00:00'
     });
-
-    const result = await response.json();
-    
-    console.log('🎮 Результат загрузки статуса @DarenCs2:', result);
-    
-    if (result.success) {
-      updateDarenCs2UI(result);
-    } else {
-      console.warn('⚠️ Бэкенд недоступен, используем локальные данные');
-      // Используем локальные данные
-      updateDarenCs2UI({
-        isSubscribed: false,
-        canClaim: false,
-        rewardCount: 0,
-        timeUntilNextReward: 0,
-        timeFormatted: '00:00:00'
-      });
-    }
   } catch (error) {
     console.error('Ошибка загрузки статуса @DarenCs2:', error);
     updateDarenCs2UI({
@@ -1107,48 +1060,32 @@ function updateCoinsDisplay(coins) {
 // Загружаем баланс
 async function loadUserBalance(userId) {
     try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/get-balance';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('💰 Результат загрузки баланса:', result);
-        
-        if (result.success) {
-            updateCoinsDisplay(result.coins);
-        } else {
-            console.warn('⚠️ Бэкенд недоступен, используем локальный баланс');
-            // Используем локальный баланс
-            const localCoins = parseInt(localStorage.getItem(`coins_${userId}`) || '1000');
-            updateCoinsDisplay(localCoins);
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки баланса:', error);
-        // Используем локальный баланс при ошибке сети
+        // Локальная реализация
         const localCoins = parseInt(localStorage.getItem(`coins_${userId}`) || '1000');
         updateCoinsDisplay(localCoins);
+        
+    } catch (error) {
+        console.error('Ошибка загрузки баланса:', error);
+        updateCoinsDisplay(1000);
     }
 }
 
 // Списание монет
 function deductCoins(amount) {
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const userCoins = document.getElementById('userCoins');
+    if (!userCoins) return;
+    
+    const currentCoins = parseInt(userCoins.textContent.replace(/,/g, ''));
     const newCoins = Math.max(0, currentCoins - amount);
     updateCoinsDisplay(newCoins);
 }
 
 // Добавление монет
 function addCoins(amount) {
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const userCoins = document.getElementById('userCoins');
+    if (!userCoins) return;
+    
+    const currentCoins = parseInt(userCoins.textContent.replace(/,/g, ''));
     const newCoins = currentCoins + amount;
     updateCoinsDisplay(newCoins);
 }
@@ -1178,8 +1115,285 @@ function showSafeAlert(message) {
     }, 2000);
 }
 
-// ==================== СИСТЕМА КЕЙСОВ (остается без изменений) ====================
-// [Добавьте здесь код системы кейсов из предыдущего ответа без изменений]
+// ==================== СИСТЕМА КЕЙСОВ (нужно добавить остальные функции кейсов) ====================
+
+// Обновленные данные кейсов с новыми скинами
+const casesData = [
+    {
+        id: 'case1',
+        name: 'BASIC CASE',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458462_x.jpg',
+        price: 500,
+        color: 'light',
+        items: [
+            { 
+                name: 'MP5-SD | Necro Jr.', 
+                image: 'https://assets.lis-skins.com/market_images/152617_b.png',
+                chance: 40,
+                rarity: 'common',
+                value: 5
+            },
+            { 
+                name: 'XM1014 | Mockingbird', 
+                image: 'https://assets.lis-skins.com/market_images/186837_b.png',
+                chance: 30,
+                rarity: 'common',
+                value: 6
+            },
+            { 
+                name: 'AUG | Luxe Trim', 
+                image: 'https://assets.lis-skins.com/market_images/184732_b.png',
+                chance: 20,
+                rarity: 'common',
+                value: 8
+            },
+            { 
+                name: 'MAG-7 | Resupply', 
+                image: 'https://assets.lis-skins.com/market_images/186763_b.png',
+                chance: 10,
+                rarity: 'rare',
+                value: 12
+            }
+        ]
+    },
+    {
+        id: 'case2',
+        name: 'ADVANCED CASE',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458464_x.jpg',
+        price: 1500,
+        color: 'danger',
+        items: [
+            { 
+                name: 'P90 | Blue Tac', 
+                image: 'https://assets.lis-skins.com/market_images/187319_b.png',
+                chance: 35,
+                rarity: 'common',
+                value: 10
+            },
+            { 
+                name: 'M4A4 | Choppa', 
+                image: 'https://assets.lis-skins.com/market_images/186871_b.png',
+                chance: 25,
+                rarity: 'rare',
+                value: 15
+            },
+            { 
+                name: 'Souvenir R8 Revolver | Desert Brush', 
+                image: 'https://assets.lis-skins.com/market_images/152332_b.png',
+                chance: 20,
+                rarity: 'rare',
+                value: 18
+            },
+            { 
+                name: '★ Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/98944_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 100
+            },
+            { 
+                name: '★ Butterfly Knife | Gamma Doppler Emerald', 
+                image: 'https://assets.lis-skins.com/market_images/151422_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 95
+            }
+        ]
+    },
+    {
+        id: 'case3',
+        name: 'ELITE CASE',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458465_x.jpg',
+        price: 3000,
+        color: 'mystic',
+        items: [
+            { 
+                name: 'M4A4 | Choppa', 
+                image: 'https://assets.lis-skins.com/market_images/186871_b.png',
+                chance: 30,
+                rarity: 'rare',
+                value: 20
+            },
+            { 
+                name: 'Souvenir R8 Revolver | Desert Brush', 
+                image: 'https://assets.lis-skins.com/market_images/152332_b.png',
+                chance: 25,
+                rarity: 'rare',
+                value: 25
+            },
+            { 
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 120
+            },
+            { 
+                name: '★ Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 110
+            },
+            { 
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 105
+            },
+            { 
+                name: '★ Specialist Gloves | Emerald Web', 
+                image: 'https://assets.lis-skins.com/market_images/16613_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 115
+            }
+        ]
+    },
+    {
+        id: 'case4',
+        name: 'PREMIUM CASE',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458478_x.jpg',
+        price: 5000,
+        color: 'heat',
+        items: [
+            { 
+                name: '★ Butterfly Knife | Doppler Ruby', 
+                image: 'https://assets.lis-skins.com/market_images/139237_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 130
+            },
+            { 
+                name: '★ M9 Bayonet | Doppler Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/98956_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 125
+            },
+            { 
+                name: '★ Butterfly Knife | Doppler Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/99065_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 135
+            },
+            { 
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
+                chance: 0.001,
+                rarity: 'legendary',
+                value: 120
+            },
+            { 
+                name: '★ Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.001,
+                rarity: 'legendary',
+                value: 110
+            },
+            { 
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
+                chance: 0.001,
+                rarity: 'legendary',
+                value: 105
+            }
+        ]
+    },
+    {
+        id: 'case5',
+        name: 'LEGENDARY CASE',
+        image: 'https://raw.githubusercontent.com/tymbochka50-art/tymbochka50-art.github.io/refs/heads/main/photo_5280825340735458479_x.jpg',
+        price: 8000,
+        color: 'ice',
+        items: [
+            { 
+                name: '★ Butterfly Knife | Gamma Doppler Emerald', 
+                image: 'https://assets.lis-skins.com/market_images/151422_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 150
+            },
+            { 
+                name: '★ Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/98944_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 160
+            },
+            { 
+                name: '★ Butterfly Knife | Doppler Ruby', 
+                image: 'https://assets.lis-skins.com/market_images/139237_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 140
+            },
+            { 
+                name: '★ Butterfly Knife | Doppler Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/99065_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 155
+            },
+            { 
+                name: '★ M9 Bayonet | Doppler Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/98956_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 145
+            },
+            { 
+                name: '★ Specialist Gloves | Emerald Web', 
+                image: 'https://assets.lis-skins.com/market_images/16613_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 135
+            },
+            { 
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
+                chance: 0.0005,
+                rarity: 'legendary',
+                value: 130
+            },
+            { 
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
+                chance: 0.0005,
+                rarity: 'legendary',
+                value: 125
+            }
+        ]
+    }
+];
+
+// Загрузка кейсов
+function loadCases() {
+    const casesGrid = document.getElementById('casesGrid');
+    if (!casesGrid) return;
+    
+    casesGrid.innerHTML = '';
+    
+    casesData.forEach(caseData => {
+        const caseElement = document.createElement('div');
+        caseElement.className = `case-item ${caseData.color}`;
+        caseElement.innerHTML = `
+            <img src="${caseData.image}" alt="${caseData.name}" class="case-image">
+            <div class="case-name">${caseData.name}</div>
+            <div class="case-price">${caseData.price.toLocaleString()} монет</div>
+        `;
+        
+        caseElement.addEventListener('click', () => openCaseModal(caseData));
+        casesGrid.appendChild(caseElement);
+    });
+}
+
+// [ДОБАВЬТЕ ЗДЕСЬ ОСТАЛЬНЫЕ ФУНКЦИИ СИСТЕМЫ КЕЙСОВ И ИНВЕНТАРЯ ИЗ ПРЕДЫДУЩЕГО КОДА]
+// Включая: openCaseModal, startCaseOpening, showRoulette, startRouletteAnimation, 
+// finishCaseOpening, getRandomItem, showResult, saveSkinToInventory, loadInventory,
+// loadProfileInventory, openSkinModal, sellSkin, openWithdrawModal, confirmWithdraw
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
