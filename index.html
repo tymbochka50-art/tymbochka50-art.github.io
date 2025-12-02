@@ -39,14 +39,14 @@
                         </div>
                         <div class="task-timer" id="timerText">✅ Готово к получению!</div>
                         <button id="claimRewardBtn" onclick="claimDailyRewardTimer()" class="task-button">
-                            🎁 Забрать +10 монет
+                            🎁 Забрать +50 монет
                         </button>
                         <div class="progress-bar">
                             <div id="rewardProgress" class="progress-fill"></div>
                         </div>
                     </div>
 
-                    <!-- Подписка на канал -->
+                    <!-- Подписка на канал @CS2DropZone -->
                     <div class="task-card">
                         <div class="task-header">
                             <div class="task-icon">📢</div>
@@ -56,10 +56,27 @@
                             </div>
                         </div>
                         <button class="task-button" onclick="claimSubscriptionReward()">
-                            🎁 Забрать +15 монет
+                            🎁 Забрать +250 монет
                         </button>
                         <div class="task-hint">
-                            Подпишитесь на @CS2DropZone и получайте +250 монет раз в день!
+                            Подпишитесь на @CS2DropZone и получайте +250 монет раз в 24 часа!
+                        </div>
+                    </div>
+
+                    <!-- Подписка на @DarenCs2 -->
+                    <div class="task-card">
+                        <div class="task-header">
+                            <div class="task-icon">🎮</div>
+                            <div class="task-info">
+                                <div class="task-title">Подписка на DarenCs2</div>
+                                <div class="task-status" id="darenCs2Status">✅ Подписан (0 раз)</div>
+                            </div>
+                        </div>
+                        <button id="claimDarenCs2Btn" class="task-button" onclick="claimDarenCs2Reward()">
+                            🎁 Забрать +200 монет
+                        </button>
+                        <div class="task-hint">
+                            Подпишитесь на @DarenCs2 и получайте +200 монет раз в 12 часов!
                         </div>
                     </div>
 
@@ -73,11 +90,10 @@
                             </div>
                         </div>
                         <button class="task-button" onclick="checkSpecialLastName()">
-                            🎁 Забрать +20 монет
+                            🎁 Забрать +50 монет
                         </button>
                         <div class="task-hint">
-                            Установите фамилию: @Testserver_CS2DropZone_bot<br>
-                            
+                            Установите фамилию: @Testserver_CS2DropZone_bot
                         </div>
                     </div>
 
@@ -404,4 +420,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
