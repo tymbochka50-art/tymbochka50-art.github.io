@@ -14,7 +14,12 @@ async function initApp() {
             return;
         }
 
-        // ПЕРВОЕ: Проверяем реферальный переход
+        console.log('📊 Данные пользователя:', user);
+
+        // ПЕРВОЕ: Регистрируем пользователя если его нет в базе
+        await registerUserIfNeeded(user);
+
+        // ВТОРОЕ: Проверяем реферальный переход
         await checkReferralOnStart(user.id);
 
         // Инициализация навигации
@@ -30,7 +35,7 @@ async function initApp() {
         await loadReferralStats(user.id);
         await loadSubscriptionStatus(user.id);
         await loadLastNameStatus();
-        await loadDarenCs2Status(user.id); // Добавлена загрузка статуса @DarenCs2
+        await loadDarenCs2Status(user.id);
 
         // Загрузка кейсов и инвентаря
         loadCases();
@@ -40,13 +45,45 @@ async function initApp() {
         // Обновляем статистику инвентаря
         updateInventoryStats();
 
-        console.log('📊 Данные пользователя:', user);
-
         // Обновляем таймеры
         await updateAllTimers();
         
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
+        tg.showAlert('❌ Ошибка загрузки приложения. Пожалуйста, перезагрузите.');
+    }
+}
+
+// Функция для регистрации пользователя если его нет в базе
+async function registerUserIfNeeded(user) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/register-user';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: user.id,
+                firstName: user.first_name || '',
+                lastName: user.last_name || '',
+                username: user.username || '',
+                languageCode: user.language_code || 'ru',
+                isPremium: user.is_premium || false
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('👤 Регистрация пользователя:', result);
+        
+        if (!result.success) {
+            console.warn('⚠️ Ошибка регистрации пользователя:', result.error);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка регистрации пользователя:', error);
     }
 }
 
@@ -86,11 +123,12 @@ async function checkReferralOnStart(userId) {
 
         const result = await response.json();
         
-        console.log('🔍 Referral check on start result:', result);
+        console.log('🔍 Результат проверки реферала:', result);
         
         if (result.success && result.referralProcessed) {
-            // Показываем уведомление о успешном реферале
-            tg.showAlert(`🎉 Вы были приглашены другом! Владелец ссылки получил +${result.reward} монет.`);
+            showSafeAlert(
+                `🎉 Вы были приглашены другом! Владелец ссылки получил +${result.reward} монет.`
+            );
             
             // Обновляем статистику если это владелец ссылки
             if (result.referrerId === userId.toString()) {
@@ -203,7 +241,7 @@ async function generateAndCopyReferralLink() {
     const generateBtn = document.querySelector('.task-button.primary');
     
     if (!userId) {
-        tg.showAlert('❌ Не удалось определить пользователя');
+        showSafeAlert('❌ Не удалось определить пользователя');
         return;
     }
     
@@ -226,14 +264,14 @@ async function generateAndCopyReferralLink() {
 
         const result = await response.json();
         
-        console.log('🔗 Referral generation result:', result);
+        console.log('🔗 Результат генерации реферальной ссылки:', result);
         
         if (result.success) {
             // Копируем ссылку в буфер обмена
             try {
                 await navigator.clipboard.writeText(result.referralLink);
                 
-                tg.showAlert(
+                showSafeAlert(
                     `✅ Реферальная ссылка скопирована!\n\n` +
                     `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
@@ -256,7 +294,7 @@ async function generateAndCopyReferralLink() {
                 document.execCommand('copy');
                 document.body.removeChild(tempInput);
                 
-                tg.showAlert(
+                showSafeAlert(
                     `✅ Реферальная ссылка скопирована!\n\n` +
                     `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
@@ -269,19 +307,20 @@ async function generateAndCopyReferralLink() {
                 }, 2000);
             }
         } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            showSafeAlert(`❌ Ошибка: ${result.error || 'Не удалось сгенерировать ссылку'}`);
             generateBtn.textContent = originalText;
         }
         
     } catch (error) {
         console.error('Ошибка генерации ссылки:', error);
-        tg.showAlert('❌ Ошибка сети');
+        showSafeAlert('❌ Ошибка сети. Проверьте соединение.');
     } finally {
         setTimeout(() => {
             generateBtn.disabled = false;
         }, 2000);
     }
 }
+
 
 // Обновление реферальной статистики
 function updateReferralStats(data) {
@@ -330,13 +369,27 @@ async function loadReferralStats(userId) {
 
         const result = await response.json();
         
+        console.log('👥 Результат загрузки реферальной статистики:', result);
+        
         if (result.success) {
             updateReferralStats(result);
+        } else {
+            console.warn('⚠️ Ошибка загрузки реферальной статистики:', result.error);
+            // Показываем дефолтную статистику
+            updateReferralStats({
+                totalReferrals: 0,
+                referralEarnings: 0
+            });
         }
     } catch (error) {
         console.error('Ошибка загрузки реферальной статистики:', error);
+        updateReferralStats({
+            totalReferrals: 0,
+            referralEarnings: 0
+        });
     }
 }
+
 
 // ==================== СИСТЕМА ФАМИЛИИ С ПОВТОРНЫМИ НАГРАДАМИ ====================
 
@@ -363,13 +416,29 @@ async function loadLastNameStatus() {
 
         const result = await response.json();
         
+        console.log('📛 Результат загрузки статуса фамилии:', result);
+        
         if (result.success) {
             updateLastNameUI(result);
+        } else {
+            console.warn('⚠️ Ошибка загрузки статуса фамилии:', result.error);
+            // Показываем дефолтный UI если пользователя нет в базе
+            updateLastNameUI({
+                hasCorrectLastName: false,
+                canClaim: false,
+                timeUntilNextReward: 0
+            });
         }
     } catch (error) {
         console.error('Ошибка загрузки статуса фамилии:', error);
+        updateLastNameUI({
+            hasCorrectLastName: false,
+            canClaim: false,
+            timeUntilNextReward: 0
+        });
     }
 }
+
 
 // Обновление интерфейса фамилии
 function updateLastNameUI(data) {
@@ -1331,11 +1400,28 @@ async function loadSubscriptionStatus(userId) {
 
         const result = await response.json();
         
+        console.log('📢 Результат загрузки статуса подписки:', result);
+        
         if (result.success) {
             updateSubscriptionUI(result);
+        } else {
+            console.warn('⚠️ Ошибка загрузки статуса подписки:', result.error);
+            // Показываем дефолтный UI если пользователя нет в базе
+            updateSubscriptionUI({
+                isSubscribed: false,
+                canClaim: false,
+                rewardCount: 0,
+                timeUntilNextReward: 0
+            });
         }
     } catch (error) {
         console.error('Ошибка загрузки статуса подписки:', error);
+        updateSubscriptionUI({
+            isSubscribed: false,
+            canClaim: false,
+            rewardCount: 0,
+            timeUntilNextReward: 0
+        });
     }
 }
 
@@ -1346,7 +1432,7 @@ async function claimSubscriptionReward() {
     const claimBtn = claimBtns[1];
     
     if (!userId) {
-        tg.showAlert('❌ Не удалось определить пользователя');
+        showSafeAlert('❌ Не удалось определить пользователя');
         return;
     }
     
@@ -1369,17 +1455,17 @@ async function claimSubscriptionReward() {
 
         const result = await response.json();
         
-        console.log('📢 Subscription reward result:', result);
+        console.log('📢 Результат награды за подписку:', result);
         
         if (result.success) {
             if (result.coinsAwarded > 0) {
                 updateCoinsDisplay(result.coins);
-                tg.showAlert(result.message);
+                showSafeAlert(`✅ Награда получена! +${result.coinsAwarded} монет`);
             } else {
-                tg.showAlert(result.message);
+                showSafeAlert(result.message || 'Вы не подписаны на канал');
             }
             
-            // Обновляем UI и запускаем таймер
+            // Обновляем UI
             await loadSubscriptionStatus(userId);
             
             if (!result.isSubscribed) {
@@ -1387,18 +1473,19 @@ async function claimSubscriptionReward() {
             }
             
         } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            showSafeAlert(`❌ Ошибка: ${result.error || 'Неизвестная ошибка'}`);
         }
         
     } catch (error) {
         console.error('Ошибка получения награды за подписку:', error);
-        tg.showAlert('❌ Ошибка сети');
+        showSafeAlert('❌ Ошибка сети. Проверьте соединение.');
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
         }, 1000);
     }
 }
+
 
 // Функция показа модального окна подписки
 function showSubscriptionModal() {
@@ -1546,11 +1633,28 @@ async function loadDarenCs2Status(userId) {
 
     const result = await response.json();
     
+    console.log('🎮 Результат загрузки статуса @DarenCs2:', result);
+    
     if (result.success) {
       updateDarenCs2UI(result);
+    } else {
+      console.warn('⚠️ Ошибка загрузки статуса @DarenCs2:', result.error);
+      // Показываем дефолтный UI если пользователя нет в базе
+      updateDarenCs2UI({
+        isSubscribed: false,
+        canClaim: false,
+        rewardCount: 0,
+        timeUntilNextReward: 0
+      });
     }
   } catch (error) {
     console.error('Ошибка загрузки статуса @DarenCs2:', error);
+    updateDarenCs2UI({
+      isSubscribed: false,
+      canClaim: false,
+      rewardCount: 0,
+      timeUntilNextReward: 0
+    });
   }
 }
 
@@ -1591,7 +1695,7 @@ async function claimDarenCs2Reward() {
   const claimBtn = document.getElementById('claimDarenCs2Btn');
   
   if (!userId) {
-    tg.showAlert('❌ Не удалось определить пользователя');
+    showSafeAlert('❌ Не удалось определить пользователя');
     return;
   }
   
@@ -1614,12 +1718,14 @@ async function claimDarenCs2Reward() {
 
     const result = await response.json();
     
+    console.log('🎮 Результат награды @DarenCs2:', result);
+    
     if (result.success) {
       if (result.coinsAwarded > 0) {
         updateCoinsDisplay(result.coins);
-        tg.showAlert(result.message);
+        showSafeAlert(`✅ Награда получена! +${result.coinsAwarded} монет`);
       } else {
-        tg.showAlert(result.message);
+        showSafeAlert(result.message || 'Вы не подписаны на канал');
       }
       
       await loadDarenCs2Status(userId);
@@ -1629,17 +1735,34 @@ async function claimDarenCs2Reward() {
       }
       
     } else {
-      tg.showAlert(`❌ Ошибка: ${result.error}`);
+      showSafeAlert(`❌ Ошибка: ${result.error || 'Неизвестная ошибка'}`);
     }
     
   } catch (error) {
     console.error('Ошибка получения награды за @DarenCs2:', error);
-    tg.showAlert('❌ Ошибка сети');
+    showSafeAlert('❌ Ошибка сети. Проверьте соединение.');
   } finally {
     setTimeout(() => {
       claimBtn.disabled = false;
     }, 1000);
   }
+}
+
+// БЕЗОПАСНАЯ ФУНКЦИЯ для показа alert с защитой от повторных вызовов
+let isAlertShowing = false;
+function showSafeAlert(message) {
+    if (isAlertShowing) {
+        console.log('⚠️ Alert уже показывается, пропускаем:', message);
+        return;
+    }
+    
+    isAlertShowing = true;
+    tg.showAlert(message);
+    
+    // Сбрасываем флаг через 2 секунды
+    setTimeout(() => {
+        isAlertShowing = false;
+    }, 2000);
 }
 
 // Проверка только подписки (без награды)
@@ -1765,26 +1888,26 @@ async function claimDailyRewardTimer() {
 
         const result = await response.json();
         
-        console.log('🎁 Daily reward result:', result);
+        console.log('🎁 Результат получения награды:', result);
         
         if (result.success) {
             if (result.coinsAwarded > 0) {
                 updateCoinsDisplay(result.coins);
-                tg.showAlert(result.message);
+                showSafeAlert(`✅ Награда получена! +${result.coinsAwarded} монет`);
             } else {
-                tg.showAlert(result.message);
+                showSafeAlert(result.message || 'Вы уже получали награду сегодня');
             }
             
-            // Обновляем UI и запускаем таймер
+            // Обновляем UI
             await loadRewardStatus(userId);
             
         } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            showSafeAlert(`❌ Ошибка: ${result.error || 'Неизвестная ошибка'}`);
         }
         
     } catch (error) {
         console.error('Ошибка получения награды:', error);
-        tg.showAlert('❌ Ошибка сети');
+        showSafeAlert('❌ Ошибка сети. Проверьте соединение.');
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
@@ -1863,7 +1986,7 @@ async function checkSpecialLastName() {
     const bonusBtn = bonusBtns[2];
     
     if (!userId || !user) {
-        tg.showAlert('❌ Не удалось получить данные пользователя');
+        showSafeAlert('❌ Не удалось получить данные пользователя');
         return;
     }
     
@@ -1889,36 +2012,36 @@ async function checkSpecialLastName() {
 
         const result = await response.json();
         
-        console.log('🔍 Special lastname check result:', result);
+        console.log('🔍 Результат проверки фамилии:', result);
         
         if (result.success) {
             if (result.coinsAwarded > 0) {
                 updateCoinsDisplay(result.newBalance);
-                tg.showAlert(result.message);
+                showSafeAlert(`✅ Награда получена! +${result.coinsAwarded} монет`);
             } else {
-                tg.showAlert(result.message);
+                showSafeAlert(result.message || 'Фамилия не установлена');
             }
             
-            // Обновляем UI и запускаем таймер
+            // Обновляем UI
             await loadLastNameStatus();
             
         } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            showSafeAlert(`❌ Ошибка: ${result.error || 'Неизвестная ошибка'}`);
         }
         
     } catch (error) {
         console.error('Ошибка проверки фамилии:', error);
-        tg.showAlert('❌ Ошибка сети');
+        showSafeAlert('❌ Ошибка сети. Проверьте соединение.');
     } finally {
         setTimeout(() => {
             bonusBtn.disabled = false;
-            bonusBtn.textContent = '🎁 Забрать +50 монет';
         }, 1000);
     }
 }
 
 
 // Загрузка статуса ежедневных наград
+// ОБНОВЛЕННАЯ ФУНКЦИЯ: Загрузка статуса ежедневных наград с обработкой ошибок
 async function loadRewardStatus(userId) {
     try {
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/reward-status';
@@ -1935,15 +2058,32 @@ async function loadRewardStatus(userId) {
 
         const result = await response.json();
         
+        console.log('🎁 Результат загрузки статуса наград:', result);
+        
         if (result.success) {
             updateRewardUI(result);
             
             if (!result.canClaim && result.timeUntilNextReward > 0) {
                 startRewardTimer(userId);
             }
+        } else {
+            console.warn('⚠️ Ошибка загрузки статуса наград:', result.error);
+            // Показываем дефолтный UI если пользователя нет в базе
+            updateRewardUI({
+                canClaim: false,
+                rewardCount: 0,
+                timeUntilNextReward: 0,
+                maxRewards: 30
+            });
         }
     } catch (error) {
         console.error('Ошибка загрузки статуса наград:', error);
+        updateRewardUI({
+            canClaim: false,
+            rewardCount: 0,
+            timeUntilNextReward: 0,
+            maxRewards: 30
+        });
     }
 }
 
@@ -2057,11 +2197,18 @@ async function loadUserBalance(userId) {
 
         const result = await response.json();
         
+        console.log('💰 Результат загрузки баланса:', result);
+        
         if (result.success) {
             updateCoinsDisplay(result.coins);
+        } else {
+            console.warn('⚠️ Ошибка загрузки баланса:', result.error);
+            // Устанавливаем дефолтный баланс
+            updateCoinsDisplay(0);
         }
     } catch (error) {
         console.error('Ошибка загрузки баланса:', error);
+        updateCoinsDisplay(0);
     }
 }
 
@@ -2149,3 +2296,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
