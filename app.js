@@ -1404,23 +1404,34 @@ function showRoulette(caseData) {
     const wonItem = getRandomItem(caseData.items);
     console.log('🎰 Выигрышный предмет определен:', wonItem.name);
     
-    // Создаем копию предметов для бесконечной анимации
+    // Создаем копию предметов для отображения
     const itemsForAnimation = [];
     
-    // Добавляем много копий для эффекта бесконечного вращения
-    for (let i = 0; i < 30; i++) {
+    // Добавляем предметы для рулетки (5 полных циклов + дополнительные предметы)
+    for (let i = 0; i < 5; i++) {
         caseData.items.forEach(item => {
             itemsForAnimation.push(item);
         });
     }
     
+    // Добавляем дополнительные предметы для плавной остановки
+    caseData.items.forEach(item => {
+        itemsForAnimation.push(item);
+    });
+    
+    // Добавляем выигрышный предмет в конец
+    itemsForAnimation.push(wonItem);
+    
     // Добавляем предметы в рулетку
-    itemsForAnimation.forEach(item => {
+    itemsForAnimation.forEach((item, index) => {
         const itemElement = document.createElement('div');
         itemElement.className = 'roulette-item';
         itemElement.innerHTML = `
-            <img src="${item.image}" alt="${item.name}">
+            <img src="${item.image}" alt="${item.name}" class="roulette-image">
             <div class="roulette-item-name">${item.name}</div>
+            <div class="roulette-item-rarity ${item.rarity || 'common'}">
+                ${getRarityText(item.rarity || 'common')}
+            </div>
         `;
         rouletteItems.appendChild(itemElement);
     });
@@ -1431,17 +1442,19 @@ function showRoulette(caseData) {
     
     modal.style.display = 'block';
     
-    // Запускаем анимацию
-    startRouletteAnimation(modal, wonItem);
+    // Даем время на отображение предметов перед началом анимации
+    setTimeout(() => {
+        startRouletteAnimation(modal, wonItem, itemsForAnimation);
+    }, 100);
 }
 
-function startRouletteAnimation(modal, wonItem) {
+function startRouletteAnimation(modal, wonItem, itemsForAnimation) {
     const rouletteItems = document.getElementById('rouletteItems');
     const rouletteSpinning = document.getElementById('rouletteSpinning');
     
     if (!rouletteItems || !rouletteSpinning) return;
     
-    const itemWidth = 90;
+    const itemWidth = 120; // Ширина одного элемента в пикселях
     const containerWidth = 400;
     const centerPosition = containerWidth / 2 - itemWidth / 2;
     
@@ -1452,20 +1465,8 @@ function startRouletteAnimation(modal, wonItem) {
     const totalTime = 7000;
     const slowStartTime = 5000;
     
-    // Находим позицию выигрышного предмета
-    let targetIndex = -1;
-    for (let i = 0; i < rouletteItems.children.length; i++) {
-        const itemName = rouletteItems.children[i].querySelector('.roulette-item-name').textContent;
-        if (itemName === wonItem.name && i > 20) {
-            targetIndex = i;
-            break;
-        }
-    }
-    
-    // Если не нашли, берем случайный индекс после 20-го элемента
-    if (targetIndex === -1) {
-        targetIndex = Math.floor(Math.random() * 20) + 30;
-    }
+    // Находим индекс выигрышного предмета
+    let targetIndex = itemsForAnimation.length - 1; // Выигрышный предмет в конце
     
     // Целевая позиция - выигрышный предмет по центру
     const targetPosition = -(targetIndex * itemWidth) + centerPosition;
@@ -1572,16 +1573,19 @@ function showResult(item, caseData) {
     document.getElementById('resultSkinName').textContent = item.name;
     document.getElementById('resultSkinRarity').textContent = getRarityText(item.rarity);
     document.getElementById('resultSkinRarity').className = `result-rarity skin-rarity ${item.rarity}`;
-    document.getElementById('resultSkinChance').textContent = `${item.chance}`;
+    document.getElementById('resultSkinChance').textContent = `${item.chance}%`;
     
-    document.getElementById('goToInventoryBtn').onclick = () => {
-        modal.style.display = 'none';
-        switchToTab('inventory');
-    };
-    
+    // Кнопка "Открыть еще кейс"
     document.getElementById('openAnotherCaseBtn').onclick = () => {
         modal.style.display = 'none';
         openCaseModal(caseData);
+    };
+    
+    // Кнопка "Перейти в инвентарь"
+    document.getElementById('goToInventoryBtn').onclick = () => {
+        modal.style.display = 'none';
+        switchToTab('inventory');
+        loadInventory(); // Обновляем инвентарь
     };
     
     modal.style.display = 'block';
