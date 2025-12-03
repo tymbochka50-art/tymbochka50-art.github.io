@@ -174,6 +174,29 @@
                 </div>
             </div>
 
+            <!-- Модальное окно результата -->
+<div id="resultModal" class="modal">
+    <div class="modal-content result-modal">
+        <div class="modal-header">
+            <h3>Поздравляем!</h3>
+        </div>
+        <div class="modal-body">
+            <div class="result-item">
+                <img id="resultSkinImage" src="" alt="Выигрыш" class="result-skin-image">
+                <div class="result-info">
+                    <div class="result-name" id="resultSkinName"></div>
+                    <div class="result-rarity" id="resultSkinRarity"></div>
+                    <div class="result-chance">Шанс: <span id="resultSkinChance">0%</span></div>
+                </div>
+            </div>
+            <div class="result-actions">
+                <button id="openAnotherCaseBtn" class="modal-button secondary">Открыть еще кейс</button>
+                <button id="goToInventoryBtn" class="modal-button primary">Перейти в инвентарь</button>
+            </div>
+        </div>
+    </div>
+</div>
+
             <!-- Профиль -->
             <div id="profile" class="tab-content">
                 <div class="profile-header">
@@ -420,5 +443,6 @@
     <script src="app.js"></script>
 </body>
 </html>
+
 
 
