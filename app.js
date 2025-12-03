@@ -53,6 +53,30 @@ async function initApp() {
     }
 }
 
+async function checkAndCreateUser(userId) {
+  try {
+    console.log('🔍 Проверяем/создаем пользователя на сервере:', userId);
+    
+    // Отправляем запрос на создание/получение пользователя
+    const result = await callAPI('/create-or-get-user', { userId: userId });
+    
+    if (result.success) {
+      console.log('✅ Пользователь проверен/создан на сервере:', {
+        coins: result.coins,
+        referralCode: result.referral_code
+      });
+      return true;
+    } else {
+      console.error('❌ Ошибка при создании/получении пользователя:', result.error);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Ошибка проверки пользователя:', error);
+    return false;
+  }
+}
+
+
 // Универсальная функция для API запросов
 async function callAPI(endpoint, data) {
     try {
@@ -1946,3 +1970,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
