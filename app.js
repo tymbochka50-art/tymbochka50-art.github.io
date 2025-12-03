@@ -194,7 +194,7 @@ function updateInventoryStats() {
     
     let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
-    const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
+    const totalVal = activeInventory.reduce((sum, skin) => sum + (skin.value || 0), 0);
     
     const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain, #totalSkinsCases');
     const totalValueElements = document.querySelectorAll('#totalValue, #totalValueMain, #totalValueCases');
@@ -1030,7 +1030,7 @@ function deductCoins(amount) {
     const userCoins = document.getElementById('userCoins');
     if (!userCoins) return;
     
-    const currentCoins = parseInt(userCoins.textContent.replace(/,/g, ''));
+    const currentCoins = parseInt(userCoins.textContent.replace(/,/g, '')) || 0;
     const newCoins = Math.max(0, currentCoins - amount);
     updateCoinsDisplay(newCoins);
 }
@@ -1039,7 +1039,7 @@ function addCoins(amount) {
     const userCoins = document.getElementById('userCoins');
     if (!userCoins) return;
     
-    const currentCoins = parseInt(userCoins.textContent.replace(/,/g, ''));
+    const currentCoins = parseInt(userCoins.textContent.replace(/,/g, '')) || 0;
     const newCoins = currentCoins + amount;
     updateCoinsDisplay(newCoins);
 }
@@ -1359,7 +1359,7 @@ function openCaseModal(caseData) {
             <img src="${item.image}" alt="${item.name}">
             <div class="item-info">
                 <div class="item-name">${item.name}</div>
-                <div class="item-chance">Шанс: ${item.chance}%</div>
+                <div class="item-chance">${item.chance}</div>
                 <div class="item-rarity ${item.rarity}">${getRarityText(item.rarity)}</div>
             </div>
         `;
@@ -1376,7 +1376,7 @@ function openCaseModal(caseData) {
 
 function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, '')) || 0;
     
     if (currentCoins < caseData.price) {
         showSafeAlert('❌ Недостаточно монет для открытия кейса!');
@@ -1389,65 +1389,157 @@ function startCaseOpening(caseData) {
 }
 
 function showRoulette(caseData) {
+    console.log('🎰 Запуск рулетки для кейса:', caseData.name);
+    console.log('🎰 Всего предметов в кейсе:', caseData.items.length);
+    
     const modal = document.getElementById('rouletteModal');
     const rouletteItems = document.getElementById('rouletteItems');
     
     if (!modal || !rouletteItems) return;
     
+    // Очищаем рулетку
     rouletteItems.innerHTML = '';
+    
+    // Определяем выигрышный предмет ДО анимации
+    const wonItem = getRandomItem(caseData.items);
+    console.log('🎰 Выигрышный предмет определен:', wonItem.name);
+    
+    // Создаем копию предметов для бесконечной анимации
+    const itemsForAnimation = [];
+    
+    // Добавляем много копий для эффекта бесконечного вращения
     for (let i = 0; i < 30; i++) {
         caseData.items.forEach(item => {
-            const itemElement = document.createElement('div');
-            itemElement.className = 'roulette-item';
-            itemElement.innerHTML = `
-                <img src="${item.image}" alt="${item.name}">
-                <div class="roulette-item-name">${item.name}</div>
-            `;
-            rouletteItems.appendChild(itemElement);
+            itemsForAnimation.push(item);
         });
     }
     
+    // Добавляем предметы в рулетку
+    itemsForAnimation.forEach(item => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'roulette-item';
+        itemElement.innerHTML = `
+            <img src="${item.image}" alt="${item.name}">
+            <div class="roulette-item-name">${item.name}</div>
+        `;
+        rouletteItems.appendChild(itemElement);
+    });
+    
+    // Сохраняем данные для использования после анимации
+    modal.dataset.wonItem = JSON.stringify(wonItem);
+    modal.dataset.caseData = JSON.stringify(caseData);
+    
     modal.style.display = 'block';
-    startRouletteAnimation(caseData);
+    
+    // Запускаем анимацию
+    startRouletteAnimation(modal, wonItem);
 }
 
-function startRouletteAnimation(caseData) {
+function startRouletteAnimation(modal, wonItem) {
     const rouletteItems = document.getElementById('rouletteItems');
+    const rouletteSpinning = document.getElementById('rouletteSpinning');
     
-    if (!rouletteItems) return;
+    if (!rouletteItems || !rouletteSpinning) return;
+    
+    const itemWidth = 90;
+    const containerWidth = 400;
+    const centerPosition = containerWidth / 2 - itemWidth / 2;
     
     let startTime = Date.now();
-    let animationFrame;
     let currentPosition = 0;
-    let speed = 50;
+    let animationFrame;
+    let speed = 100;
+    const totalTime = 7000;
+    const slowStartTime = 5000;
+    
+    // Находим позицию выигрышного предмета
+    let targetIndex = -1;
+    for (let i = 0; i < rouletteItems.children.length; i++) {
+        const itemName = rouletteItems.children[i].querySelector('.roulette-item-name').textContent;
+        if (itemName === wonItem.name && i > 20) {
+            targetIndex = i;
+            break;
+        }
+    }
+    
+    // Если не нашли, берем случайный индекс после 20-го элемента
+    if (targetIndex === -1) {
+        targetIndex = Math.floor(Math.random() * 20) + 30;
+    }
+    
+    // Целевая позиция - выигрышный предмет по центру
+    const targetPosition = -(targetIndex * itemWidth) + centerPosition;
     
     function animate() {
         const elapsed = Date.now() - startTime;
         
-        if (elapsed < 7000) {
-            if (elapsed > 5000) {
-                speed = Math.max(2, speed * 0.95);
-            } else if (elapsed > 3000) {
-                speed = Math.max(5, speed * 0.98);
+        if (elapsed < totalTime) {
+            // Плавное замедление
+            if (elapsed > slowStartTime) {
+                const progress = (elapsed - slowStartTime) / (totalTime - slowStartTime);
+                speed = 100 * (1 - progress * progress);
+                speed = Math.max(5, speed);
             }
             
+            // Двигаем рулетку
             currentPosition -= speed;
             rouletteItems.style.transform = `translateX(${currentPosition}px)`;
+            
+            // Обновляем текст
+            if (rouletteSpinning) {
+                const timeLeft = Math.ceil((totalTime - elapsed) / 1000);
+                rouletteSpinning.textContent = `Крутим... ${timeLeft}`;
+            }
+            
             animationFrame = requestAnimationFrame(animate);
         } else {
             cancelAnimationFrame(animationFrame);
-            finishCaseOpening(caseData);
+            
+            // Плавная остановка на выигрышном предмете
+            const finalTime = 1000;
+            const startPos = currentPosition;
+            const startTimeFinal = Date.now();
+            
+            function finalAnimate() {
+                const elapsedFinal = Date.now() - startTimeFinal;
+                if (elapsedFinal < finalTime) {
+                    const progress = elapsedFinal / finalTime;
+                    const easeOut = 1 - Math.pow(1 - progress, 3);
+                    currentPosition = startPos + (targetPosition - startPos) * easeOut;
+                    rouletteItems.style.transform = `translateX(${currentPosition}px)`;
+                    requestAnimationFrame(finalAnimate);
+                } else {
+                    // Финальная позиция
+                    rouletteItems.style.transform = `translateX(${targetPosition}px)`;
+                    
+                    // Показываем результат через 1 секунду
+                    setTimeout(() => {
+                        finishCaseOpening(modal);
+                    }, 1000);
+                }
+            }
+            
+            finalAnimate();
         }
     }
     
-    animationFrame = requestAnimationFrame(animate);
+    animate();
 }
 
-function finishCaseOpening(caseData) {
-    const wonItem = getRandomItem(caseData.items);
+function finishCaseOpening(modal) {
+    // Получаем сохраненные данные
+    const wonItem = JSON.parse(modal.dataset.wonItem);
+    const caseData = JSON.parse(modal.dataset.caseData);
     
-    document.getElementById('rouletteModal').style.display = 'none';
+    console.log('🎰 Завершение открытия кейса, выигрыш:', wonItem.name);
+    
+    // Закрываем модалку рулетки
+    modal.style.display = 'none';
+    
+    // Показываем результат
     showResult(wonItem, caseData);
+    
+    // Сохраняем скин в инвентарь
     saveSkinToInventory(wonItem);
 }
 
@@ -1456,16 +1548,22 @@ function getRandomItem(items) {
     let currentChance = 0;
     
     for (const item of items) {
-        currentChance += item.chance;
+        const chance = parseFloat(item.chance) || 0;
+        currentChance += chance;
         if (random <= currentChance) {
+            console.log('🎰 Выбран предмет:', item.name, 'с шансом', chance);
             return item;
         }
     }
     
+    // Фолбэк на последний предмет
+    console.log('🎰 Фолбэк на последний предмет:', items[items.length - 1].name);
     return items[items.length - 1];
 }
 
 function showResult(item, caseData) {
+    console.log('🎰 Показ результата:', item.name);
+    
     const modal = document.getElementById('resultModal');
     
     if (!modal) return;
@@ -1474,7 +1572,7 @@ function showResult(item, caseData) {
     document.getElementById('resultSkinName').textContent = item.name;
     document.getElementById('resultSkinRarity').textContent = getRarityText(item.rarity);
     document.getElementById('resultSkinRarity').className = `result-rarity skin-rarity ${item.rarity}`;
-    document.getElementById('resultSkinChance').textContent = `${item.chance}%`;
+    document.getElementById('resultSkinChance').textContent = `${item.chance}`;
     
     document.getElementById('goToInventoryBtn').onclick = () => {
         modal.style.display = 'none';
@@ -1491,25 +1589,47 @@ function showResult(item, caseData) {
 
 function saveSkinToInventory(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
-    if (!userId) return;
+    if (!userId) {
+        console.error('❌ Не удалось определить userId для сохранения скина');
+        return;
+    }
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-    
-    inventory.push({
-        id: Date.now().toString(),
-        name: skin.name,
-        image: skin.image,
-        rarity: skin.rarity,
-        value: skin.value,
-        obtainedAt: new Date().toISOString(),
-        status: 'in_inventory'
-    });
-    
-    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
-    
-    updateInventoryStats();
-    loadInventory();
-    loadProfileInventory();
+    try {
+        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+        
+        // Создаем уникальный ID для скина
+        const skinId = `skin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const newSkin = {
+            id: skinId,
+            name: skin.name,
+            image: skin.image,
+            rarity: skin.rarity || 'common',
+            value: skin.value || 10,
+            obtainedAt: new Date().toISOString(),
+            status: 'in_inventory',
+            fromCase: true,
+            caseOpened: new Date().toISOString()
+        };
+        
+        inventory.push(newSkin);
+        localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+        
+        console.log('✅ Скин сохранен в инвентарь:', newSkin);
+        console.log('📦 Всего скинов в инвентаре:', inventory.length);
+        
+        // Сразу обновляем все отображения
+        updateInventoryStats();
+        loadInventory();
+        loadProfileInventory();
+        
+        // Показываем уведомление
+        showSafeAlert(`🎉 Вы получили: ${skin.name}! Скин добавлен в инвентарь.`);
+        
+    } catch (error) {
+        console.error('❌ Ошибка сохранения скина:', error);
+        showSafeAlert('❌ Ошибка при сохранении скина в инвентарь');
+    }
 }
 
 function loadInventory() {
@@ -1517,31 +1637,52 @@ function loadInventory() {
     const inventoryGrid = document.getElementById('inventoryGrid');
     const emptyInventory = document.getElementById('emptyInventory');
     
-    if (!userId || !inventoryGrid || !emptyInventory) return;
+    if (!userId || !inventoryGrid || !emptyInventory) {
+        console.error('❌ Не удалось загрузить элементы инвентаря');
+        return;
+    }
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
-    
-    if (activeInventory.length === 0) {
+    try {
+        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+        const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
+        
+        console.log('📦 Загрузка инвентаря:', {
+            totalItems: inventory.length,
+            activeItems: activeInventory.length
+        });
+        
+        if (activeInventory.length === 0) {
+            inventoryGrid.style.display = 'none';
+            emptyInventory.style.display = 'block';
+            console.log('📦 Инвентарь пуст');
+        } else {
+            inventoryGrid.style.display = 'grid';
+            emptyInventory.style.display = 'none';
+            
+            inventoryGrid.innerHTML = '';
+            activeInventory.forEach((skin, index) => {
+                const skinElement = document.createElement('div');
+                skinElement.className = 'skin-item';
+                skinElement.innerHTML = `
+                    <img src="${skin.image}" alt="${skin.name}" class="skin-image" 
+                         onerror="this.src='https://via.placeholder.com/100x70/333/fff?text=CS2'">
+                    <div class="skin-name">${skin.name}</div>
+                    <div class="skin-rarity ${skin.rarity || 'common'}">
+                        ${getRarityText(skin.rarity || 'common')}
+                    </div>
+                `;
+                
+                skinElement.addEventListener('click', () => openSkinModal(skin));
+                inventoryGrid.appendChild(skinElement);
+            });
+            
+            console.log('📦 Инвентарь загружен успешно');
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки инвентаря:', error);
         inventoryGrid.style.display = 'none';
         emptyInventory.style.display = 'block';
-    } else {
-        inventoryGrid.style.display = 'grid';
-        emptyInventory.style.display = 'none';
-        
-        inventoryGrid.innerHTML = '';
-        activeInventory.forEach(skin => {
-            const skinElement = document.createElement('div');
-            skinElement.className = 'skin-item';
-            skinElement.innerHTML = `
-                <img src="${skin.image}" alt="${skin.name}" class="skin-image">
-                <div class="skin-name">${skin.name}</div>
-                <div class="skin-rarity ${skin.rarity}">${getRarityText(skin.rarity)}</div>
-            `;
-            
-            skinElement.addEventListener('click', () => openSkinModal(skin));
-            inventoryGrid.appendChild(skinElement);
-        });
     }
 }
 
@@ -1567,7 +1708,8 @@ function loadProfileInventory() {
             const skinElement = document.createElement('div');
             skinElement.className = 'profile-skin-item';
             skinElement.innerHTML = `
-                <img src="${skin.image}" alt="${skin.name}" class="profile-skin-image">
+                <img src="${skin.image}" alt="${skin.name}" class="profile-skin-image"
+                     onerror="this.src='https://via.placeholder.com/50x35/333/fff?text=CS2'">
                 <div class="profile-skin-name">${skin.name}</div>
             `;
             
@@ -1578,6 +1720,8 @@ function loadProfileInventory() {
 }
 
 function openSkinModal(skin) {
+    console.log('🎮 Открытие модалки скина:', skin.name);
+    
     const modal = document.getElementById('skinModal');
     
     if (!modal) return;
@@ -1587,7 +1731,11 @@ function openSkinModal(skin) {
     document.getElementById('skinModalName').textContent = skin.name;
     document.getElementById('skinModalRarity').textContent = getRarityText(skin.rarity);
     document.getElementById('skinModalRarity').className = `skin-rarity ${skin.rarity}`;
-    document.getElementById('skinModalValue').textContent = skin.value.toLocaleString();
+    document.getElementById('skinModalValue').textContent = (skin.value || 10).toLocaleString();
+    
+    // Сохраняем данные скина в модалке
+    modal.dataset.skinId = skin.id;
+    modal.dataset.skinData = JSON.stringify(skin);
     
     document.getElementById('sellSkinBtn').onclick = () => sellSkin(skin);
     document.getElementById('withdrawSkinBtn').onclick = () => openWithdrawModal(skin);
@@ -1596,48 +1744,77 @@ function openSkinModal(skin) {
 }
 
 function sellSkin(skin) {
+    console.log('💰 Продажа скина:', skin.name, 'за', skin.value, 'монет');
+    
     const userId = tg.initDataUnsafe?.user?.id;
     
-    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value.toLocaleString()} монет?`)) {
-        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-        const skinIndex = inventory.findIndex(s => s.id === skin.id);
-        if (skinIndex !== -1) {
-            inventory[skinIndex].status = 'sold';
-            localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${(skin.value || 10).toLocaleString()} монет?`)) {
+        try {
+            let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+            const skinIndex = inventory.findIndex(s => s.id === skin.id);
+            
+            if (skinIndex !== -1) {
+                // Помечаем скин как проданный
+                inventory[skinIndex].status = 'sold';
+                inventory[skinIndex].soldDate = new Date().toISOString();
+                inventory[skinIndex].soldPrice = skin.value || 10;
+                localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+                
+                // Начисляем монеты
+                addCoins(skin.value || 10);
+                
+                // Закрываем модалку
+                document.getElementById('skinModal').style.display = 'none';
+                
+                // Обновляем статистику
+                updateInventoryStats();
+                loadInventory();
+                loadProfileInventory();
+                
+                showSafeAlert(`✅ Скин "${skin.name}" продан за ${(skin.value || 10).toLocaleString()} монет!`);
+                
+                console.log('✅ Скин успешно продан:', skin.name);
+                
+            } else {
+                console.error('❌ Скин не найден в инвентаре:', skin.id);
+                showSafeAlert('❌ Ошибка: скин не найден в инвентаре');
+            }
+        } catch (error) {
+            console.error('❌ Ошибка при продаже скина:', error);
+            showSafeAlert('❌ Ошибка при продаже скина');
         }
-        
-        addCoins(skin.value);
-        
-        document.getElementById('skinModal').style.display = 'none';
-        
-        updateInventoryStats();
-        loadInventory();
-        loadProfileInventory();
-        
-        showSafeAlert(`✅ Скин продан за ${skin.value.toLocaleString()} монет!`);
     }
 }
 
-function openWithdrawModal(skin) {
+async function openWithdrawModal(skin) {
+    console.log('📤 Открытие модалки вывода для скина:', skin.name);
+    
     const modal = document.getElementById('withdrawModal');
     
     if (!modal) return;
     
     document.getElementById('withdrawSkinImage').src = skin.image;
     document.getElementById('withdrawSkinName').textContent = skin.name;
-    document.getElementById('withdrawSkinValue').textContent = skin.value.toLocaleString();
+    document.getElementById('withdrawSkinValue').textContent = (skin.value || 10).toLocaleString();
+    
+    // Сохраняем данные скина в модалке
+    modal.dataset.skinId = skin.id;
+    modal.dataset.skinData = JSON.stringify(skin);
     
     document.getElementById('confirmWithdrawBtn').onclick = () => confirmWithdraw(skin);
     document.getElementById('cancelWithdrawBtn').onclick = () => modal.style.display = 'none';
     
+    // Очищаем поле ввода
     document.getElementById('tradeLink').value = '';
     
     modal.style.display = 'block';
 }
 
 async function confirmWithdraw(skin) {
+    console.log('📤 Подтверждение вывода скина:', skin.name);
+    
     const tradeLink = document.getElementById('tradeLink').value.trim();
-    const tradeLinkRegex = /^https:\/\/steamcommunity\.com\/tradeoffer\/new\/\?partner=\d+&token=[a-zA-Z0-9]+$/;
+    const tradeLinkRegex = /^https:\/\/steamcommunity\.com\/tradeoffer\/new\/\?partner=\d+&token=[a-zA-Z0-9_-]+$/;
     
     if (!tradeLink) {
         showSafeAlert('❌ Введите trade ссылку!');
@@ -1645,7 +1822,7 @@ async function confirmWithdraw(skin) {
     }
     
     if (!tradeLinkRegex.test(tradeLink)) {
-        showSafeAlert('❌ Неверный формат trade ссылки!');
+        showSafeAlert('❌ Неверный формат trade ссылки!\n\nПравильный формат: https://steamcommunity.com/tradeoffer/new/?partner=123456789&token=abcdefg');
         return;
     }
     
@@ -1653,43 +1830,52 @@ async function confirmWithdraw(skin) {
     const user = tg.initDataUnsafe?.user;
     
     try {
+        console.log('📤 Отправка запроса на вывод...');
+        
         const result = await callAPI('/withdraw-request', {
             userId: userId,
             userName: user?.first_name || 'Неизвестно',
             userUsername: user?.username || 'Неизвестно',
             skinName: skin.name,
             skinImage: skin.image,
-            skinValue: skin.value,
-            skinRarity: skin.rarity,
+            skinValue: skin.value || 10,
+            skinRarity: skin.rarity || 'common',
             tradeLink: tradeLink
         });
         
         if (result.success) {
+            // Помечаем скин как ожидающий вывода в локальном хранилище
             let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
             const skinIndex = inventory.findIndex(s => s.id === skin.id);
             if (skinIndex !== -1) {
                 inventory[skinIndex].status = 'withdraw_pending';
                 inventory[skinIndex].tradeLink = tradeLink;
                 inventory[skinIndex].withdrawDate = new Date().toISOString();
+                inventory[skinIndex].withdrawStatus = 'pending';
                 localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
             }
             
+            // Закрываем модалки
             document.getElementById('withdrawModal').style.display = 'none';
             document.getElementById('skinModal').style.display = 'none';
             
+            // Обновляем статистику
             updateInventoryStats();
             loadInventory();
             loadProfileInventory();
             
-            showSafeAlert('✅ Запрос на вывод отправлен! Администратор обработает его в течение 24 часов.');
+            showSafeAlert('✅ Запрос на вывод отправлен! Администратор обработает его в течение 24 часов.\n\nВы получите уведомление в Telegram.');
+            
+            console.log('✅ Запрос на вывод успешно отправлен');
             
         } else {
+            console.error('❌ Ошибка при отправке запроса:', result.error);
             showSafeAlert(result.error || '❌ Ошибка при отправке запроса на вывод');
         }
         
     } catch (error) {
-        console.error('Ошибка вывода:', error);
-        showSafeAlert('❌ Ошибка при отправке запроса на вывод');
+        console.error('❌ Ошибка вывода:', error);
+        showSafeAlert('❌ Ошибка при отправке запроса на вывод. Проверьте подключение к интернету.');
     }
 }
 
