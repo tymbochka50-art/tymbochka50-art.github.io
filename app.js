@@ -50,6 +50,146 @@ async function initApp() {
     }
 }
 
+// Заменить локальную проверку на реальную через API
+async function checkSubscriptionStatus() {
+  const userId = tg.initDataUnsafe?.user?.id;
+  
+  if (!userId) return { isSubscribed: false };
+  
+  try {
+    const response = await fetch('/api/check-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: userId })
+    });
+    
+    const result = await response.json();
+    return result;
+    
+  } catch (error) {
+    console.error('Ошибка проверки подписки:', error);
+    return { isSubscribed: false };
+  }
+}
+
+async function checkDarenCs2Status() {
+  const userId = tg.initDataUnsafe?.user?.id;
+  
+  if (!userId) return { isSubscribed: false };
+  
+  try {
+    const response = await fetch('/api/check-darencs2-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: userId })
+    });
+    
+    const result = await response.json();
+    return result;
+    
+  } catch (error) {
+    console.error('Ошибка проверки подписки @DarenCs2:', error);
+    return { isSubscribed: false };
+  }
+}
+
+// Обновленная функция проверки подписки
+async function checkSubscriptionOnly() {
+  const userId = tg.initDataUnsafe?.user?.id;
+  
+  try {
+    const result = await checkSubscriptionStatus();
+    
+    if (result.isSubscribed) {
+      showSafeAlert('✅ Вы подписаны на @CS2DropZone! Теперь вы можете получать награды.');
+    } else {
+      showSafeAlert('📢 Подпишитесь на канал @CS2DropZone чтобы получать награды!');
+      showSubscriptionModal();
+    }
+    
+  } catch (error) {
+    console.error('Ошибка проверки подписки:', error);
+    showSafeAlert('❌ Ошибка при проверке подписки');
+  }
+}
+
+// Обновленная функция получения награды за подписку
+async function claimSubscriptionReward() {
+  const userId = tg.initDataUnsafe?.user?.id;
+  const claimBtns = document.querySelectorAll('.task-button');
+  const claimBtn = claimBtns[1];
+  
+  if (!userId) {
+    showSafeAlert('❌ Не удалось определить пользователя');
+    return;
+  }
+  
+  try {
+    const originalText = claimBtn.textContent;
+    claimBtn.disabled = true;
+    claimBtn.textContent = '🔄 Проверяем...';
+    
+    // Проверяем подписку через API
+    const statusResult = await checkSubscriptionStatus();
+    
+    if (!statusResult.isSubscribed) {
+      showSafeAlert('📢 Для получения награды нужно подписаться на канал @CS2DropZone');
+      showSubscriptionModal();
+      return;
+    }
+    
+    // Если подписан - запрашиваем награду
+    const response = await fetch('/api/subscription-reward', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: userId })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      if (result.coinsAwarded > 0) {
+        // Обновляем баланс
+        addCoins(result.coinsAwarded);
+        showSafeAlert(`✅ Награда получена! +${result.coinsAwarded} монет за подписку!`);
+        
+        // Обновляем UI
+        updateSubscriptionUI({
+          isSubscribed: true,
+          canClaim: false,
+          rewardCount: result.rewardCount || 0,
+          timeUntilNextReward: 24 * 60 * 60,
+          timeFormatted: '24:00:00'
+        });
+        
+        // Запускаем таймер
+        startSubscriptionTimer(24 * 60 * 60);
+        
+      } else if (result.message) {
+        showSafeAlert(result.message);
+        updateSubscriptionUI({
+          isSubscribed: true,
+          canClaim: false,
+          rewardCount: result.rewardCount || 0,
+          timeUntilNextReward: result.timeUntilNextReward || 0,
+          timeFormatted: result.timeFormatted || '00:00:00'
+        });
+      }
+    } else {
+      showSafeAlert('❌ Ошибка при получении награды');
+    }
+    
+  } catch (error) {
+    console.error('Ошибка получения награды за подписку:', error);
+    showSafeAlert('❌ Ошибка при проверке подписки');
+  } finally {
+    setTimeout(() => {
+      claimBtn.disabled = false;
+      claimBtn.textContent = '🎁 Забрать +250 монет';
+    }, 1000);
+  }
+}
+
 // Функция для вызова API
 async function callAPI(endpoint, data) {
     try {
@@ -2000,4 +2140,5 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
