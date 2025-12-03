@@ -19,15 +19,18 @@ async function initApp() {
 
         console.log('📊 Данные пользователя:', user);
 
+        // ПЕРВОЕ: Проверяем и создаем пользователя на сервере
+        await checkAndCreateUser(user.id);
+        
+        // ВТОРОЕ: Инициализируем пользователя локально
+        await initLocalUser(user.id);
+
         // Инициализация навигации
         initNavigation();
         initModals();
 
         // Загрузка данных пользователя
         await loadUserData(user);
-
-        // Инициализируем пользователя локально
-        await initLocalUser(user.id);
 
         // Загрузка баланса и статусов
         await loadUserBalance(user.id);
@@ -51,29 +54,6 @@ async function initApp() {
         console.error('❌ Ошибка инициализации:', error);
         showSafeAlert('❌ Ошибка загрузки приложения. Пожалуйста, перезагрузите.');
     }
-}
-
-async function checkAndCreateUser(userId) {
-  try {
-    console.log('🔍 Проверяем/создаем пользователя на сервере:', userId);
-    
-    // Отправляем запрос на создание/получение пользователя
-    const result = await callAPI('/create-or-get-user', { userId: userId });
-    
-    if (result.success) {
-      console.log('✅ Пользователь проверен/создан на сервере:', {
-        coins: result.coins,
-        referralCode: result.referral_code
-      });
-      return true;
-    } else {
-      console.error('❌ Ошибка при создании/получении пользователя:', result.error);
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Ошибка проверки пользователя:', error);
-    return false;
-  }
 }
 
 
@@ -1970,4 +1950,5 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
