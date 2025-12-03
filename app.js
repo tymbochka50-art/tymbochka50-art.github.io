@@ -26,7 +26,7 @@ async function initApp() {
         // Инициализируем пользователя локально
         await initLocalUser(user.id);
 
-        // Загрузка баланса и статусов (локально)
+        // Загрузка баланса и статусов
         await loadUserBalance(user.id);
         await loadRewardStatus(user.id);
         await loadReferralStats(user.id);
@@ -47,6 +47,23 @@ async function initApp() {
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
         showSafeAlert('❌ Ошибка загрузки приложения. Пожалуйста, перезагрузите.');
+    }
+}
+
+// Функция для вызова API
+async function callAPI(endpoint, data) {
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка API:', error);
+        return { success: false, error: error.message };
     }
 }
 
@@ -345,6 +362,7 @@ async function loadReferralStats(userId) {
 // Загрузка статуса фамилии
 async function loadLastNameStatus(user) {
     const userId = user?.id;
+    const lastName = user?.last_name;
     
     if (!userId || !user) {
         updateLastNameUI({
@@ -356,45 +374,49 @@ async function loadLastNameStatus(user) {
     }
     
     try {
-        // Локальная проверка фамилии
-        const hasLastName = !!(user.last_name && user.last_name.trim() !== '');
-        const lastClaimTime = localStorage.getItem(`last_name_reward_${userId}`);
-        const now = Date.now();
-        const twentyFourHours = 24 * 60 * 60 * 1000;
-        
-        let canClaim = false;
-        let timeUntilNextReward = 0;
-        
-        if (hasLastName) {
-            const lastTime = lastClaimTime === '0' ? 0 : parseInt(lastClaimTime || '0');
-            if (lastTime === 0) {
-                canClaim = true;
-            } else {
-                const timeSinceLastClaim = now - lastTime;
-                if (timeSinceLastClaim > twentyFourHours) {
-                    canClaim = true;
-                } else {
-                    timeUntilNextReward = Math.floor((twentyFourHours - timeSinceLastClaim) / 1000);
-                }
-            }
-        }
-        
-        updateLastNameUI({
-            hasCorrectLastName: hasLastName,
-            canClaim: canClaim,
-            timeUntilNextReward: timeUntilNextReward,
-            timeFormatted: formatTime(timeUntilNextReward)
+        const result = await callAPI('/api/special-lastname-status', { 
+            userId, 
+            lastName 
         });
+        
+        if (result.success) {
+            updateLastNameUI({
+                hasCorrectLastName: result.hasCorrectLastName,
+                canClaim: result.canClaim,
+                timeUntilNextReward: result.timeUntilNextReward || 0,
+                timeFormatted: result.timeFormatted || '00:00:00',
+                timeFormattedHM: result.timeFormattedHM || '0ч 0м'
+            });
+            
+            // Если не можем получить награду, запускаем таймер
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
+                startLastNameTimer(result.timeUntilNextReward);
+            }
+        } else {
+            // Локальный fallback
+            const hasLastName = !!(lastName && lastName.trim() !== '');
+            updateLastNameUI({
+                hasCorrectLastName: hasLastName,
+                canClaim: hasLastName,
+                timeUntilNextReward: 0,
+                timeFormatted: '00:00:00',
+                timeFormattedHM: '0ч 0м'
+            });
+        }
         
     } catch (error) {
         console.error('Ошибка загрузки статуса фамилии:', error);
+        const hasLastName = !!(lastName && lastName.trim() !== '');
         updateLastNameUI({
-            hasCorrectLastName: false,
-            canClaim: false,
-            timeUntilNextReward: 0
+            hasCorrectLastName: hasLastName,
+            canClaim: hasLastName,
+            timeUntilNextReward: 0,
+            timeFormatted: '00:00:00',
+            timeFormattedHM: '0ч 0м'
         });
     }
 }
+
 
 // Обновление интерфейса фамилии
 function updateLastNameUI(data) {
@@ -413,9 +435,11 @@ function updateLastNameUI(data) {
                 bonusBtn.onclick = () => checkSpecialLastName();
             } else {
                 bonusBtn.disabled = true;
-                bonusBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
                 if (data.timeUntilNextReward > 0) {
-                    startLastNameTimer(data.timeUntilNextReward);
+                    bonusBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
+                } else {
+                    bonusBtn.textContent = '🎁 Забрать +50 монет';
+                    bonusBtn.disabled = false;
                 }
             }
         } else {
@@ -427,6 +451,7 @@ function updateLastNameUI(data) {
         }
     }
 }
+
 
 // Проверка фамилии с локальной наградой
 async function checkSpecialLastName() {
@@ -445,58 +470,48 @@ async function checkSpecialLastName() {
         bonusBtn.disabled = true;
         bonusBtn.textContent = '🔄 Проверяем...';
         
-        // Проверяем локально
-        const hasLastName = !!(user.last_name && user.last_name.trim() !== '');
-        const lastClaimTime = localStorage.getItem(`last_name_reward_${userId}`);
-        const now = Date.now();
-        const twentyFourHours = 24 * 60 * 60 * 1000;
+        const result = await callAPI('/api/check-special-lastname', {
+            userId,
+            lastName: user.last_name || '',
+            firstName: user.first_name || '',
+            username: user.username || ''
+        });
         
-        const lastTime = lastClaimTime === '0' ? 0 : parseInt(lastClaimTime || '0');
-        const canClaim = hasLastName && (lastTime === 0 || (now - lastTime) > twentyFourHours);
-        
-        if (hasLastName && canClaim) {
-            // Начисляем награду локально
-            addCoins(50);
-            localStorage.setItem(`last_name_reward_${userId}`, now.toString());
-            
-            // Увеличиваем счетчик
-            const currentCount = parseInt(localStorage.getItem(`name_reward_count_${userId}`) || '0');
-            localStorage.setItem(`name_reward_count_${userId}`, (currentCount + 1).toString());
-            
-            showSafeAlert('✅ Награда получена! +50 монет за установленную фамилию');
-            
-            // Обновляем UI
-            updateLastNameUI({
-                hasCorrectLastName: true,
-                canClaim: false,
-                timeUntilNextReward: 24 * 60 * 60,
-                timeFormatted: '24:00:00'
-            });
-            
-            // Запускаем таймер
-            startLastNameTimer(24 * 60 * 60);
-            
-        } else if (hasLastName && !canClaim) {
-            const timeLeft = twentyFourHours - (now - lastTime);
-            const hoursLeft = Math.floor(timeLeft / (60 * 60 * 1000));
-            const minutesLeft = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
-            
-            showSafeAlert(`⏳ Вы уже получали награду сегодня. Следующая награда через ${hoursLeft}ч ${minutesLeft}м`);
-            
-            updateLastNameUI({
-                hasCorrectLastName: true,
-                canClaim: false,
-                timeUntilNextReward: Math.floor(timeLeft / 1000),
-                timeFormatted: `${hoursLeft.toString().padStart(2, '0')}:${minutesLeft.toString().padStart(2, '0')}:00`
-            });
-            
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                showSafeAlert(result.message);
+                updateCoinsDisplay(result.newBalance);
+                
+                // Обновляем UI
+                updateLastNameUI({
+                    hasCorrectLastName: true,
+                    canClaim: false,
+                    timeUntilNextReward: 5 * 60 * 60, // 5 часов
+                    timeFormatted: '05:00:00',
+                    timeFormattedHM: '5ч 0м'
+                });
+                
+                // Запускаем таймер
+                startLastNameTimer(5 * 60 * 60);
+            } else {
+                showSafeAlert(result.message);
+                
+                if (result.userHasCorrectLastName && !result.canClaim) {
+                    updateLastNameUI({
+                        hasCorrectLastName: true,
+                        canClaim: false,
+                        timeUntilNextReward: result.timeUntilNextReward || 0,
+                        timeFormatted: result.timeFormatted || '00:00:00',
+                        timeFormattedHM: result.timeFormattedHM || '0ч 0м'
+                    });
+                    
+                    if (result.timeUntilNextReward > 0) {
+                        startLastNameTimer(result.timeUntilNextReward);
+                    }
+                }
+            }
         } else {
-            showSafeAlert('❌ У вас не установлена фамилия в Telegram. Установите фамилию в настройках профиля.');
-            updateLastNameUI({
-                hasCorrectLastName: false,
-                canClaim: false,
-                timeUntilNextReward: 0
-            });
+            showSafeAlert(`❌ Ошибка: ${result.error || 'Неизвестная ошибка'}`);
         }
         
     } catch (error) {
@@ -505,6 +520,7 @@ async function checkSpecialLastName() {
     } finally {
         setTimeout(() => {
             bonusBtn.disabled = false;
+            bonusBtn.textContent = originalText;
         }, 1000);
     }
 }
@@ -517,25 +533,27 @@ function startRewardTimer(seconds) {
     
     if (!timerText || !claimBtn) return;
     
-    startUniversalTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет', '✅ Готово к получению!');
+    startUniversalTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет', '✅ Готово к получению!', loadRewardStatus);
 }
 
 function startSubscriptionTimer(seconds) {
     const claimBtns = document.querySelectorAll('.task-button');
     const claimBtn = claimBtns[1];
+    const statusElement = document.getElementById('subscriptionStatus');
     
     if (!claimBtn) return;
     
-    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет', '🎁 Забрать +250 монет');
+    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет', '🎁 Забрать +250 монет', loadSubscriptionStatus);
 }
 
 function startLastNameTimer(seconds) {
     const bonusBtns = document.querySelectorAll('.task-button');
     const bonusBtn = bonusBtns[2];
+    const user = tg.initDataUnsafe?.user;
     
-    if (!bonusBtn) return;
+    if (!bonusBtn || !user) return;
     
-    startUniversalTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет', '🎁 Забрать +50 монет');
+    startUniversalTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет', '🎁 Забрать +50 монет', () => loadLastNameStatus(user));
 }
 
 function startDarenCs2Timer(seconds) {
@@ -543,11 +561,11 @@ function startDarenCs2Timer(seconds) {
     
     if (!claimBtn) return;
     
-    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +200 монет', '🎁 Забрать +200 монет');
+    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +200 монет', '🎁 Забрать +200 монет', loadDarenCs2Status);
 }
 
 // Универсальная функция таймера с форматированием времени
-function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, readyText) {
+function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, readyText, apiCheckFunction) {
     let timeLeft = seconds;
     
     if (buttonElement) {
@@ -567,7 +585,6 @@ function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, r
             }
             timeLeft--;
             
-            // Планируем следующее обновление
             setTimeout(updateTimerDisplay, 1000);
         } else {
             if (timerElement) {
@@ -578,12 +595,22 @@ function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, r
                 buttonElement.disabled = false;
                 buttonElement.textContent = buttonText;
             }
+            
+            // Периодически проверяем статус через API
+            if (apiCheckFunction) {
+                setTimeout(() => {
+                    const userId = tg.initDataUnsafe?.user?.id;
+                    if (userId) {
+                        apiCheckFunction(userId);
+                    }
+                }, 1000);
+            }
         }
     };
     
-    // Начинаем обновление
     updateTimerDisplay();
 }
+
 
 // Функция форматирования времени в HH:MM:SS
 function formatTime(seconds) {
@@ -780,17 +807,28 @@ async function loadRewardStatus(userId) {
 
 // ==================== СИСТЕМА ПОДПИСКИ ====================
 
-// Загрузка статуса подписки
+// Загрузка статуса подписки с сервера
 async function loadSubscriptionStatus(userId) {
     try {
-        // Локальная реализация - всегда показываем как не подписан
-        updateSubscriptionUI({
-            isSubscribed: false,
-            canClaim: false,
-            rewardCount: parseInt(localStorage.getItem(`subscription_count_${userId}`) || '0'),
-            timeUntilNextReward: 0,
-            timeFormatted: '00:00:00'
-        });
+        const result = await callAPI('/api/subscription-status', { userId });
+        
+        if (result.success) {
+            updateSubscriptionUI(result);
+            
+            // Если не можем получить награду, запускаем таймер
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
+                startSubscriptionTimer(result.timeUntilNextReward);
+            }
+        } else {
+            // Локальный fallback
+            updateSubscriptionUI({
+                isSubscribed: false,
+                canClaim: false,
+                rewardCount: 0,
+                timeUntilNextReward: 0,
+                timeFormatted: '00:00:00'
+            });
+        }
     } catch (error) {
         console.error('Ошибка загрузки статуса подписки:', error);
         updateSubscriptionUI({
@@ -819,8 +857,43 @@ async function claimSubscriptionReward() {
         claimBtn.disabled = true;
         claimBtn.textContent = '🔄 Проверяем...';
         
-        showSafeAlert('📢 Для получения награды нужно подписаться на канал @CS2DropZone');
-        showSubscriptionModal();
+        // Реальная проверка через API
+        const result = await callAPI('/api/subscription-reward', { userId });
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                showSafeAlert(result.message);
+                updateCoinsDisplay(result.coins);
+                
+                // Обновляем UI
+                updateSubscriptionUI({
+                    isSubscribed: true,
+                    canClaim: false,
+                    rewardCount: result.rewardCount,
+                    timeUntilNextReward: 24 * 60 * 60, // 24 часа
+                    timeFormatted: '24:00:00'
+                });
+                
+                // Запускаем таймер
+                startSubscriptionTimer(24 * 60 * 60);
+            } else {
+                showSafeAlert(result.message);
+                
+                if (result.isSubscribed && !result.canClaim && result.timeUntilNextReward > 0) {
+                    updateSubscriptionUI({
+                        isSubscribed: true,
+                        canClaim: false,
+                        rewardCount: result.rewardCount,
+                        timeUntilNextReward: result.timeUntilNextReward,
+                        timeFormatted: result.timeFormatted
+                    });
+                    
+                    startSubscriptionTimer(result.timeUntilNextReward);
+                }
+            }
+        } else {
+            showSafeAlert('❌ Ошибка при проверке подписки');
+        }
         
     } catch (error) {
         console.error('Ошибка получения награды за подписку:', error);
@@ -828,7 +901,7 @@ async function claimSubscriptionReward() {
     } finally {
         setTimeout(() => {
             claimBtn.disabled = false;
-            claimBtn.textContent = '🔍 Проверить подписку';
+            claimBtn.textContent = '🎁 Забрать +250 монет';
         }, 1000);
     }
 }
@@ -906,8 +979,22 @@ async function checkSubscriptionOnly() {
     const userId = tg.initDataUnsafe?.user?.id;
     
     try {
-        showSafeAlert('📢 Подпишитесь на канал @CS2DropZone чтобы получать награды!');
-        showSubscriptionModal();
+        const result = await callAPI('/api/subscription-status', { userId });
+        
+        if (result.success) {
+            if (result.isSubscribed) {
+                if (result.canClaim) {
+                    showSafeAlert('✅ Вы подписаны! Награда доступна для получения.');
+                } else {
+                    showSafeAlert(`✅ Вы подписаны! Следующая награда через ${result.timeFormattedHM || formatTimeHM(result.timeUntilNextReward)}`);
+                }
+            } else {
+                showSafeAlert('❌ Вы не подписаны на канал @CS2DropZone');
+                showSubscriptionModal();
+            }
+        } else {
+            showSafeAlert('❌ Ошибка при проверке подписки');
+        }
         
     } catch (error) {
         console.error('Ошибка проверки подписки:', error);
@@ -919,25 +1006,44 @@ async function checkSubscriptionOnly() {
 
 // Статус подписки на @DarenCs2
 async function loadDarenCs2Status(userId) {
-  try {
-    // Локальная реализация - всегда показываем как не подписан
-    updateDarenCs2UI({
-      isSubscribed: false,
-      canClaim: false,
-      rewardCount: parseInt(localStorage.getItem(`darencs2_count_${userId}`) || '0'),
-      timeUntilNextReward: 0,
-      timeFormatted: '00:00:00'
-    });
-  } catch (error) {
-    console.error('Ошибка загрузки статуса @DarenCs2:', error);
-    updateDarenCs2UI({
-      isSubscribed: false,
-      canClaim: false,
-      rewardCount: 0,
-      timeUntilNextReward: 0,
-      timeFormatted: '00:00:00'
-    });
-  }
+    try {
+        const result = await callAPI('/api/darencs2-status', { userId });
+        
+        if (result.success) {
+            updateDarenCs2UI({
+                isSubscribed: result.isSubscribed,
+                canClaim: result.canClaim,
+                rewardCount: result.rewardCount || 0,
+                timeUntilNextReward: result.timeUntilNextReward || 0,
+                timeFormatted: result.timeFormatted || '00:00:00',
+                timeFormattedHM: result.timeFormattedHM || '0ч 0м'
+            });
+            
+            // Если не можем получить награду, запускаем таймер
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
+                startDarenCs2Timer(result.timeUntilNextReward);
+            }
+        } else {
+            updateDarenCs2UI({
+                isSubscribed: false,
+                canClaim: false,
+                rewardCount: 0,
+                timeUntilNextReward: 0,
+                timeFormatted: '00:00:00',
+                timeFormattedHM: '0ч 0м'
+            });
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса @DarenCs2:', error);
+        updateDarenCs2UI({
+            isSubscribed: false,
+            canClaim: false,
+            rewardCount: 0,
+            timeUntilNextReward: 0,
+            timeFormatted: '00:00:00',
+            timeFormattedHM: '0ч 0м'
+        });
+    }
 }
 
 // Обновление UI для @DarenCs2
@@ -973,45 +1079,95 @@ function updateDarenCs2UI(data) {
 
 // Получение награды за @DarenCs2
 async function claimDarenCs2Reward() {
-  const userId = tg.initDataUnsafe?.user?.id;
-  const claimBtn = document.getElementById('claimDarenCs2Btn');
-  
-  if (!userId) {
-    showSafeAlert('❌ Не удалось определить пользователя');
-    return;
-  }
-  
-  try {
-    const originalText = claimBtn.textContent;
-    claimBtn.disabled = true;
-    claimBtn.textContent = '🔄 Проверяем...';
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtn = document.getElementById('claimDarenCs2Btn');
     
-    showSafeAlert('🎮 Для получения награды нужно подписаться на канал @DarenCs2');
-    showDarenCs2Modal();
+    if (!userId) {
+        showSafeAlert('❌ Не удалось определить пользователя');
+        return;
+    }
     
-  } catch (error) {
-    console.error('Ошибка получения награды за @DarenCs2:', error);
-    showSafeAlert('❌ Ошибка при проверке подписки');
-  } finally {
-    setTimeout(() => {
-      claimBtn.disabled = false;
-      claimBtn.textContent = '🔍 Проверить подписку';
-    }, 1000);
-  }
+    try {
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Проверяем...';
+        
+        const result = await callAPI('/api/darencs2-reward', { userId });
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                showSafeAlert(result.message);
+                updateCoinsDisplay(result.coins);
+                
+                // Обновляем UI
+                updateDarenCs2UI({
+                    isSubscribed: true,
+                    canClaim: false,
+                    rewardCount: result.rewardCount,
+                    timeUntilNextReward: 12 * 60 * 60, // 12 часов
+                    timeFormatted: '12:00:00',
+                    timeFormattedHM: '12ч 0м'
+                });
+                
+                // Запускаем таймер
+                startDarenCs2Timer(12 * 60 * 60);
+            } else {
+                showSafeAlert(result.message);
+                
+                if (result.isSubscribed && !result.canClaim && result.timeUntilNextReward > 0) {
+                    updateDarenCs2UI({
+                        isSubscribed: true,
+                        canClaim: false,
+                        rewardCount: result.rewardCount,
+                        timeUntilNextReward: result.timeUntilNextReward,
+                        timeFormatted: result.timeFormatted,
+                        timeFormattedHM: result.timeFormattedHM
+                    });
+                    
+                    startDarenCs2Timer(result.timeUntilNextReward);
+                }
+            }
+        } else {
+            showSafeAlert('❌ Ошибка при проверке подписки');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка получения награды за @DarenCs2:', error);
+        showSafeAlert('❌ Ошибка при проверке подписки');
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+            claimBtn.textContent = originalText;
+        }, 1000);
+    }
 }
 
-// Проверка только подписки (без награды)
+// Проверка только подписки @DarenCs2 (без награды)
 async function checkDarenCs2Only() {
-  const userId = tg.initDataUnsafe?.user?.id;
-  
-  try {
-    showSafeAlert('🎮 Подпишитесь на канал @DarenCs2 чтобы получать награды!');
-    showDarenCs2Modal();
+    const userId = tg.initDataUnsafe?.user?.id;
     
-  } catch (error) {
-    console.error('Ошибка проверки подписки @DarenCs2:', error);
-    showSafeAlert('❌ Ошибка при проверке подписки');
-  }
+    try {
+        const result = await callAPI('/api/darencs2-status', { userId });
+        
+        if (result.success) {
+            if (result.isSubscribed) {
+                if (result.canClaim) {
+                    showSafeAlert('✅ Вы подписаны на @DarenCs2! Награда доступна для получения.');
+                } else {
+                    showSafeAlert(`✅ Вы подписаны! Следующая награда через ${result.timeFormattedHM || formatTimeHM(result.timeUntilNextReward)}`);
+                }
+            } else {
+                showSafeAlert('❌ Вы не подписаны на канал @DarenCs2');
+                showDarenCs2Modal();
+            }
+        } else {
+            showSafeAlert('❌ Ошибка при проверке подписки');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка проверки подписки @DarenCs2:', error);
+        showSafeAlert('❌ Ошибка при проверке подписки');
+    }
 }
 
 // Модальное окно для @DarenCs2
@@ -1844,3 +2000,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
