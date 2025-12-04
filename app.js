@@ -4,6 +4,64 @@ const tg = window.Telegram.WebApp;
 // Базовый URL вашего backend на Vercel
 const API_BASE_URL = 'https://telegram-backend-nine.vercel.app';
 
+// ==================== ПРОВЕРКА И СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ====================
+
+async function checkAndCreateUser(userId) {
+  try {
+    console.log('🔍 Проверяем/создаем пользователя на сервере:', userId);
+    
+    // Отправляем запрос на создание/получение пользователя
+    const result = await callAPI('/create-or-get-user', { userId: userId });
+    
+    if (result.success) {
+      console.log('✅ Пользователь проверен/создан на сервере:', {
+        coins: result.coins,
+        referralCode: result.referral_code
+      });
+      return true;
+    } else {
+      console.error('❌ Ошибка при создании/получении пользователя:', result.error);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Ошибка проверки пользователя:', error);
+    return false;
+  }
+}
+
+// ==================== УНИВЕРСАЛЬНАЯ ФУНКЦИЯ API ====================
+
+// Универсальная функция для API запросов
+async function callAPI(endpoint, data) {
+    try {
+        console.log(`📡 Отправляем запрос на ${API_BASE_URL}/api${endpoint}`, data);
+        
+        const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify(data)
+        });
+        
+        console.log(`📡 Ответ от сервера:`, response.status, response.statusText);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log(`📡 Результат API ${endpoint}:`, result);
+        return result;
+        
+    } catch (error) {
+        console.error(`❌ Ошибка API ${endpoint}:`, error);
+        throw error;
+    }
+}
+
+// ==================== ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ====================
+
 // Основная функция инициализации
 async function initApp() {
     try {
@@ -56,36 +114,6 @@ async function initApp() {
     }
 }
 
-
-// Универсальная функция для API запросов
-async function callAPI(endpoint, data) {
-    try {
-        console.log(`📡 Отправляем запрос на ${API_BASE_URL}/api${endpoint}`, data);
-        
-        const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify(data)
-        });
-        
-        console.log(`📡 Ответ от сервера:`, response.status, response.statusText);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log(`📡 Результат API ${endpoint}:`, result);
-        return result;
-        
-    } catch (error) {
-        console.error(`❌ Ошибка API ${endpoint}:`, error);
-        throw error;
-    }
-}
-
 // Инициализация пользователя в локальном хранилище
 async function initLocalUser(userId) {
     try {
@@ -115,6 +143,12 @@ async function initLocalUser(userId) {
         console.error('Ошибка инициализации пользователя:', error);
     }
 }
+
+function generateLocalReferralCode(userId) {
+    return `ref_${userId}_${Date.now().toString(36).substr(2, 8)}`;
+}
+
+// ==================== НАВИГАЦИЯ И ИНТЕРФЕЙС ====================
 
 // Исправленная функция инициализации навигации
 function initNavigation() {
@@ -281,10 +315,6 @@ async function generateAndCopyReferralLink() {
             generateBtn.disabled = false;
         }, 2000);
     }
-}
-
-function generateLocalReferralCode(userId) {
-    return `ref_${userId}_${Date.now().toString(36).substr(2, 8)}`;
 }
 
 function updateReferralStats(data) {
@@ -1950,5 +1980,3 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
-
-
