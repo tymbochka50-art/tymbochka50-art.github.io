@@ -128,6 +128,7 @@ async function initLocalUser(userId) {
             localStorage.setItem(`darencs2_count_${userId}`, '0');
             localStorage.setItem(`name_reward_count_${userId}`, '0');
             
+            // Генерируем реферальный код только один раз при инициализации
             const referralCode = generateLocalReferralCode(userId);
             localStorage.setItem(`referral_code_${userId}`, referralCode);
             
@@ -136,12 +137,32 @@ async function initLocalUser(userId) {
             
             localStorage.setItem(`user_initialized_${userId}`, 'true');
             
-            console.log('✅ Пользователь инициализирован локально');
+            console.log('✅ Пользователь инициализирован локально, реферальный код:', referralCode);
         }
         
     } catch (error) {
         console.error('Ошибка инициализации пользователя:', error);
     }
+}
+
+
+function getLocalReferralCode(userId) {
+    // Сначала проверяем локальное хранилище
+    let referralCode = localStorage.getItem(`referral_code_${userId}`);
+    
+    // Если нет в локальном хранилище, генерируем новый
+    if (!referralCode) {
+        referralCode = generateLocalReferralCode(userId);
+        localStorage.setItem(`referral_code_${userId}`, referralCode);
+    }
+    
+    return referralCode;
+}
+
+function generateLocalReferralCode(userId) {
+    // Используем комбинацию userId и случайной строки для уникальности
+    const randomPart = Math.random().toString(36).substr(2, 6).toUpperCase();
+    return `REF_${userId}_${randomPart}`;
 }
 
 function generateLocalReferralCode(userId) {
@@ -262,10 +283,19 @@ async function generateAndCopyReferralLink() {
         generateBtn.disabled = true;
         generateBtn.textContent = '🔄 Генерируем...';
         
+        // ПЕРВОЕ: Получаем или создаем пользователя на сервере
+        await checkAndCreateUser(userId);
+        
+        // ВТОРОЕ: Получаем реферальную ссылку с сервера
         const result = await callAPI('/generate-referral', { userId: userId });
         
         if (result.success) {
             const referralLink = result.referralLink;
+            
+            // Сохраняем реферальный код локально
+            if (result.referralCode) {
+                localStorage.setItem(`referral_code_${userId}`, result.referralCode);
+            }
             
             try {
                 await navigator.clipboard.writeText(referralLink);
@@ -304,58 +334,65 @@ async function generateAndCopyReferralLink() {
                 }, 2000);
             }
         } else {
-            showSafeAlert('❌ Ошибка генерации ссылки: ' + (result.error || 'Неизвестная ошибка'));
+            // Если серверная генерация не сработала, используем локальную
+            const localCode = getLocalReferralCode(userId);
+            const botUsername = 'Cs2DropSkinBot';
+            const referralLink = `https://t.me/${botUsername}?start=ref_${localCode}`;
+            
+            try {
+                await navigator.clipboard.writeText(referralLink);
+                
+                showSafeAlert(
+                    `✅ Реферальная ссылка скопирована (локальная)!\n\n` +
+                    `Приглашайте друзей и получайте +500 монет за каждого!\n\n` +
+                    `Ссылка: ${referralLink}`
+                );
+                
+                generateBtn.textContent = '✅ Скопировано!';
+                setTimeout(() => {
+                    generateBtn.textContent = originalText;
+                }, 2000);
+                
+            } catch (error) {
+                const tempInput = document.createElement('input');
+                tempInput.value = referralLink;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                
+                showSafeAlert(
+                    `✅ Реферальная ссылка скопирована!\n\n` +
+                    `Приглашайте друзей и получайте +500 монет за каждого!`
+                );
+                
+                generateBtn.textContent = '✅ Скопировано!';
+                setTimeout(() => {
+                    generateBtn.textContent = originalText;
+                }, 2000);
+            }
         }
         
     } catch (error) {
         console.error('Ошибка генерации ссылки:', error);
-        showSafeAlert('❌ Ошибка при копировании ссылки');
+        
+        // Fallback: используем локальную ссылку
+        const localCode = getLocalReferralCode(userId);
+        const botUsername = 'Cs2DropSkinBot';
+        const referralLink = `https://t.me/${botUsername}?start=ref_${localCode}`;
+        
+        try {
+            await navigator.clipboard.writeText(referralLink);
+            showSafeAlert(`✅ Реферальная ссылка скопирована!\n\nПриглашайте друзей и получайте +500 монет за каждого!`);
+        } catch (e) {
+            showSafeAlert('❌ Ошибка при копировании ссылки');
+        }
+        
     } finally {
         setTimeout(() => {
             generateBtn.disabled = false;
+            generateBtn.textContent = originalText;
         }, 2000);
-    }
-}
-
-function updateReferralStats(data) {
-    const totalReferrals = document.getElementById('totalReferrals');
-    const referralEarnings = document.getElementById('referralEarnings');
-    const referralProgress = document.getElementById('referralProgress');
-    
-    if (totalReferrals) {
-        totalReferrals.textContent = data.totalReferrals || 0;
-    }
-    
-    if (referralEarnings) {
-        referralEarnings.textContent = data.referralEarnings || 0;
-    }
-    
-    if (referralProgress) {
-        referralProgress.textContent = `${data.totalReferrals || 0} приглашено`;
-    }
-    
-    const profileReferrals = document.getElementById('profileReferrals');
-    if (profileReferrals) {
-        profileReferrals.textContent = data.totalReferrals || 0;
-    }
-    
-    console.log('📊 Updated referral stats:', {
-        totalReferrals: data.totalReferrals,
-        referralEarnings: data.referralEarnings
-    });
-}
-
-async function loadReferralStats(userId) {
-    try {
-        const result = await callAPI('/referral-stats', { userId: userId });
-        updateReferralStats(result);
-    } catch (error) {
-        console.error('Ошибка загрузки реферальной статистики:', error);
-        updateReferralStats({
-            totalReferrals: 0,
-            referralEarnings: 0,
-            referralCode: 'Ошибка загрузки'
-        });
     }
 }
 
@@ -1980,3 +2017,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
