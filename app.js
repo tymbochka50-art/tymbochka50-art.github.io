@@ -145,7 +145,13 @@ async function initLocalUser(userId) {
     }
 }
 
+function generateLocalReferralCode(userId) {
+    // Используем комбинацию userId и случайной строки для уникальности
+    const randomPart = Math.random().toString(36).substr(2, 6).toUpperCase();
+    return `REF_${userId}_${randomPart}`;
+}
 
+// Функция получения реферального кода (всегда возвращает сохраненный)
 function getLocalReferralCode(userId) {
     // Сначала проверяем локальное хранилище
     let referralCode = localStorage.getItem(`referral_code_${userId}`);
@@ -157,16 +163,6 @@ function getLocalReferralCode(userId) {
     }
     
     return referralCode;
-}
-
-function generateLocalReferralCode(userId) {
-    // Используем комбинацию userId и случайной строки для уникальности
-    const randomPart = Math.random().toString(36).substr(2, 6).toUpperCase();
-    return `REF_${userId}_${randomPart}`;
-}
-
-function generateLocalReferralCode(userId) {
-    return `ref_${userId}_${Date.now().toString(36).substr(2, 8)}`;
 }
 
 // ==================== НАВИГАЦИЯ И ИНТЕРФЕЙС ====================
@@ -269,17 +265,63 @@ function updateInventoryStats() {
 
 // ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
 
+// Функция обновления статистики рефералов
+function updateReferralStats(data) {
+    const totalReferrals = document.getElementById('totalReferrals');
+    const referralEarnings = document.getElementById('referralEarnings');
+    const referralProgress = document.getElementById('referralProgress');
+    
+    if (totalReferrals) {
+        totalReferrals.textContent = data.totalReferrals || 0;
+    }
+    
+    if (referralEarnings) {
+        referralEarnings.textContent = data.referralEarnings || 0;
+    }
+    
+    if (referralProgress) {
+        referralProgress.textContent = `${data.totalReferrals || 0} приглашено`;
+    }
+    
+    const profileReferrals = document.getElementById('profileReferrals');
+    if (profileReferrals) {
+        profileReferrals.textContent = data.totalReferrals || 0;
+    }
+    
+    console.log('📊 Updated referral stats:', {
+        totalReferrals: data.totalReferrals,
+        referralEarnings: data.referralEarnings
+    });
+}
+
+// Загрузка статистики рефералов
+async function loadReferralStats(userId) {
+    try {
+        const result = await callAPI('/referral-stats', { userId: userId });
+        updateReferralStats(result);
+    } catch (error) {
+        console.error('Ошибка загрузки реферальной статистики:', error);
+        updateReferralStats({
+            totalReferrals: 0,
+            referralEarnings: 0,
+            referralCode: 'Ошибка загрузки'
+        });
+    }
+}
+
+// Генерация и копирование реферальной ссылки
 async function generateAndCopyReferralLink() {
     const userId = tg.initDataUnsafe?.user?.id;
     const generateBtn = document.querySelector('.task-button.primary');
     
-    if (!userId) {
+    if (!userId || !generateBtn) {
         showSafeAlert('❌ Не удалось определить пользователя');
         return;
     }
     
+    let originalText = generateBtn.textContent;
+    
     try {
-        const originalText = generateBtn.textContent;
         generateBtn.disabled = true;
         generateBtn.textContent = '🔄 Генерируем...';
         
@@ -311,9 +353,13 @@ async function generateAndCopyReferralLink() {
                 generateBtn.textContent = '✅ Скопировано!';
                 setTimeout(() => {
                     generateBtn.textContent = originalText;
+                    generateBtn.disabled = false;
                 }, 2000);
                 
             } catch (error) {
+                console.log('Clipboard API не доступен, используем fallback метод');
+                
+                // Fallback метод для копирования
                 const tempInput = document.createElement('input');
                 tempInput.value = referralLink;
                 document.body.appendChild(tempInput);
@@ -331,6 +377,7 @@ async function generateAndCopyReferralLink() {
                 generateBtn.textContent = '✅ Скопировано!';
                 setTimeout(() => {
                     generateBtn.textContent = originalText;
+                    generateBtn.disabled = false;
                 }, 2000);
             }
         } else {
@@ -351,9 +398,13 @@ async function generateAndCopyReferralLink() {
                 generateBtn.textContent = '✅ Скопировано!';
                 setTimeout(() => {
                     generateBtn.textContent = originalText;
+                    generateBtn.disabled = false;
                 }, 2000);
                 
             } catch (error) {
+                console.log('Clipboard API не доступен, используем fallback метод');
+                
+                // Fallback метод для копирования
                 const tempInput = document.createElement('input');
                 tempInput.value = referralLink;
                 document.body.appendChild(tempInput);
@@ -369,6 +420,7 @@ async function generateAndCopyReferralLink() {
                 generateBtn.textContent = '✅ Скопировано!';
                 setTimeout(() => {
                     generateBtn.textContent = originalText;
+                    generateBtn.disabled = false;
                 }, 2000);
             }
         }
@@ -385,14 +437,18 @@ async function generateAndCopyReferralLink() {
             await navigator.clipboard.writeText(referralLink);
             showSafeAlert(`✅ Реферальная ссылка скопирована!\n\nПриглашайте друзей и получайте +500 монет за каждого!`);
         } catch (e) {
-            showSafeAlert('❌ Ошибка при копировании ссылки');
+            // Fallback метод
+            const tempInput = document.createElement('input');
+            tempInput.value = referralLink;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showSafeAlert(`✅ Реферальная ссылка скопирована!\n\nПриглашайте друзей и получайте +500 монет за каждого!`);
         }
         
-    } finally {
-        setTimeout(() => {
-            generateBtn.disabled = false;
-            generateBtn.textContent = originalText;
-        }, 2000);
+        generateBtn.textContent = originalText;
+        generateBtn.disabled = false;
     }
 }
 
@@ -2017,4 +2073,5 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
