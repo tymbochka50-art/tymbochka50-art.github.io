@@ -4,38 +4,117 @@ const tg = window.Telegram.WebApp;
 // Базовый URL вашего backend на Vercel
 const API_BASE_URL = 'https://telegram-backend-nine.vercel.app';
 
-// ==================== ПРОВЕРКА И СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ====================
+// ==================== СИСТЕМА КУКИ ====================
 
-async function checkAndCreateUser(userId) {
-  try {
-    console.log('🔍 Проверяем/создаем пользователя на сервере:', userId);
-    
-    // Отправляем запрос на создание/получение пользователя
-    const result = await callAPI('/create-or-get-user', { userId: userId });
-    
-    if (result.success) {
-      console.log('✅ Пользователь проверен/создан на сервере:', {
-        coins: result.coins,
-        referralCode: result.referral_code
-      });
-      return true;
-    } else {
-      console.error('❌ Ошибка при создании/получении пользователя:', result.error);
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Ошибка проверки пользователя:', error);
-    return false;
-  }
+// Функции для работы с куки
+function setCookie(name, value, days = 30) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = name + "=" + JSON.stringify(value) + ";" + expires + ";path=/;SameSite=Strict";
 }
 
-// ==================== УНИВЕРСАЛЬНАЯ ФУНКЦИЯ API ====================
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for(let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1);
+        if (c.indexOf(nameEQ) === 0) {
+            const cookieValue = c.substring(nameEQ.length);
+            try {
+                return JSON.parse(cookieValue);
+            } catch (e) {
+                return cookieValue;
+            }
+        }
+    }
+    return null;
+}
 
-// Универсальная функция для API запросов
-async function callAPI(endpoint, data) {
+function deleteCookie(name) {
+    document.cookie = name + '=; Max-Age=-99999999; path=/';
+}
+
+// Получить все данные пользователя из куки
+function getUserCookies(userId) {
+    if (!userId) return null;
+    return getCookie(`user_${userId}`) || {
+        coins: 0,
+        total_earned: 0,
+        reward_count: 0,
+        max_rewards: 30,
+        referral_code: generateLocalReferralCode(userId),
+        total_referrals: 0,
+        referral_earnings: 0,
+        subscription_reward_count: 0,
+        last_name_reward_count: 0,
+        darencs2_reward_count: 0,
+        rewards_history: [],
+        referrals: [],
+        last_reward_time: null,
+        last_subscription_reward_time: null,
+        last_darencs2_reward_time: null,
+        last_name_reward_time: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+}
+
+// Сохранить данные пользователя в куки
+function saveUserToCookies(userId, userData) {
+    if (!userId) return;
+    
+    const existingData = getUserCookies(userId) || {};
+    const updatedData = { ...existingData, ...userData, updated_at: new Date().toISOString() };
+    setCookie(`user_${userId}`, updatedData, 365);
+    
+    // Также сохраняем отдельные поля для быстрого доступа
+    if (userData.coins !== undefined) {
+        setCookie(`coins_${userId}`, userData.coins, 365);
+    }
+    if (userData.reward_count !== undefined) {
+        setCookie(`reward_count_${userId}`, userData.reward_count, 365);
+    }
+    if (userData.referral_code !== undefined) {
+        setCookie(`referral_code_${userId}`, userData.referral_code, 365);
+    }
+}
+
+// Обновить конкретное поле пользователя в куки
+function updateUserCookie(userId, updates) {
+    const userData = getUserCookies(userId) || {};
+    const updatedData = { ...userData, ...updates, updated_at: new Date().toISOString() };
+    saveUserToCookies(userId, updatedData);
+}
+
+// Получить баланс из куки
+function getCoinsFromCookie(userId) {
+    const userData = getUserCookies(userId);
+    return userData?.coins || 0;
+}
+
+// Добавить монеты в куки
+function addCoinsToCookie(userId, amount) {
+    const currentCoins = getCoinsFromCookie(userId);
+    const newCoins = currentCoins + amount;
+    updateUserCookie(userId, { 
+        coins: newCoins,
+        total_earned: (getUserCookies(userId)?.total_earned || 0) + amount
+    });
+    return newCoins;
+}
+
+// ==================== УНИВЕРСАЛЬНАЯ ФУНКЦИЯ API С КУКИ ====================
+
+// Универсальная функция для API запросов с fallback на куки
+async function callAPIWithCookieFallback(endpoint, data, successCallback, errorCallback) {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const endpointName = endpoint.split('/').pop() || 'unknown';
+    
+    console.log(`📡 API запрос: ${endpoint}`, data);
+    
     try {
-        console.log(`📡 Отправляем запрос на ${API_BASE_URL}/api${endpoint}`, data);
-        
         const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
             method: 'POST',
             headers: { 
@@ -44,7 +123,7 @@ async function callAPI(endpoint, data) {
             body: JSON.stringify(data)
         });
         
-        console.log(`📡 Ответ от сервера:`, response.status, response.statusText);
+        console.log(`📡 Ответ сервера ${endpoint}:`, response.status);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -52,17 +131,325 @@ async function callAPI(endpoint, data) {
         
         const result = await response.json();
         console.log(`📡 Результат API ${endpoint}:`, result);
+        
+        // Сохраняем данные в куки при успешном ответе
+        if (result.success && userId) {
+            if (endpoint === '/create-or-get-user') {
+                saveUserToCookies(userId, {
+                    coins: result.coins || 0,
+                    reward_count: result.reward_count || 0,
+                    referral_code: result.referral_code,
+                    created: result.created
+                });
+            }
+            else if (endpoint === '/daily-reward-timer' && result.coinsAwarded > 0) {
+                const newCoins = addCoinsToCookie(userId, result.coinsAwarded);
+                updateUserCookie(userId, {
+                    reward_count: result.rewardCount || 0,
+                    last_reward_time: result.nextRewardTime || new Date().toISOString()
+                });
+            }
+            else if (endpoint === '/subscription-reward' && result.coinsAwarded > 0) {
+                const newCoins = addCoinsToCookie(userId, result.coinsAwarded);
+                updateUserCookie(userId, {
+                    subscription_reward_count: result.rewardCount || 0,
+                    last_subscription_reward_time: result.nextRewardTime || new Date().toISOString()
+                });
+            }
+            else if (endpoint === '/darencs2-reward' && result.coinsAwarded > 0) {
+                const newCoins = addCoinsToCookie(userId, result.coinsAwarded);
+                updateUserCookie(userId, {
+                    darencs2_reward_count: result.rewardCount || 0,
+                    last_darencs2_reward_time: result.nextRewardTime || new Date().toISOString()
+                });
+            }
+            else if (endpoint === '/check-special-lastname' && result.coinsAwarded > 0) {
+                const newCoins = addCoinsToCookie(userId, result.coinsAwarded);
+                updateUserCookie(userId, {
+                    last_name_reward_count: result.rewardCount || 0,
+                    last_name_reward_time: result.lastRewardTime || new Date().toISOString()
+                });
+            }
+            else if (endpoint === '/generate-referral' && result.referralCode) {
+                updateUserCookie(userId, {
+                    referral_code: result.referralCode,
+                    total_referrals: result.totalReferrals || 0,
+                    referral_earnings: result.referralEarnings || 0
+                });
+            }
+            else if (endpoint === '/handle-referral' && result.reward) {
+                const newCoins = addCoinsToCookie(userId, result.reward);
+                updateUserCookie(userId, {
+                    total_referrals: (getUserCookies(userId)?.total_referrals || 0) + 1,
+                    referral_earnings: (getUserCookies(userId)?.referral_earnings || 0) + result.reward
+                });
+            }
+        }
+        
+        if (successCallback) successCallback(result);
         return result;
         
     } catch (error) {
         console.error(`❌ Ошибка API ${endpoint}:`, error);
-        throw error;
+        
+        // Используем данные из куки как fallback
+        const fallbackResult = getFallbackResponse(endpoint, data, userId);
+        
+        if (errorCallback) errorCallback(fallbackResult);
+        return fallbackResult;
     }
+}
+
+// Получить fallback ответ из куки
+function getFallbackResponse(endpoint, data, userId) {
+    const userData = getUserCookies(userId);
+    
+    switch(endpoint) {
+        case '/create-or-get-user':
+            return {
+                success: true,
+                fallback: true,
+                user_id: userId,
+                coins: userData?.coins || 0,
+                reward_count: userData?.reward_count || 0,
+                referral_code: userData?.referral_code || generateLocalReferralCode(userId),
+                created: true,
+                message: 'Используются данные из локального хранилища'
+            };
+            
+        case '/daily-reward-timer':
+            return dailyRewardFallback(userId, userData);
+            
+        case '/subscription-reward':
+            return subscriptionRewardFallback(userId, userData);
+            
+        case '/darencs2-reward':
+            return darencs2RewardFallback(userId, userData);
+            
+        case '/check-special-lastname':
+            return lastNameRewardFallback(userId, userData, data?.lastName);
+            
+        case '/generate-referral':
+            return {
+                success: true,
+                fallback: true,
+                referralCode: userData?.referral_code || generateLocalReferralCode(userId),
+                referralLink: `https://t.me/Cs2DropSkinBot?start=ref_${userData?.referral_code || generateLocalReferralCode(userId)}`,
+                totalReferrals: userData?.total_referrals || 0,
+                referralEarnings: userData?.referral_earnings || 0,
+                message: 'Используются данные из локального хранилища'
+            };
+            
+        default:
+            return {
+                success: false,
+                fallback: true,
+                error: 'Ошибка соединения с сервером',
+                message: 'Используются данные из локального хранилища'
+            };
+    }
+}
+
+// Fallback для ежедневной награды
+function dailyRewardFallback(userId, userData) {
+    const now = new Date();
+    const lastRewardTime = userData?.last_reward_time;
+    let coinsAwarded = 0;
+    let message = '';
+    
+    if (lastRewardTime) {
+        const timeDiff = now - new Date(lastRewardTime);
+        const hoursPassed = Math.floor(timeDiff / (1000 * 60 * 60));
+        
+        if (hoursPassed < 24) {
+            const hoursLeft = 24 - hoursPassed;
+            const minutesLeft = 60 - Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+            message = `⏳ До следующей награды: ${hoursLeft}ч ${minutesLeft}м (оффлайн)`;
+        } else {
+            coinsAwarded = 50;
+            const newRewardCount = (userData?.reward_count || 0) + 1;
+            addCoinsToCookie(userId, coinsAwarded);
+            updateUserCookie(userId, {
+                reward_count: newRewardCount,
+                last_reward_time: now.toISOString()
+            });
+            message = `🎉 +${coinsAwarded} монет! (оффлайн)`;
+        }
+    } else {
+        coinsAwarded = 50;
+        addCoinsToCookie(userId, coinsAwarded);
+        updateUserCookie(userId, {
+            reward_count: 1,
+            last_reward_time: now.toISOString()
+        });
+        message = `🎉 +${coinsAwarded} монет! (оффлайн)`;
+    }
+    
+    return {
+        success: true,
+        fallback: true,
+        coinsAwarded: coinsAwarded,
+        coins: getCoinsFromCookie(userId),
+        rewardCount: userData?.reward_count || 0,
+        maxRewards: 30,
+        message: message,
+        canClaim: coinsAwarded > 0,
+        nextRewardTime: userData?.last_reward_time || now.toISOString()
+    };
+}
+
+// Fallback для награды за подписку
+function subscriptionRewardFallback(userId, userData) {
+    const now = new Date();
+    const lastRewardTime = userData?.last_subscription_reward_time;
+    let coinsAwarded = 0;
+    let message = '';
+    
+    // В оффлайн режиме считаем что пользователь подписан
+    if (lastRewardTime) {
+        const timeDiff = now - new Date(lastRewardTime);
+        const hoursPassed = Math.floor(timeDiff / (1000 * 60 * 60));
+        
+        if (hoursPassed < 24) {
+            const hoursLeft = 24 - hoursPassed;
+            const minutesLeft = 60 - Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+            message = `⏳ До следующей награды: ${hoursLeft}ч ${minutesLeft}м (оффлайн)`;
+        } else {
+            coinsAwarded = 250;
+            const newRewardCount = (userData?.subscription_reward_count || 0) + 1;
+            addCoinsToCookie(userId, coinsAwarded);
+            updateUserCookie(userId, {
+                subscription_reward_count: newRewardCount,
+                last_subscription_reward_time: now.toISOString()
+            });
+            message = `🎉 +${coinsAwarded} монет за подписку! (оффлайн)`;
+        }
+    } else {
+        coinsAwarded = 250;
+        addCoinsToCookie(userId, coinsAwarded);
+        updateUserCookie(userId, {
+            subscription_reward_count: 1,
+            last_subscription_reward_time: now.toISOString()
+        });
+        message = `🎉 +${coinsAwarded} монет за подписку! (оффлайн)`;
+    }
+    
+    return {
+        success: true,
+        fallback: true,
+        coinsAwarded: coinsAwarded,
+        coins: getCoinsFromCookie(userId),
+        isSubscribed: true,
+        message: message,
+        canClaim: coinsAwarded > 0,
+        rewardCount: userData?.subscription_reward_count || 0
+    };
+}
+
+// Fallback для награды @DarenCs2
+function darencs2RewardFallback(userId, userData) {
+    const now = new Date();
+    const lastRewardTime = userData?.last_darencs2_reward_time;
+    let coinsAwarded = 0;
+    let message = '';
+    
+    // В оффлайн режиме считаем что пользователь подписан
+    if (lastRewardTime) {
+        const timeDiff = now - new Date(lastRewardTime);
+        const hoursPassed = Math.floor(timeDiff / (1000 * 60 * 60));
+        
+        if (hoursPassed < 12) {
+            const hoursLeft = 12 - hoursPassed;
+            const minutesLeft = 60 - Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+            message = `⏳ До следующей награды: ${hoursLeft}ч ${minutesLeft}м (оффлайн)`;
+        } else {
+            coinsAwarded = 200;
+            const newRewardCount = (userData?.darencs2_reward_count || 0) + 1;
+            addCoinsToCookie(userId, coinsAwarded);
+            updateUserCookie(userId, {
+                darencs2_reward_count: newRewardCount,
+                last_darencs2_reward_time: now.toISOString()
+            });
+            message = `🎮 +${coinsAwarded} монет за подписку на @DarenCs2! (оффлайн)`;
+        }
+    } else {
+        coinsAwarded = 200;
+        addCoinsToCookie(userId, coinsAwarded);
+        updateUserCookie(userId, {
+            darencs2_reward_count: 1,
+            last_darencs2_reward_time: now.toISOString()
+        });
+        message = `🎮 +${coinsAwarded} монет за подписку на @DarenCs2! (оффлайн)`;
+    }
+    
+    return {
+        success: true,
+        fallback: true,
+        coinsAwarded: coinsAwarded,
+        coins: getCoinsFromCookie(userId),
+        isSubscribed: true,
+        message: message,
+        canClaim: coinsAwarded > 0,
+        rewardCount: userData?.darencs2_reward_count || 0
+    };
+}
+
+// Fallback для награды за фамилию
+function lastNameRewardFallback(userId, userData, lastName) {
+    const now = new Date();
+    const lastRewardTime = userData?.last_name_reward_time;
+    const specialLastName = '@Cs2DropSkinBot';
+    const hasCorrectLastName = lastName === specialLastName;
+    
+    let coinsAwarded = 0;
+    let message = '';
+    
+    if (hasCorrectLastName) {
+        if (lastRewardTime) {
+            const timeDiff = now - new Date(lastRewardTime);
+            const hoursPassed = Math.floor(timeDiff / (1000 * 60 * 60));
+            
+            if (hoursPassed < 5) {
+                const hoursLeft = 5 - hoursPassed;
+                const minutesLeft = 60 - Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                message = `⏳ До следующей награды: ${hoursLeft}ч ${minutesLeft}м (оффлайн)`;
+            } else {
+                coinsAwarded = 50;
+                const newRewardCount = (userData?.last_name_reward_count || 0) + 1;
+                addCoinsToCookie(userId, coinsAwarded);
+                updateUserCookie(userId, {
+                    last_name_reward_count: newRewardCount,
+                    last_name_reward_time: now.toISOString()
+                });
+                message = `🎉 +${coinsAwarded} монет за установку фамилии! (оффлайн)`;
+            }
+        } else {
+            coinsAwarded = 50;
+            addCoinsToCookie(userId, coinsAwarded);
+            updateUserCookie(userId, {
+                last_name_reward_count: 1,
+                last_name_reward_time: now.toISOString()
+            });
+            message = `🎉 +${coinsAwarded} монет за установку фамилии! (оффлайн)`;
+        }
+    } else {
+        message = `❌ Установите фамилию: ${specialLastName} (оффлайн)`;
+    }
+    
+    return {
+        success: true,
+        fallback: true,
+        hasCorrectLastName: hasCorrectLastName,
+        coinsAwarded: coinsAwarded,
+        coins: getCoinsFromCookie(userId),
+        message: message,
+        canClaim: coinsAwarded > 0,
+        rewardCount: userData?.last_name_reward_count || 0
+    };
 }
 
 // ==================== ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ====================
 
-// Основная функция инициализации
 async function initApp() {
     try {
         tg.expand();
@@ -76,12 +463,33 @@ async function initApp() {
         }
 
         console.log('📊 Данные пользователя:', user);
+        console.log('🍪 Куки пользователя:', getUserCookies(user.id));
 
-        // ПЕРВОЕ: Проверяем и создаем пользователя на сервере
-        await checkAndCreateUser(user.id);
+        // ПЕРВОЕ: Проверяем куки пользователя
+        const userCookies = getUserCookies(user.id);
         
-        // ВТОРОЕ: Инициализируем пользователя локально
-        await initLocalUser(user.id);
+        // ВТОРОЕ: Пытаемся синхронизировать с сервером
+        try {
+            const serverResult = await callAPIWithCookieFallback('/create-or-get-user', { userId: user.id },
+                (result) => {
+                    console.log('✅ Серверный ответ:', result);
+                    // Обновляем куки данными с сервера
+                    if (result.success && !result.fallback) {
+                        saveUserToCookies(user.id, {
+                            coins: result.coins || 0,
+                            reward_count: result.reward_count || 0,
+                            referral_code: result.referral_code,
+                            created: result.created
+                        });
+                    }
+                },
+                (errorResult) => {
+                    console.log('⚠️ Используем куки:', errorResult);
+                }
+            );
+        } catch (error) {
+            console.log('⚠️ Ошибка синхронизации, используем куки');
+        }
 
         // Инициализация навигации
         initNavigation();
@@ -90,13 +498,13 @@ async function initApp() {
         // Загрузка данных пользователя
         await loadUserData(user);
 
-        // Загрузка баланса и статусов
-        await loadUserBalance(user.id);
-        await loadRewardStatus(user.id);
-        await loadReferralStats(user.id);
-        await loadSubscriptionStatus(user.id);
-        await loadLastNameStatus(user);
-        await loadDarenCs2Status(user.id);
+        // Загрузка баланса и статусов ИЗ КУКИ
+        await loadUserBalanceFromCookie(user.id);
+        await loadRewardStatusFromCookie(user.id);
+        await loadReferralStatsFromCookie(user.id);
+        await loadSubscriptionStatusFromCookie(user.id);
+        await loadLastNameStatusFromCookie(user);
+        await loadDarenCs2StatusFromCookie(user.id);
 
         // Загрузка кейсов и инвентаря
         loadCases();
@@ -106,7 +514,7 @@ async function initApp() {
         // Обновляем статистику инвентаря
         updateInventoryStats();
 
-        console.log('✅ Приложение инициализировано');
+        console.log('✅ Приложение инициализировано с куки системой');
         
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
@@ -114,407 +522,401 @@ async function initApp() {
     }
 }
 
-// Инициализация пользователя в локальном хранилище
-async function initLocalUser(userId) {
-    try {
-        const userInitialized = localStorage.getItem(`user_initialized_${userId}`);
-        
-        if (!userInitialized) {
-            console.log('👤 Инициализируем нового пользователя локально');
-            
-            localStorage.setItem(`coins_${userId}`, '0');
-            localStorage.setItem(`reward_count_${userId}`, '0');
-            localStorage.setItem(`subscription_count_${userId}`, '0');
-            localStorage.setItem(`darencs2_count_${userId}`, '0');
-            localStorage.setItem(`name_reward_count_${userId}`, '0');
-            
-            // Генерируем реферальный код только один раз при инициализации
-            const referralCode = generateLocalReferralCode(userId);
-            localStorage.setItem(`referral_code_${userId}`, referralCode);
-            
-            localStorage.setItem(`daily_reward_${userId}`, '0');
-            localStorage.setItem(`last_name_reward_${userId}`, '0');
-            
-            localStorage.setItem(`user_initialized_${userId}`, 'true');
-            
-            console.log('✅ Пользователь инициализирован локально, реферальный код:', referralCode);
-        }
-        
-    } catch (error) {
-        console.error('Ошибка инициализации пользователя:', error);
-    }
-}
+// ==================== ФУНКЦИИ ЗАГРУЗКИ ИЗ КУКИ ====================
 
-function generateLocalReferralCode(userId) {
-    // Используем комбинацию userId и случайной строки для уникальности
-    const randomPart = Math.random().toString(36).substr(2, 6).toUpperCase();
-    return `REF_${userId}_${randomPart}`;
-}
-
-// Функция получения реферального кода (всегда возвращает сохраненный)
-function getLocalReferralCode(userId) {
-    // Сначала проверяем локальное хранилище
-    let referralCode = localStorage.getItem(`referral_code_${userId}`);
+// Загрузка баланса из куки
+async function loadUserBalanceFromCookie(userId) {
+    const coins = getCoinsFromCookie(userId);
+    updateCoinsDisplay(coins);
     
-    // Если нет в локальном хранилище, генерируем новый
-    if (!referralCode) {
-        referralCode = generateLocalReferralCode(userId);
-        localStorage.setItem(`referral_code_${userId}`, referralCode);
-    }
-    
-    return referralCode;
-}
-
-// ==================== НАВИГАЦИЯ И ИНТЕРФЕЙС ====================
-
-// Исправленная функция инициализации навигации
-function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    tabContents.forEach(tab => {
-        if (!tab.classList.contains('active')) {
-            tab.style.display = 'none';
-        }
-    });
-    
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const tabId = item.getAttribute('data-tab');
-            
-            tabContents.forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-            });
-            
-            navItems.forEach(nav => nav.classList.remove('active'));
-            
-            const activeTab = document.getElementById(tabId);
-            if (activeTab) {
-                activeTab.style.display = 'block';
-                activeTab.classList.add('active');
+    // Пытаемся синхронизировать с сервером
+    callAPIWithCookieFallback('/get-balance', { userId: userId },
+        (result) => {
+            if (result.success && !result.fallback) {
+                updateCoinsDisplay(result.coins);
+                saveUserToCookies(userId, { coins: result.coins });
             }
+        },
+        (error) => {
+            console.log('⚠️ Баланс загружен из куки');
+        }
+    );
+}
+
+// Загрузка статуса наград из куки
+async function loadRewardStatusFromCookie(userId) {
+    const userData = getUserCookies(userId);
+    const now = new Date();
+    
+    let timeUntilNextReward = 0;
+    let canClaim = true;
+    let timeFormatted = '00:00:00';
+    let timeFormattedHM = '0ч 0м';
+
+    if (userData?.last_reward_time) {
+        const timeDiff = now - new Date(userData.last_reward_time);
+        const secondsPassed = Math.floor(timeDiff / 1000);
+        
+        if (secondsPassed < 86400) {
+            timeUntilNextReward = 86400 - secondsPassed;
+            canClaim = false;
             
-            item.classList.add('active');
-            
-            updateInventoryStats();
-            
-            if (tabId === 'inventory') {
-                loadInventory();
-            } else if (tabId === 'profile') {
-                loadProfileInventory();
-            }
-        });
+            const timeInfo = formatTimeRemaining(timeUntilNextReward);
+            timeFormatted = timeInfo.formatted;
+            timeFormattedHM = timeInfo.formattedHM;
+        }
+    }
+
+    updateRewardUI({
+        canClaim: canClaim,
+        rewardCount: userData?.reward_count || 0,
+        timeUntilNextReward: timeUntilNextReward,
+        timeFormatted: timeFormatted,
+        timeFormattedHM: timeFormattedHM
     });
 }
 
-// Загрузка данных пользователя
-async function loadUserData(user) {
-    const debugUserId = document.getElementById('debugUserId');
-    if (debugUserId) {
-        debugUserId.textContent = user.id || 'Не доступен';
-    }
-    
-    const avatar = document.getElementById('userAvatar');
-    if (avatar) {
-        avatar.src = user.photo_url || getDefaultAvatar();
-    }
-
-    const userName = document.getElementById('userName');
-    if (userName) {
-        userName.textContent = user.first_name || 'Пользователь';
-    }
-
-    const profileFirstName = document.getElementById('profileFirstName');
-    if (profileFirstName) {
-        profileFirstName.textContent = user.first_name || 'Не указано';
-    }
-    
-    const profileLastName = document.getElementById('profileLastName');
-    if (profileLastName) {
-        profileLastName.textContent = user.last_name || 'Не указано';
-    }
-    
-    const profileUsername = document.getElementById('profileUsername');
-    if (profileUsername) {
-        profileUsername.textContent = user.username ? '@' + user.username : 'Не указано';
-    }
+// Загрузка реферальной статистики из куки
+async function loadReferralStatsFromCookie(userId) {
+    const userData = getUserCookies(userId);
+    updateReferralStats({
+        totalReferrals: userData?.total_referrals || 0,
+        referralEarnings: userData?.referral_earnings || 0,
+        referralCode: userData?.referral_code || generateLocalReferralCode(userId)
+    });
 }
 
-// ==================== ОБНОВЛЕНИЕ СТАТИСТИКИ ИНВЕНТАРЯ ====================
+// Загрузка статуса подписки из куки
+async function loadSubscriptionStatusFromCookie(userId) {
+    const userData = getUserCookies(userId);
+    const now = new Date();
+    
+    let timeUntilNextReward = 0;
+    let canClaim = true;
+    let timeFormatted = '00:00:00';
+    let timeFormattedHM = '0ч 0м';
 
-function updateInventoryStats() {
+    if (userData?.last_subscription_reward_time) {
+        const timeDiff = now - new Date(userData.last_subscription_reward_time);
+        const secondsPassed = Math.floor(timeDiff / 1000);
+        
+        if (secondsPassed < 86400) {
+            timeUntilNextReward = 86400 - secondsPassed;
+            canClaim = false;
+            
+            const timeInfo = formatTimeRemaining(timeUntilNextReward);
+            timeFormatted = timeInfo.formatted;
+            timeFormattedHM = timeInfo.formattedHM;
+        }
+    }
+
+    // В оффлайн режиме считаем что пользователь не подписан
+    updateSubscriptionUI({
+        isSubscribed: false,
+        canClaim: canClaim,
+        rewardCount: userData?.subscription_reward_count || 0,
+        timeUntilNextReward: timeUntilNextReward,
+        timeFormatted: timeFormatted,
+        timeFormattedHM: timeFormattedHM
+    });
+}
+
+// Загрузка статуса фамилии из куки
+async function loadLastNameStatusFromCookie(user) {
+    const userId = user?.id;
+    const userData = getUserCookies(userId);
+    const now = new Date();
+    
+    let timeUntilNextReward = 0;
+    let canClaim = true;
+    let timeFormatted = '00:00:00';
+    let timeFormattedHM = '0ч 0м';
+
+    if (userData?.last_name_reward_time) {
+        const timeDiff = now - new Date(userData.last_name_reward_time);
+        const secondsPassed = Math.floor(timeDiff / 1000);
+        
+        if (secondsPassed < 18000) { // 5 часов
+            timeUntilNextReward = 18000 - secondsPassed;
+            canClaim = false;
+            
+            const timeInfo = formatTimeRemaining(timeUntilNextReward);
+            timeFormatted = timeInfo.formatted;
+            timeFormattedHM = timeInfo.formattedHM;
+        }
+    }
+
+    // Проверяем фамилию
+    const specialLastName = '@Cs2DropSkinBot';
+    const hasCorrectLastName = user?.last_name === specialLastName;
+
+    updateLastNameUI({
+        hasCorrectLastName: hasCorrectLastName,
+        canClaim: canClaim && hasCorrectLastName,
+        timeUntilNextReward: timeUntilNextReward,
+        timeFormatted: timeFormatted,
+        timeFormattedHM: timeFormattedHM,
+        rewardCount: userData?.last_name_reward_count || 0
+    });
+}
+
+// Загрузка статуса @DarenCs2 из куки
+async function loadDarenCs2StatusFromCookie(userId) {
+    const userData = getUserCookies(userId);
+    const now = new Date();
+    
+    let timeUntilNextReward = 0;
+    let canClaim = true;
+    let timeFormatted = '00:00:00';
+    let timeFormattedHM = '0ч 0м';
+
+    if (userData?.last_darencs2_reward_time) {
+        const timeDiff = now - new Date(userData.last_darencs2_reward_time);
+        const secondsPassed = Math.floor(timeDiff / 1000);
+        
+        if (secondsPassed < 43200) { // 12 часов
+            timeUntilNextReward = 43200 - secondsPassed;
+            canClaim = false;
+            
+            const timeInfo = formatTimeRemaining(timeUntilNextReward);
+            timeFormatted = timeInfo.formatted;
+            timeFormattedHM = timeInfo.formattedHM;
+        }
+    }
+
+    // В оффлайн режиме считаем что пользователь не подписан
+    updateDarenCs2UI({
+        isSubscribed: false,
+        canClaim: canClaim,
+        rewardCount: userData?.darencs2_reward_count || 0,
+        timeUntilNextReward: timeUntilNextReward,
+        timeFormatted: timeFormatted,
+        timeFormattedHM: timeFormattedHM
+    });
+}
+
+// ==================== ОСНОВНЫЕ ФУНКЦИИ С КУКИ ====================
+
+// Ежедневная награда с куки
+async function claimDailyRewardTimer() {
     const userId = tg.initDataUnsafe?.user?.id;
-    if (!userId) return;
+    const claimBtn = document.getElementById('claimRewardBtn');
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
-    const totalVal = activeInventory.reduce((sum, skin) => sum + (skin.value || 0), 0);
-    
-    const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain, #totalSkinsCases');
-    const totalValueElements = document.querySelectorAll('#totalValue, #totalValueMain, #totalValueCases');
-    
-    totalSkinsElements.forEach(element => {
-        if (element) element.textContent = activeInventory.length;
-    });
-    
-    totalValueElements.forEach(element => {
-        if (element) element.textContent = totalVal.toLocaleString();
-    });
-}
-
-// ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
-
-// Функция обновления статистики рефералов
-function updateReferralStats(data) {
-    const totalReferrals = document.getElementById('totalReferrals');
-    const referralEarnings = document.getElementById('referralEarnings');
-    const referralProgress = document.getElementById('referralProgress');
-    
-    if (totalReferrals) {
-        totalReferrals.textContent = data.totalReferrals || 0;
-    }
-    
-    if (referralEarnings) {
-        referralEarnings.textContent = data.referralEarnings || 0;
-    }
-    
-    if (referralProgress) {
-        referralProgress.textContent = `${data.totalReferrals || 0} приглашено`;
-    }
-    
-    const profileReferrals = document.getElementById('profileReferrals');
-    if (profileReferrals) {
-        profileReferrals.textContent = data.totalReferrals || 0;
-    }
-    
-    console.log('📊 Updated referral stats:', {
-        totalReferrals: data.totalReferrals,
-        referralEarnings: data.referralEarnings
-    });
-}
-
-// Загрузка статистики рефералов
-async function loadReferralStats(userId) {
-    try {
-        const result = await callAPI('/referral-stats', { userId: userId });
-        updateReferralStats(result);
-    } catch (error) {
-        console.error('Ошибка загрузки реферальной статистики:', error);
-        updateReferralStats({
-            totalReferrals: 0,
-            referralEarnings: 0,
-            referralCode: 'Ошибка загрузки'
-        });
-    }
-}
-
-// Генерация и копирование реферальной ссылки
-async function generateAndCopyReferralLink() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const generateBtn = document.querySelector('.task-button.primary');
-    
-    if (!userId || !generateBtn) {
+    if (!userId) {
         showSafeAlert('❌ Не удалось определить пользователя');
         return;
     }
     
-    let originalText = generateBtn.textContent;
-    
     try {
-        generateBtn.disabled = true;
-        generateBtn.textContent = '🔄 Генерируем...';
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Получаем...';
         
-        // ПЕРВОЕ: Получаем или создаем пользователя на сервере
-        await checkAndCreateUser(userId);
-        
-        // ВТОРОЕ: Получаем реферальную ссылку с сервера
-        const result = await callAPI('/generate-referral', { userId: userId });
-        
-        if (result.success) {
-            const referralLink = result.referralLink;
-            
-            // Сохраняем реферальный код локально
-            if (result.referralCode) {
-                localStorage.setItem(`referral_code_${userId}`, result.referralCode);
+        // Пытаемся отправить на сервер, fallback на куки
+        await callAPIWithCookieFallback('/daily-reward-timer', { userId: userId },
+            (result) => {
+                if (result.success) {
+                    if (result.coinsAwarded > 0) {
+                        addCoins(result.coinsAwarded);
+                        showSafeAlert(`✅ ${result.message || 'Ежедневная награда получена!'}`);
+                        
+                        updateRewardUI({
+                            canClaim: false,
+                            rewardCount: result.rewardCount || 0,
+                            timeUntilNextReward: 24 * 60 * 60,
+                            timeFormatted: '24:00:00',
+                            timeFormattedHM: '24ч 0м'
+                        });
+                        
+                        startRewardTimer(24 * 60 * 60);
+                        
+                    } else {
+                        showSafeAlert(result.message || '⏳ Вы уже получали награду сегодня');
+                    }
+                } else {
+                    showSafeAlert(result.error || '❌ Ошибка при получении награды');
+                }
+            },
+            (fallbackResult) => {
+                // Используем fallback результат
+                if (fallbackResult.coinsAwarded > 0) {
+                    addCoins(fallbackResult.coinsAwarded);
+                    showSafeAlert(`✅ ${fallbackResult.message}`);
+                    
+                    updateRewardUI({
+                        canClaim: false,
+                        rewardCount: fallbackResult.rewardCount || 0,
+                        timeUntilNextReward: 24 * 60 * 60,
+                        timeFormatted: '24:00:00',
+                        timeFormattedHM: '24ч 0м'
+                    });
+                    
+                    startRewardTimer(24 * 60 * 60);
+                } else {
+                    showSafeAlert(fallbackResult.message || '⏳ Вы уже получали награду сегодня');
+                }
             }
-            
-            try {
-                await navigator.clipboard.writeText(referralLink);
-                
-                showSafeAlert(
-                    `✅ Реферальная ссылка скопирована!\n\n` +
-                    `Приглашайте друзей и получайте +500 монет за каждого!\n\n` +
-                    `Ссылка: ${referralLink}`
-                );
-                
-                updateReferralStats(result);
-                
-                generateBtn.textContent = '✅ Скопировано!';
-                setTimeout(() => {
-                    generateBtn.textContent = originalText;
-                    generateBtn.disabled = false;
-                }, 2000);
-                
-            } catch (error) {
-                console.log('Clipboard API не доступен, используем fallback метод');
-                
-                // Fallback метод для копирования
-                const tempInput = document.createElement('input');
-                tempInput.value = referralLink;
-                document.body.appendChild(tempInput);
-                tempInput.select();
-                document.execCommand('copy');
-                document.body.removeChild(tempInput);
-                
-                showSafeAlert(
-                    `✅ Реферальная ссылка скопирована!\n\n` +
-                    `Приглашайте друзей и получайте +500 монет за каждого!`
-                );
-                
-                updateReferralStats(result);
-                
-                generateBtn.textContent = '✅ Скопировано!';
-                setTimeout(() => {
-                    generateBtn.textContent = originalText;
-                    generateBtn.disabled = false;
-                }, 2000);
-            }
-        } else {
-            // Если серверная генерация не сработала, используем локальную
-            const localCode = getLocalReferralCode(userId);
-            const botUsername = 'Cs2DropSkinBot';
-            const referralLink = `https://t.me/${botUsername}?start=ref_${localCode}`;
-            
-            try {
-                await navigator.clipboard.writeText(referralLink);
-                
-                showSafeAlert(
-                    `✅ Реферальная ссылка скопирована (локальная)!\n\n` +
-                    `Приглашайте друзей и получайте +500 монет за каждого!\n\n` +
-                    `Ссылка: ${referralLink}`
-                );
-                
-                generateBtn.textContent = '✅ Скопировано!';
-                setTimeout(() => {
-                    generateBtn.textContent = originalText;
-                    generateBtn.disabled = false;
-                }, 2000);
-                
-            } catch (error) {
-                console.log('Clipboard API не доступен, используем fallback метод');
-                
-                // Fallback метод для копирования
-                const tempInput = document.createElement('input');
-                tempInput.value = referralLink;
-                document.body.appendChild(tempInput);
-                tempInput.select();
-                document.execCommand('copy');
-                document.body.removeChild(tempInput);
-                
-                showSafeAlert(
-                    `✅ Реферальная ссылка скопирована!\n\n` +
-                    `Приглашайте друзей и получайте +500 монет за каждого!`
-                );
-                
-                generateBtn.textContent = '✅ Скопировано!';
-                setTimeout(() => {
-                    generateBtn.textContent = originalText;
-                    generateBtn.disabled = false;
-                }, 2000);
-            }
-        }
+        );
         
     } catch (error) {
-        console.error('Ошибка генерации ссылки:', error);
-        
-        // Fallback: используем локальную ссылку
-        const localCode = getLocalReferralCode(userId);
-        const botUsername = 'Cs2DropSkinBot';
-        const referralLink = `https://t.me/${botUsername}?start=ref_${localCode}`;
-        
-        try {
-            await navigator.clipboard.writeText(referralLink);
-            showSafeAlert(`✅ Реферальная ссылка скопирована!\n\nПриглашайте друзей и получайте +500 монет за каждого!`);
-        } catch (e) {
-            // Fallback метод
-            const tempInput = document.createElement('input');
-            tempInput.value = referralLink;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
-            showSafeAlert(`✅ Реферальная ссылка скопирована!\n\nПриглашайте друзей и получайте +500 монет за каждого!`);
-        }
-        
-        generateBtn.textContent = originalText;
-        generateBtn.disabled = false;
+        console.error('Ошибка получения награды:', error);
+        showSafeAlert('❌ Ошибка при получении награды');
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +50 монет';
+        }, 1000);
     }
 }
 
-// ==================== СИСТЕМА ФАМИЛИИ ====================
-
-async function loadLastNameStatus(user) {
-    const userId = user?.id;
+// Награда за подписку с куки
+async function claimSubscriptionReward() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
     
-    if (!userId || !user) {
-        updateLastNameUI({
-            hasCorrectLastName: false,
-            canClaim: false,
-            timeUntilNextReward: 0
-        });
+    if (!userId) {
+        showSafeAlert('❌ Не удалось определить пользователя');
         return;
     }
     
     try {
-        const result = await callAPI('/special-lastname-status', {
-            userId: userId,
-            lastName: user.last_name
-        });
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Проверяем...';
         
-        updateLastNameUI(result);
-        
-    } catch (error) {
-        console.error('Ошибка загрузки статуса фамилии:', error);
-        updateLastNameUI({
-            hasCorrectLastName: false,
-            canClaim: false,
-            timeUntilNextReward: 0
-        });
-    }
-}
-
-function updateLastNameUI(data) {
-    const nameStatus = document.getElementById('nameStatus');
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[2];
-    
-    if (nameStatus && bonusBtn) {
-        if (data.hasCorrectLastName) {
-            nameStatus.textContent = '✅ Фамилия установлена';
-            nameStatus.style.color = '#28a745';
-            
-            if (data.canClaim) {
-                bonusBtn.disabled = false;
-                bonusBtn.textContent = '🎁 Забрать +50 монет';
-                bonusBtn.onclick = () => checkSpecialLastName();
-            } else {
-                bonusBtn.disabled = true;
-                bonusBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
-                if (data.timeUntilNextReward > 0) {
-                    startLastNameTimer(data.timeUntilNextReward);
+        await callAPIWithCookieFallback('/subscription-reward', { userId: userId },
+            (result) => {
+                if (result.success) {
+                    if (result.coinsAwarded > 0) {
+                        addCoins(result.coinsAwarded);
+                        showSafeAlert(`✅ ${result.message || 'Награда получена!'}`);
+                        
+                        updateSubscriptionUI({
+                            isSubscribed: true,
+                            canClaim: false,
+                            rewardCount: result.rewardCount || 0,
+                            timeUntilNextReward: 24 * 60 * 60,
+                            timeFormatted: '24:00:00'
+                        });
+                        
+                        startSubscriptionTimer(24 * 60 * 60);
+                        
+                    } else if (!result.isSubscribed) {
+                        showSafeAlert('📢 Для получения награды нужно подписаться на канал @CS2DropZone');
+                        showSubscriptionModal();
+                    } else {
+                        showSafeAlert(result.message || '⏳ Вы уже получали награду сегодня');
+                    }
+                } else {
+                    showSafeAlert(result.error || '❌ Ошибка при получении награды');
+                }
+            },
+            (fallbackResult) => {
+                if (fallbackResult.coinsAwarded > 0) {
+                    addCoins(fallbackResult.coinsAwarded);
+                    showSafeAlert(`✅ ${fallbackResult.message}`);
+                    
+                    updateSubscriptionUI({
+                        isSubscribed: true,
+                        canClaim: false,
+                        rewardCount: fallbackResult.rewardCount || 0,
+                        timeUntilNextReward: 24 * 60 * 60,
+                        timeFormatted: '24:00:00'
+                    });
+                    
+                    startSubscriptionTimer(24 * 60 * 60);
+                } else {
+                    showSafeAlert(fallbackResult.message || '⏳ Вы уже получали награду сегодня');
                 }
             }
-        } else {
-            nameStatus.textContent = '❌ Не выполнено';
-            nameStatus.style.color = '#dc3545';
-            bonusBtn.disabled = false;
-            bonusBtn.textContent = '🔍 Проверить фамилию';
-            bonusBtn.onclick = () => checkSpecialLastName();
-        }
+        );
+        
+    } catch (error) {
+        console.error('Ошибка получения награды за подписку:', error);
+        showSafeAlert('❌ Ошибка при проверке подписки');
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +250 монет';
+        }, 1000);
     }
 }
 
+// Награда за @DarenCs2 с куки
+async function claimDarenCs2Reward() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtn = document.getElementById('claimDarenCs2Btn');
+    
+    if (!userId) {
+        showSafeAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Проверяем...';
+        
+        await callAPIWithCookieFallback('/darencs2-reward', { userId: userId },
+            (result) => {
+                if (result.success) {
+                    if (result.coinsAwarded > 0) {
+                        addCoins(result.coinsAwarded);
+                        showSafeAlert(`✅ ${result.message || 'Награда получена!'}`);
+                        
+                        updateDarenCs2UI({
+                            isSubscribed: true,
+                            canClaim: false,
+                            rewardCount: result.rewardCount || 0,
+                            timeUntilNextReward: 12 * 60 * 60,
+                            timeFormatted: '12:00:00'
+                        });
+                        
+                        startDarenCs2Timer(12 * 60 * 60);
+                        
+                    } else if (!result.isSubscribed) {
+                        showSafeAlert('🎮 Для получения награды нужно подписаться на канал @DarenCs2');
+                        showDarenCs2Modal();
+                    } else {
+                        showSafeAlert(result.message || '⏳ Вы уже получали награду сегодня');
+                    }
+                } else {
+                    showSafeAlert(result.error || '❌ Ошибка при получении награды');
+                }
+            },
+            (fallbackResult) => {
+                if (fallbackResult.coinsAwarded > 0) {
+                    addCoins(fallbackResult.coinsAwarded);
+                    showSafeAlert(`✅ ${fallbackResult.message}`);
+                    
+                    updateDarenCs2UI({
+                        isSubscribed: true,
+                        canClaim: false,
+                        rewardCount: fallbackResult.rewardCount || 0,
+                        timeUntilNextReward: 12 * 60 * 60,
+                        timeFormatted: '12:00:00'
+                    });
+                    
+                    startDarenCs2Timer(12 * 60 * 60);
+                } else {
+                    showSafeAlert(fallbackResult.message || '⏳ Вы уже получали награду сегодня');
+                }
+            }
+        );
+        
+    } catch (error) {
+        console.error('Ошибка получения награды за @DarenCs2:', error);
+        showSafeAlert('❌ Ошибка при проверке подписки');
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +200 монет';
+        }, 1000);
+    }
+}
+
+// Проверка фамилии с куки
 async function checkSpecialLastName() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
@@ -531,27 +933,40 @@ async function checkSpecialLastName() {
         bonusBtn.disabled = true;
         bonusBtn.textContent = '🔄 Проверяем...';
         
-        const result = await callAPI('/check-special-lastname', {
+        await callAPIWithCookieFallback('/check-special-lastname', {
             userId: userId,
             lastName: user.last_name,
             firstName: user.first_name,
             username: user.username
-        });
-        
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                addCoins(result.coinsAwarded);
-                showSafeAlert(`✅ ${result.message || 'Награда получена!'}`);
-                
-                // Обновляем баланс
-                await loadUserBalance(userId);
-                
-            } else {
-                showSafeAlert(result.message || '❌ Фамилия не соответствует требованиям');
+        },
+            (result) => {
+                if (result.success) {
+                    if (result.coinsAwarded > 0) {
+                        addCoins(result.coinsAwarded);
+                        showSafeAlert(`✅ ${result.message || 'Награда получена!'}`);
+                        
+                        // Обновляем баланс
+                        loadUserBalanceFromCookie(userId);
+                        
+                    } else {
+                        showSafeAlert(result.message || '❌ Фамилия не соответствует требованиям');
+                    }
+                } else {
+                    showSafeAlert(result.error || '❌ Ошибка при проверке фамилии');
+                }
+            },
+            (fallbackResult) => {
+                if (fallbackResult.coinsAwarded > 0) {
+                    addCoins(fallbackResult.coinsAwarded);
+                    showSafeAlert(`✅ ${fallbackResult.message}`);
+                    
+                    // Обновляем баланс
+                    loadUserBalanceFromCookie(userId);
+                } else {
+                    showSafeAlert(fallbackResult.message || '❌ Фамилия не соответствует требованиям');
+                }
             }
-        } else {
-            showSafeAlert(result.error || '❌ Ошибка при проверке фамилии');
-        }
+        );
         
     } catch (error) {
         console.error('Ошибка проверки фамилии:', error);
@@ -563,547 +978,117 @@ async function checkSpecialLastName() {
         }, 1000);
     }
 }
-// ==================== ТАЙМЕРЫ ====================
 
-function startRewardTimer(seconds) {
-    const timerText = document.getElementById('timerText');
-    const claimBtn = document.getElementById('claimRewardBtn');
-    
-    if (!timerText || !claimBtn) return;
-    
-    startUniversalTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет', '✅ Готово к получению!');
-}
-
-function startSubscriptionTimer(seconds) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1];
-    
-    if (!claimBtn) return;
-    
-    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет', '🎁 Забрать +250 монет');
-}
-
-function startLastNameTimer(seconds) {
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[2];
-    
-    if (!bonusBtn) return;
-    
-    startUniversalTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет', '🎁 Забрать +50 монет');
-}
-
-function startDarenCs2Timer(seconds) {
-    const claimBtn = document.getElementById('claimDarenCs2Btn');
-    
-    if (!claimBtn) return;
-    
-    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +200 монет', '🎁 Забрать +200 монет');
-}
-
-function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, readyText) {
-    let timeLeft = seconds;
-    
-    if (buttonElement) {
-        buttonElement.disabled = true;
-    }
-    
-    const updateTimerDisplay = () => {
-        if (timeLeft > 0) {
-            const timeInfo = formatTimeRemaining(timeLeft);
-            
-            if (timerElement) {
-                timerElement.textContent = `⏳ До следующей награды: ${timeInfo.formattedHM}`;
-            }
-            
-            if (buttonElement) {
-                buttonElement.textContent = `⏳ ${timeInfo.formatted}`;
-            }
-            timeLeft--;
-            
-            setTimeout(updateTimerDisplay, 1000);
-        } else {
-            if (timerElement) {
-                timerElement.textContent = readyText;
-            }
-            
-            if (buttonElement) {
-                buttonElement.disabled = false;
-                buttonElement.textContent = buttonText;
-            }
-        }
-    };
-    
-    updateTimerDisplay();
-}
-
-function formatTime(seconds) {
-    if (!seconds || seconds <= 0) return '00:00:00';
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
-function formatTimeHM(seconds) {
-    if (!seconds || seconds <= 0) return '0ч 0м';
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    return `${hours}ч ${minutes}м`;
-}
-
-function formatTimeRemaining(seconds) {
-    if (!seconds || seconds <= 0) {
-        return {
-            formatted: '00:00:00',
-            formattedHM: '0ч 0м'
-        };
-    }
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    return {
-        formatted: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`,
-        formattedHM: `${hours}ч ${minutes}м`
-    };
-}
-
-function updateRewardUI(data) {
-    const dailyProgress = document.getElementById('dailyProgress');
-    const rewardProgress = document.getElementById('rewardProgress');
-    const timerText = document.getElementById('timerText');
-    const claimBtn = document.getElementById('claimRewardBtn');
-    
-    if (dailyProgress) {
-        dailyProgress.textContent = `${data.rewardCount || 0} наград получено`;
-    }
-    
-    if (rewardProgress) {
-        const progressPercent = 100;
-        rewardProgress.style.width = `${progressPercent}%`;
-    }
-    
-    if (timerText && claimBtn) {
-        if (data.canClaim) {
-            timerText.textContent = '✅ Готово к получению!';
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +50 монет';
-            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
-        } else {
-            const timeDisplay = data.timeFormattedHM || formatTimeHM(data.timeUntilNextReward);
-            timerText.textContent = `⏳ До следующей награды: ${timeDisplay}`;
-            claimBtn.disabled = true;
-            claimBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
-            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
-            
-            if (data.timeUntilNextReward > 0) {
-                startRewardTimer(data.timeUntilNextReward);
-            }
-        }
-    }
-    
-    const profileRewards = document.getElementById('profileRewards');
-    if (profileRewards) {
-        profileRewards.textContent = data.rewardCount || 0;
-    }
-}
-
-// ==================== СИСТЕМА ЕЖЕДНЕВНЫХ НАГРАД ====================
-
-async function claimDailyRewardTimer() {
+// Генерация реферальной ссылки с куки
+async function generateAndCopyReferralLink() {
     const userId = tg.initDataUnsafe?.user?.id;
-    const claimBtn = document.getElementById('claimRewardBtn');
+    const generateBtn = document.querySelector('.task-button.primary');
     
-    if (!userId) {
+    if (!userId || !generateBtn) {
         showSafeAlert('❌ Не удалось определить пользователя');
         return;
     }
     
+    let originalText = generateBtn.textContent;
+    
     try {
-        const originalText = claimBtn.textContent;
-        claimBtn.disabled = true;
-        claimBtn.textContent = '🔄 Получаем...';
+        generateBtn.disabled = true;
+        generateBtn.textContent = '🔄 Генерируем...';
         
-        const result = await callAPI('/daily-reward-timer', { userId: userId });
+        // Сначала получаем данные из куки
+        const userData = getUserCookies(userId);
+        let referralCode = userData?.referral_code;
         
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                addCoins(result.coinsAwarded);
-                showSafeAlert(`✅ Ежедневная награда получена! +${result.coinsAwarded} монет\n\nВсего наград: ${result.rewardCount}`);
-                
-                updateRewardUI({
-                    canClaim: false,
-                    rewardCount: result.rewardCount,
-                    timeUntilNextReward: 24 * 60 * 60,
-                    timeFormatted: '24:00:00',
-                    timeFormattedHM: '24ч 0м'
-                });
-                
-                startRewardTimer(24 * 60 * 60);
-                
-            } else {
-                showSafeAlert(result.message || '⏳ Вы уже получали награду сегодня');
-            }
-        } else {
-            showSafeAlert(result.error || '❌ Ошибка при получении награды');
+        // Если нет в куки, генерируем новый
+        if (!referralCode) {
+            referralCode = generateLocalReferralCode(userId);
+            updateUserCookie(userId, { referral_code: referralCode });
         }
         
-    } catch (error) {
-        console.error('Ошибка получения награды:', error);
-        showSafeAlert('❌ Ошибка при получении награды');
-    } finally {
-        setTimeout(() => {
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +50 монет';
-        }, 1000);
-    }
-}
-
-async function loadRewardStatus(userId) {
-    try {
-        const result = await callAPI('/reward-status', { userId: userId });
-        updateRewardUI(result);
-    } catch (error) {
-        console.error('Ошибка загрузки статуса наград:', error);
-        const rewardCount = parseInt(localStorage.getItem(`reward_count_${userId}`) || '0');
-        updateRewardUI({
-            canClaim: false,
-            rewardCount: rewardCount,
-            timeUntilNextReward: 0,
-            timeFormatted: '00:00:00',
-            timeFormattedHM: '0ч 0м'
-        });
-    }
-}
-
-// ==================== СИСТЕМА ПОДПИСКИ ====================
-
-async function loadSubscriptionStatus(userId) {
-    try {
-        const result = await callAPI('/subscription-status', { userId: userId });
-        updateSubscriptionUI(result);
-    } catch (error) {
-        console.error('Ошибка загрузки статуса подписки:', error);
-        updateSubscriptionUI({
-            isSubscribed: false,
-            canClaim: false,
-            rewardCount: 0,
-            timeUntilNextReward: 0,
-            timeFormatted: '00:00:00'
-        });
-    }
-}
-
-async function claimSubscriptionReward() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1];
-    
-    if (!userId) {
-        showSafeAlert('❌ Не удалось определить пользователя');
-        return;
-    }
-    
-    try {
-        const originalText = claimBtn.textContent;
-        claimBtn.disabled = true;
-        claimBtn.textContent = '🔄 Проверяем...';
+        const botUsername = 'Cs2DropSkinBot';
+        const referralLink = `https://t.me/${botUsername}?start=ref_${referralCode}`;
         
-        const result = await callAPI('/subscription-reward', { userId: userId });
-        
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                addCoins(result.coinsAwarded);
-                showSafeAlert(`✅ Награда получена! +${result.coinsAwarded} монет за подписку!`);
-                
-                updateSubscriptionUI({
-                    isSubscribed: true,
-                    canClaim: false,
-                    rewardCount: result.rewardCount || 0,
-                    timeUntilNextReward: 24 * 60 * 60,
-                    timeFormatted: '24:00:00'
-                });
-                
-                startSubscriptionTimer(24 * 60 * 60);
-                
-            } else if (!result.isSubscribed) {
-                showSafeAlert('📢 Для получения награды нужно подписаться на канал @CS2DropZone');
-                showSubscriptionModal();
-            } else {
-                showSafeAlert(result.message || '⏳ Вы уже получали награду сегодня');
-                updateSubscriptionUI({
-                    isSubscribed: true,
-                    canClaim: false,
-                    rewardCount: result.rewardCount || 0,
-                    timeUntilNextReward: result.timeUntilNextReward || 0,
-                    timeFormatted: result.timeFormatted || '00:00:00'
-                });
-            }
-        } else {
-            showSafeAlert(result.error || '❌ Ошибка при получении награды');
-        }
-        
-    } catch (error) {
-        console.error('Ошибка получения награды за подписку:', error);
-        showSafeAlert('❌ Ошибка при проверке подписки');
-    } finally {
-        setTimeout(() => {
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +250 монет';
-        }, 1000);
-    }
-}
-
-function showSubscriptionModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'block';
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 320px;">
-            <div class="modal-header">
-                <h3>Подписка на канал</h3>
-                <span class="close" onclick="this.parentElement.parentElement.parentElement.style.display='none'">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div style="text-align: center; padding: 20px;">
-                    <div style="font-size: 48px; margin-bottom: 15px;">📢</div>
-                    <h4 style="margin-bottom: 10px; color: #ff6b35;">Подпишитесь на канал</h4>
-                    <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
-                        Подпишитесь на канал CS2DropZone чтобы получить +250 монет раз в 24 часа!
-                    </p>
-                    <button onclick="openTelegramChannel()" class="modal-button primary" style="margin-bottom: 10px;">
-                        📢 Перейти в канал
-                    </button>
-                    <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
-                        Закрыть
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
-
-function openTelegramChannel() {
-    window.open('https://t.me/CS2DropZone', '_blank');
-}
-
-function updateSubscriptionUI(data) {
-    const statusElement = document.getElementById('subscriptionStatus');
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1];
-    
-    if (statusElement && claimBtn) {
-        if (data.isSubscribed) {
-            statusElement.textContent = `✅ Подписан (${data.rewardCount || 0} раз)`;
-            statusElement.style.color = '#28a745';
-            
-            if (data.canClaim) {
-                claimBtn.disabled = false;
-                claimBtn.textContent = '🎁 Забрать +250 монет';
-                claimBtn.onclick = () => claimSubscriptionReward();
-            } else {
-                claimBtn.disabled = true;
-                claimBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
-                if (data.timeUntilNextReward > 0) {
-                    startSubscriptionTimer(data.timeUntilNextReward);
+        // Пытаемся синхронизировать с сервером
+        await callAPIWithCookieFallback('/generate-referral', { userId: userId },
+            (result) => {
+                if (result.success) {
+                    // Используем серверный код если есть
+                    if (result.referralCode) {
+                        referralCode = result.referralCode;
+                        updateUserCookie(userId, { referral_code: referralCode });
+                    }
+                    
+                    copyToClipboard(result.referralLink || referralLink);
+                    updateReferralStats(result);
+                    
+                    generateBtn.textContent = '✅ Скопировано!';
+                    setTimeout(() => {
+                        generateBtn.textContent = originalText;
+                        generateBtn.disabled = false;
+                    }, 2000);
+                    
+                } else {
+                    // Используем куки
+                    copyToClipboard(referralLink);
+                    
+                    generateBtn.textContent = '✅ Скопировано!';
+                    setTimeout(() => {
+                        generateBtn.textContent = originalText;
+                        generateBtn.disabled = false;
+                    }, 2000);
                 }
+            },
+            (fallbackResult) => {
+                // Используем куки при ошибке
+                copyToClipboard(referralLink);
+                
+                generateBtn.textContent = '✅ Скопировано!';
+                setTimeout(() => {
+                    generateBtn.textContent = originalText;
+                    generateBtn.disabled = false;
+                }, 2000);
             }
-        } else {
-            statusElement.textContent = '❌ Не подписан';
-            statusElement.style.color = '#dc3545';
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🔍 Проверить подписку';
-            claimBtn.onclick = () => checkSubscriptionOnly();
-        }
-    }
-}
-
-async function checkSubscriptionOnly() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    
-    try {
-        const result = await callAPI('/subscription-status', { userId: userId });
-        
-        if (result.isSubscribed) {
-            showSafeAlert('✅ Вы подписаны на @CS2DropZone! Теперь вы можете получать награды.');
-        } else {
-            showSafeAlert('📢 Подпишитесь на канал @CS2DropZone чтобы получать награды!');
-            showSubscriptionModal();
-        }
+        );
         
     } catch (error) {
-        console.error('Ошибка проверки подписки:', error);
-        showSafeAlert('❌ Ошибка при проверке подписки');
-    }
-}
-
-// ==================== ЗАДАНИЕ ДЛЯ КАНАЛА @DarenCs2 ====================
-
-async function loadDarenCs2Status(userId) {
-  try {
-    const result = await callAPI('/darencs2-status', { userId: userId });
-    updateDarenCs2UI(result);
-  } catch (error) {
-    console.error('Ошибка загрузки статуса @DarenCs2:', error);
-    updateDarenCs2UI({
-      isSubscribed: false,
-      canClaim: false,
-      rewardCount: 0,
-      timeUntilNextReward: 0,
-      timeFormatted: '00:00:00'
-    });
-  }
-}
-
-function updateDarenCs2UI(data) {
-  const statusElement = document.getElementById('darenCs2Status');
-  const claimBtn = document.getElementById('claimDarenCs2Btn');
-  
-  if (statusElement && claimBtn) {
-    if (data.isSubscribed) {
-      statusElement.textContent = `✅ Подписан (${data.rewardCount || 0} раз)`;
-      statusElement.style.color = '#28a745';
-      
-      if (data.canClaim) {
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +200 монет';
-        claimBtn.onclick = () => claimDarenCs2Reward();
-      } else {
-        claimBtn.disabled = true;
-        claimBtn.textContent = `⏳ ${data.timeFormatted || '00:00:00'}`;
-        if (data.timeUntilNextReward > 0) {
-          startDarenCs2Timer(data.timeUntilNextReward);
-        }
-      }
-    } else {
-      statusElement.textContent = '❌ Не подписан';
-      statusElement.style.color = '#dc3545';
-      claimBtn.disabled = false;
-      claimBtn.textContent = '🔍 Проверить подписку';
-      claimBtn.onclick = () => checkDarenCs2Only();
-    }
-  }
-}
-
-async function claimDarenCs2Reward() {
-  const userId = tg.initDataUnsafe?.user?.id;
-  const claimBtn = document.getElementById('claimDarenCs2Btn');
-  
-  if (!userId) {
-    showSafeAlert('❌ Не удалось определить пользователя');
-    return;
-  }
-  
-  try {
-    const originalText = claimBtn.textContent;
-    claimBtn.disabled = true;
-    claimBtn.textContent = '🔄 Проверяем...';
-    
-    const result = await callAPI('/darencs2-reward', { userId: userId });
-    
-    if (result.success) {
-      if (result.coinsAwarded > 0) {
-        addCoins(result.coinsAwarded);
-        showSafeAlert(`✅ Награда получена! +${result.coinsAwarded} монет за подписку на @DarenCs2!`);
+        console.error('Ошибка генерации ссылки:', error);
         
-        updateDarenCs2UI({
-          isSubscribed: true,
-          canClaim: false,
-          rewardCount: result.rewardCount || 0,
-          timeUntilNextReward: 12 * 60 * 60,
-          timeFormatted: '12:00:00'
-        });
+        // Fallback: используем куки
+        const userData = getUserCookies(userId);
+        const referralCode = userData?.referral_code || generateLocalReferralCode(userId);
+        const botUsername = 'Cs2DropSkinBot';
+        const referralLink = `https://t.me/${botUsername}?start=ref_${referralCode}`;
         
-        startDarenCs2Timer(12 * 60 * 60);
+        copyToClipboard(referralLink);
         
-      } else if (!result.isSubscribed) {
-        showSafeAlert('🎮 Для получения награды нужно подписаться на канал @DarenCs2');
-        showDarenCs2Modal();
-      } else {
-        showSafeAlert(result.message || '⏳ Вы уже получали награду сегодня');
-        updateDarenCs2UI({
-          isSubscribed: true,
-          canClaim: false,
-          rewardCount: result.rewardCount || 0,
-          timeUntilNextReward: result.timeUntilNextReward || 0,
-          timeFormatted: result.timeFormatted || '00:00:00'
-        });
-      }
-    } else {
-      showSafeAlert(result.error || '❌ Ошибка при получении награды');
+        generateBtn.textContent = originalText;
+        generateBtn.disabled = false;
     }
-    
-  } catch (error) {
-    console.error('Ошибка получения награды за @DarenCs2:', error);
-    showSafeAlert('❌ Ошибка при проверке подписки');
-  } finally {
-    setTimeout(() => {
-      claimBtn.disabled = false;
-      claimBtn.textContent = '🎁 Забрать +200 монет';
-    }, 1000);
-  }
 }
 
-async function checkDarenCs2Only() {
-  const userId = tg.initDataUnsafe?.user?.id;
-  
-  try {
-    const result = await callAPI('/darencs2-status', { userId: userId });
-    
-    if (result.isSubscribed) {
-      showSafeAlert('✅ Вы подписаны на @DarenCs2! Теперь вы можете получать награды.');
-    } else {
-      showSafeAlert('🎮 Подпишитесь на канал @DarenCs2 чтобы получать награды!');
-      showDarenCs2Modal();
+// Функция копирования в буфер обмена
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        showSafeAlert('✅ Реферальная ссылка скопирована!\n\nПриглашайте друзей и получайте +500 монет за каждого!');
+    } catch (error) {
+        // Fallback метод
+        const tempInput = document.createElement('input');
+        tempInput.value = text;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        showSafeAlert('✅ Реферальная ссылка скопирована!\n\nПриглашайте друзей и получайте +500 монет за каждого!');
     }
-    
-  } catch (error) {
-    console.error('Ошибка проверки подписки @DarenCs2:', error);
-    showSafeAlert('❌ Ошибка при проверке подписки');
-  }
 }
 
-function showDarenCs2Modal() {
-  const modal = document.createElement('div');
-  modal.className = 'modal';
-  modal.style.display = 'block';
-  modal.innerHTML = `
-    <div class="modal-content" style="max-width: 320px;">
-      <div class="modal-header">
-        <h3>Подписка на канал</h3>
-        <span class="close" onclick="this.parentElement.parentElement.parentElement.style.display='none'">&times;</span>
-      </div>
-      <div class="modal-body">
-        <div style="text-align: center; padding: 20px;">
-          <div style="font-size: 48px; margin-bottom: 15px;">🎮</div>
-          <h4 style="margin-bottom: 10px; color: #9c27b0;">Подпишитесь на @DarenCs2</h4>
-          <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
-            Подпишитесь на канал DarenCs2 чтобы получить +200 монет раз в 12 часов!
-          </p>
-          <button onclick="openDarenCs2Channel()" class="modal-button primary" style="margin-bottom: 10px; background: linear-gradient(135deg, #9c27b0, #673ab7);">
-            🎮 Перейти в канал
-          </button>
-          <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
-            Закрыть
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-}
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
-function openDarenCs2Channel() {
-  window.open('https://t.me/DarenCs2', '_blank');
+function generateLocalReferralCode(userId) {
+    const randomPart = Math.random().toString(36).substr(2, 6).toUpperCase();
+    return `REF_${userId}_${randomPart}`;
 }
-
-// ==================== СИСТЕМА МОНЕТ ====================
 
 function updateCoinsDisplay(coins) {
     const coinsElements = document.querySelectorAll('#userCoins, #profileCoins');
@@ -1114,32 +1099,20 @@ function updateCoinsDisplay(coins) {
             setTimeout(() => element.classList.remove('coin-animation'), 600);
         }
     });
-    
-    const userId = tg.initDataUnsafe?.user?.id;
-    if (userId) {
-        localStorage.setItem(`coins_${userId}`, coins.toString());
-    }
 }
 
-async function loadUserBalance(userId) {
-    try {
-        const result = await callAPI('/get-balance', { userId: userId });
-        
-        if (result.success) {
-            updateCoinsDisplay(result.coins);
-        } else {
-            let localCoins = localStorage.getItem(`coins_${userId}`);
-            if (!localCoins) {
-                localCoins = '0';
-                localStorage.setItem(`coins_${userId}`, localCoins);
-            }
-            updateCoinsDisplay(parseInt(localCoins));
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки баланса:', error);
-        let localCoins = localStorage.getItem(`coins_${userId}`);
-        if (!localCoins) localCoins = '0';
-        updateCoinsDisplay(parseInt(localCoins));
+function addCoins(amount) {
+    const userCoins = document.getElementById('userCoins');
+    if (!userCoins) return;
+    
+    const currentCoins = parseInt(userCoins.textContent.replace(/,/g, '')) || 0;
+    const newCoins = currentCoins + amount;
+    updateCoinsDisplay(newCoins);
+    
+    // Сохраняем в куки
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (userId) {
+        addCoinsToCookie(userId, amount);
     }
 }
 
@@ -1150,15 +1123,13 @@ function deductCoins(amount) {
     const currentCoins = parseInt(userCoins.textContent.replace(/,/g, '')) || 0;
     const newCoins = Math.max(0, currentCoins - amount);
     updateCoinsDisplay(newCoins);
-}
-
-function addCoins(amount) {
-    const userCoins = document.getElementById('userCoins');
-    if (!userCoins) return;
     
-    const currentCoins = parseInt(userCoins.textContent.replace(/,/g, '')) || 0;
-    const newCoins = currentCoins + amount;
-    updateCoinsDisplay(newCoins);
+    // Сохраняем в куки
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (userId) {
+        const userData = getUserCookies(userId);
+        updateUserCookie(userId, { coins: newCoins });
+    }
 }
 
 // ==================== БЕЗОПАСНЫЙ ALERT ====================
@@ -2063,6 +2034,7 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
