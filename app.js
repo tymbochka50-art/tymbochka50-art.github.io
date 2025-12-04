@@ -448,6 +448,42 @@ function lastNameRewardFallback(userId, userData, lastName) {
     };
 }
 
+// ==================== ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ ====================
+
+// Функция для периодической синхронизации куки с сервером
+function startCookieSync(userId) {
+    // Синхронизируем каждые 5 минут
+    setInterval(async () => {
+        try {
+            const userCookies = getUserCookies(userId);
+            if (!userCookies) return;
+            
+            console.log('🔄 Авто-синхронизация куки...');
+            
+            await callAPIWithCookieFallback('/sync-cookies', {
+                userId: userId,
+                cookiesData: userCookies
+            },
+            (result) => {
+                if (result.success && result.synced) {
+                    console.log('✅ Куки синхронизированы с сервером');
+                    // Обновляем куки данными с сервера
+                    saveUserToCookies(userId, result.user);
+                }
+            },
+            (error) => {
+                console.log('⚠️ Ошибка авто-синхронизации');
+            }
+            );
+        } catch (error) {
+            console.error('Ошибка авто-синхронизации:', error);
+        }
+    }, 5 * 60 * 1000); // 5 минут
+}
+
+// Добавить вызов в initApp после инициализации:
+// startCookieSync(user.id);
+
 // ==================== ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ====================
 
 async function initApp() {
@@ -2034,6 +2070,7 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
 
