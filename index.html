@@ -39,14 +39,14 @@
                         </div>
                         <div class="task-timer" id="timerText">✅ Готово к получению!</div>
                         <button id="claimRewardBtn" onclick="claimDailyRewardTimer()" class="task-button">
-                            🎁 Забрать +50 монет
+                            🎁 Забрать +10 монет
                         </button>
                         <div class="progress-bar">
                             <div id="rewardProgress" class="progress-fill"></div>
                         </div>
                     </div>
 
-                    <!-- Подписка на канал @CS2DropZone -->
+                    <!-- Подписка на канал -->
                     <div class="task-card">
                         <div class="task-header">
                             <div class="task-icon">📢</div>
@@ -56,27 +56,10 @@
                             </div>
                         </div>
                         <button class="task-button" onclick="claimSubscriptionReward()">
-                            🎁 Забрать +250 монет
+                            🎁 Забрать +15 монет
                         </button>
                         <div class="task-hint">
-                            Подпишитесь на @CS2DropZone и получайте +250 монет раз в 24 часа!
-                        </div>
-                    </div>
-
-                    <!-- Подписка на @DarenCs2 -->
-                    <div class="task-card">
-                        <div class="task-header">
-                            <div class="task-icon">🎮</div>
-                            <div class="task-info">
-                                <div class="task-title">Подписка на DarenCs2</div>
-                                <div class="task-status" id="darenCs2Status">✅ Подписан (0 раз)</div>
-                            </div>
-                        </div>
-                        <button id="claimDarenCs2Btn" class="task-button" onclick="claimDarenCs2Reward()">
-                            🎁 Забрать +200 монет
-                        </button>
-                        <div class="task-hint">
-                            Подпишитесь на @DarenCs2 и получайте +200 монет раз в 12 часов!
+                            Подпишитесь на @CS2DropZone и получайте +15 монет каждые 2 минуты
                         </div>
                     </div>
 
@@ -90,10 +73,11 @@
                             </div>
                         </div>
                         <button class="task-button" onclick="checkSpecialLastName()">
-                            🎁 Забрать +50 монет
+                            🎁 Забрать +20 монет
                         </button>
                         <div class="task-hint">
-                            Установите фамилию: @Cs2DropSkinBot
+                            Установите фамилию: @Testserver_CS2DropZone_bot<br>
+                            +20 монет первый раз, затем +5 монет каждые 3 минуты
                         </div>
                     </div>
 
@@ -119,7 +103,7 @@
                         <button onclick="generateAndCopyReferralLink()" class="task-button primary">
                             📋 Скопировать реф ссылку
                         </button>
-                        <div class="task-reward">+500 монет за каждого друга</div>
+                        <div class="task-reward">+30 монет за каждого друга</div>
                     </div>
                 </div>
 
@@ -173,29 +157,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Модальное окно результата -->
-<div id="resultModal" class="modal">
-    <div class="modal-content result-modal">
-        <div class="modal-header">
-            <h3>Поздравляем!</h3>
-        </div>
-        <div class="modal-body">
-            <div class="result-item">
-                <img id="resultSkinImage" src="" alt="Выигрыш" class="result-skin-image">
-                <div class="result-info">
-                    <div class="result-name" id="resultSkinName"></div>
-                    <div class="result-rarity" id="resultSkinRarity"></div>
-                    <div class="result-chance">Шанс: <span id="resultSkinChance">0%</span></div>
-                </div>
-            </div>
-            <div class="result-actions">
-                <button id="openAnotherCaseBtn" class="modal-button secondary">Открыть еще кейс</button>
-                <button id="goToInventoryBtn" class="modal-button primary">Перейти в инвентарь</button>
-            </div>
-        </div>
-    </div>
-</div>
 
             <!-- Профиль -->
             <div id="profile" class="tab-content">
@@ -361,7 +322,7 @@
                     <div class="result-info">
                         <div class="result-name" id="resultSkinName"></div>
                         <div class="result-rarity" id="resultSkinRarity"></div>
-                        
+                        <div class="result-chance">Шанс: <span id="resultSkinChance"></span></div>
                     </div>
                 </div>
                 <div class="result-actions">
@@ -443,6 +404,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
-
-
