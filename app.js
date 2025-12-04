@@ -39,26 +39,33 @@ function deleteCookie(name) {
 // Получить все данные пользователя из куки
 function getUserCookies(userId) {
     if (!userId) return null;
-    return getCookie(`user_${userId}`) || {
-        coins: 0,
-        total_earned: 0,
-        reward_count: 0,
-        max_rewards: 30,
-        referral_code: generateLocalReferralCode(userId),
-        total_referrals: 0,
-        referral_earnings: 0,
-        subscription_reward_count: 0,
-        last_name_reward_count: 0,
-        darencs2_reward_count: 0,
-        rewards_history: [],
-        referrals: [],
-        last_reward_time: null,
-        last_subscription_reward_time: null,
-        last_darencs2_reward_time: null,
-        last_name_reward_time: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
+    const cookieData = getCookie(`user_${userId}`);
+    if (!cookieData) {
+        // Создаем начальные данные
+        const initialData = {
+            coins: 0,
+            total_earned: 0,
+            reward_count: 0,
+            max_rewards: 30,
+            referral_code: generateLocalReferralCode(userId),
+            total_referrals: 0,
+            referral_earnings: 0,
+            subscription_reward_count: 0,
+            last_name_reward_count: 0,
+            darencs2_reward_count: 0,
+            rewards_history: [],
+            referrals: [],
+            last_reward_time: null,
+            last_subscription_reward_time: null,
+            last_darencs2_reward_time: null,
+            last_name_reward_time: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        setCookie(`user_${userId}`, initialData, 365);
+        return initialData;
+    }
+    return cookieData;
 }
 
 // Сохранить данные пользователя в куки
@@ -72,12 +79,6 @@ function saveUserToCookies(userId, userData) {
     // Также сохраняем отдельные поля для быстрого доступа
     if (userData.coins !== undefined) {
         setCookie(`coins_${userId}`, userData.coins, 365);
-    }
-    if (userData.reward_count !== undefined) {
-        setCookie(`reward_count_${userId}`, userData.reward_count, 365);
-    }
-    if (userData.referral_code !== undefined) {
-        setCookie(`referral_code_${userId}`, userData.referral_code, 365);
     }
 }
 
@@ -175,13 +176,6 @@ async function callAPIWithCookieFallback(endpoint, data, successCallback, errorC
                     referral_code: result.referralCode,
                     total_referrals: result.totalReferrals || 0,
                     referral_earnings: result.referralEarnings || 0
-                });
-            }
-            else if (endpoint === '/handle-referral' && result.reward) {
-                const newCoins = addCoinsToCookie(userId, result.reward);
-                updateUserCookie(userId, {
-                    total_referrals: (getUserCookies(userId)?.total_referrals || 0) + 1,
-                    referral_earnings: (getUserCookies(userId)?.referral_earnings || 0) + result.reward
                 });
             }
         }
@@ -448,42 +442,6 @@ function lastNameRewardFallback(userId, userData, lastName) {
     };
 }
 
-// ==================== ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ ====================
-
-// Функция для периодической синхронизации куки с сервером
-function startCookieSync(userId) {
-    // Синхронизируем каждые 5 минут
-    setInterval(async () => {
-        try {
-            const userCookies = getUserCookies(userId);
-            if (!userCookies) return;
-            
-            console.log('🔄 Авто-синхронизация куки...');
-            
-            await callAPIWithCookieFallback('/sync-cookies', {
-                userId: userId,
-                cookiesData: userCookies
-            },
-            (result) => {
-                if (result.success && result.synced) {
-                    console.log('✅ Куки синхронизированы с сервером');
-                    // Обновляем куки данными с сервера
-                    saveUserToCookies(userId, result.user);
-                }
-            },
-            (error) => {
-                console.log('⚠️ Ошибка авто-синхронизации');
-            }
-            );
-        } catch (error) {
-            console.error('Ошибка авто-синхронизации:', error);
-        }
-    }, 5 * 60 * 1000); // 5 минут
-}
-
-// Добавить вызов в initApp после инициализации:
-// startCookieSync(user.id);
-
 // ==================== ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ====================
 
 async function initApp() {
@@ -564,19 +522,6 @@ async function initApp() {
 async function loadUserBalanceFromCookie(userId) {
     const coins = getCoinsFromCookie(userId);
     updateCoinsDisplay(coins);
-    
-    // Пытаемся синхронизировать с сервером
-    callAPIWithCookieFallback('/get-balance', { userId: userId },
-        (result) => {
-            if (result.success && !result.fallback) {
-                updateCoinsDisplay(result.coins);
-                saveUserToCookies(userId, { coins: result.coins });
-            }
-        },
-        (error) => {
-            console.log('⚠️ Баланс загружен из куки');
-        }
-    );
 }
 
 // Загрузка статуса наград из куки
@@ -612,6 +557,47 @@ async function loadRewardStatusFromCookie(userId) {
     });
 }
 
+// Обновление UI наград
+function updateRewardUI(data) {
+    const dailyProgress = document.getElementById('dailyProgress');
+    const rewardProgress = document.getElementById('rewardProgress');
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (dailyProgress) {
+        dailyProgress.textContent = `${data.rewardCount || 0} наград получено`;
+    }
+    
+    if (rewardProgress) {
+        const progressPercent = 100;
+        rewardProgress.style.width = `${progressPercent}%`;
+    }
+    
+    if (timerText && claimBtn) {
+        if (data.canClaim) {
+            timerText.textContent = '✅ Готово к получению!';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +50 монет';
+            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
+        } else {
+            const timeDisplay = data.timeFormattedHM || formatTimeHM(data.timeUntilNextReward);
+            timerText.textContent = `⏳ До следующей награды: ${timeDisplay}`;
+            claimBtn.disabled = true;
+            claimBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
+            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
+            
+            if (data.timeUntilNextReward > 0) {
+                startRewardTimer(data.timeUntilNextReward);
+            }
+        }
+    }
+    
+    const profileRewards = document.getElementById('profileRewards');
+    if (profileRewards) {
+        profileRewards.textContent = data.rewardCount || 0;
+    }
+}
+
 // Загрузка реферальной статистики из куки
 async function loadReferralStatsFromCookie(userId) {
     const userData = getUserCookies(userId);
@@ -620,6 +606,30 @@ async function loadReferralStatsFromCookie(userId) {
         referralEarnings: userData?.referral_earnings || 0,
         referralCode: userData?.referral_code || generateLocalReferralCode(userId)
     });
+}
+
+// Обновление реферальной статистики
+function updateReferralStats(data) {
+    const totalReferrals = document.getElementById('totalReferrals');
+    const referralEarnings = document.getElementById('referralEarnings');
+    const referralProgress = document.getElementById('referralProgress');
+    
+    if (totalReferrals) {
+        totalReferrals.textContent = data.totalReferrals || 0;
+    }
+    
+    if (referralEarnings) {
+        referralEarnings.textContent = data.referralEarnings || 0;
+    }
+    
+    if (referralProgress) {
+        referralProgress.textContent = `${data.totalReferrals || 0} приглашено`;
+    }
+    
+    const profileReferrals = document.getElementById('profileReferrals');
+    if (profileReferrals) {
+        profileReferrals.textContent = data.totalReferrals || 0;
+    }
 }
 
 // Загрузка статуса подписки из куки
@@ -655,6 +665,38 @@ async function loadSubscriptionStatusFromCookie(userId) {
         timeFormatted: timeFormatted,
         timeFormattedHM: timeFormattedHM
     });
+}
+
+// Обновление UI подписки
+function updateSubscriptionUI(data) {
+    const statusElement = document.getElementById('subscriptionStatus');
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
+    
+    if (statusElement && claimBtn) {
+        if (data.isSubscribed) {
+            statusElement.textContent = `✅ Подписан (${data.rewardCount || 0} раз)`;
+            statusElement.style.color = '#28a745';
+            
+            if (data.canClaim) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = '🎁 Забрать +250 монет';
+                claimBtn.onclick = () => claimSubscriptionReward();
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
+                if (data.timeUntilNextReward > 0) {
+                    startSubscriptionTimer(data.timeUntilNextReward);
+                }
+            }
+        } else {
+            statusElement.textContent = '❌ Не подписан';
+            statusElement.style.color = '#dc3545';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🔍 Проверить подписку';
+            claimBtn.onclick = () => checkSubscriptionOnly();
+        }
+    }
 }
 
 // Загрузка статуса фамилии из куки
@@ -696,6 +738,38 @@ async function loadLastNameStatusFromCookie(user) {
     });
 }
 
+// Обновление UI фамилии
+function updateLastNameUI(data) {
+    const nameStatus = document.getElementById('nameStatus');
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[2];
+    
+    if (nameStatus && bonusBtn) {
+        if (data.hasCorrectLastName) {
+            nameStatus.textContent = '✅ Фамилия установлена';
+            nameStatus.style.color = '#28a745';
+            
+            if (data.canClaim) {
+                bonusBtn.disabled = false;
+                bonusBtn.textContent = '🎁 Забрать +50 монет';
+                bonusBtn.onclick = () => checkSpecialLastName();
+            } else {
+                bonusBtn.disabled = true;
+                bonusBtn.textContent = `⏳ ${data.timeFormatted || formatTime(data.timeUntilNextReward)}`;
+                if (data.timeUntilNextReward > 0) {
+                    startLastNameTimer(data.timeUntilNextReward);
+                }
+            }
+        } else {
+            nameStatus.textContent = '❌ Не выполнено';
+            nameStatus.style.color = '#dc3545';
+            bonusBtn.disabled = false;
+            bonusBtn.textContent = '🔍 Проверить фамилию';
+            bonusBtn.onclick = () => checkSpecialLastName();
+        }
+    }
+}
+
 // Загрузка статуса @DarenCs2 из куки
 async function loadDarenCs2StatusFromCookie(userId) {
     const userData = getUserCookies(userId);
@@ -729,6 +803,37 @@ async function loadDarenCs2StatusFromCookie(userId) {
         timeFormatted: timeFormatted,
         timeFormattedHM: timeFormattedHM
     });
+}
+
+// Обновление UI @DarenCs2
+function updateDarenCs2UI(data) {
+  const statusElement = document.getElementById('darenCs2Status');
+  const claimBtn = document.getElementById('claimDarenCs2Btn');
+  
+  if (statusElement && claimBtn) {
+    if (data.isSubscribed) {
+      statusElement.textContent = `✅ Подписан (${data.rewardCount || 0} раз)`;
+      statusElement.style.color = '#28a745';
+      
+      if (data.canClaim) {
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +200 монет';
+        claimBtn.onclick = () => claimDarenCs2Reward();
+      } else {
+        claimBtn.disabled = true;
+        claimBtn.textContent = `⏳ ${data.timeFormatted || '00:00:00'}`;
+        if (data.timeUntilNextReward > 0) {
+          startDarenCs2Timer(data.timeUntilNextReward);
+        }
+      }
+    } else {
+      statusElement.textContent = '❌ Не подписан';
+      statusElement.style.color = '#dc3545';
+      claimBtn.disabled = false;
+      claimBtn.textContent = '🔍 Проверить подписку';
+      claimBtn.onclick = () => checkDarenCs2Only();
+    }
+  }
 }
 
 // ==================== ОСНОВНЫЕ ФУНКЦИИ С КУКИ ====================
@@ -1163,32 +1268,292 @@ function deductCoins(amount) {
     // Сохраняем в куки
     const userId = tg.initDataUnsafe?.user?.id;
     if (userId) {
-        const userData = getUserCookies(userId);
         updateUserCookie(userId, { coins: newCoins });
     }
 }
 
-// ==================== БЕЗОПАСНЫЙ ALERT ====================
+// ==================== НАВИГАЦИЯ И ИНТЕРФЕЙС ====================
 
-let isAlertShowing = false;
-function showSafeAlert(message) {
-    if (isAlertShowing) {
-        console.log('⚠️ Alert уже показывается, пропускаем:', message);
-        return;
+// Исправленная функция инициализации навигации
+function initNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabContents.forEach(tab => {
+        if (!tab.classList.contains('active')) {
+            tab.style.display = 'none';
+        }
+    });
+    
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const tabId = item.getAttribute('data-tab');
+            
+            tabContents.forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
+            
+            navItems.forEach(nav => nav.classList.remove('active'));
+            
+            const activeTab = document.getElementById(tabId);
+            if (activeTab) {
+                activeTab.style.display = 'block';
+                activeTab.classList.add('active');
+            }
+            
+            item.classList.add('active');
+            
+            updateInventoryStats();
+            
+            if (tabId === 'inventory') {
+                loadInventory();
+            } else if (tabId === 'profile') {
+                loadProfileInventory();
+            }
+        });
+    });
+}
+
+// Загрузка данных пользователя
+async function loadUserData(user) {
+    const debugUserId = document.getElementById('debugUserId');
+    if (debugUserId) {
+        debugUserId.textContent = user.id || 'Не доступен';
     }
     
-    isAlertShowing = true;
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) {
+        avatar.src = user.photo_url || getDefaultAvatar();
+    }
+
+    const userName = document.getElementById('userName');
+    if (userName) {
+        userName.textContent = user.first_name || 'Пользователь';
+    }
+
+    const profileFirstName = document.getElementById('profileFirstName');
+    if (profileFirstName) {
+        profileFirstName.textContent = user.first_name || 'Не указано';
+    }
+    
+    const profileLastName = document.getElementById('profileLastName');
+    if (profileLastName) {
+        profileLastName.textContent = user.last_name || 'Не указано';
+    }
+    
+    const profileUsername = document.getElementById('profileUsername');
+    if (profileUsername) {
+        profileUsername.textContent = user.username ? '@' + user.username : 'Не указано';
+    }
+}
+
+function getDefaultAvatar() {
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQgNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
+}
+
+// ==================== ТАЙМЕРЫ ====================
+
+function startRewardTimer(seconds) {
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (!timerText || !claimBtn) return;
+    
+    startUniversalTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет', '✅ Готово к получению!');
+}
+
+function startSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
+    
+    if (!claimBtn) return;
+    
+    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет', '🎁 Забрать +250 монет');
+}
+
+function startLastNameTimer(seconds) {
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[2];
+    
+    if (!bonusBtn) return;
+    
+    startUniversalTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет', '🎁 Забрать +50 монет');
+}
+
+function startDarenCs2Timer(seconds) {
+    const claimBtn = document.getElementById('claimDarenCs2Btn');
+    
+    if (!claimBtn) return;
+    
+    startUniversalTimer(seconds, null, claimBtn, '🎁 Забрать +200 монет', '🎁 Забрать +200 монет');
+}
+
+function startUniversalTimer(seconds, timerElement, buttonElement, buttonText, readyText) {
+    let timeLeft = seconds;
+    
+    if (buttonElement) {
+        buttonElement.disabled = true;
+    }
+    
+    const updateTimerDisplay = () => {
+        if (timeLeft > 0) {
+            const timeInfo = formatTimeRemaining(timeLeft);
+            
+            if (timerElement) {
+                timerElement.textContent = `⏳ До следующей награды: ${timeInfo.formattedHM}`;
+            }
+            
+            if (buttonElement) {
+                buttonElement.textContent = `⏳ ${timeInfo.formatted}`;
+            }
+            timeLeft--;
+            
+            setTimeout(updateTimerDisplay, 1000);
+        } else {
+            if (timerElement) {
+                timerElement.textContent = readyText;
+            }
+            
+            if (buttonElement) {
+                buttonElement.disabled = false;
+                buttonElement.textContent = buttonText;
+            }
+        }
+    };
+    
+    updateTimerDisplay();
+}
+
+function formatTime(seconds) {
+    if (!seconds || seconds <= 0) return '00:00:00';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function formatTimeHM(seconds) {
+    if (!seconds || seconds <= 0) return '0ч 0м';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    return `${hours}ч ${minutes}м`;
+}
+
+function formatTimeRemaining(seconds) {
+    if (!seconds || seconds <= 0) {
+        return {
+            formatted: '00:00:00',
+            formattedHM: '0ч 0м'
+        };
+    }
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    return {
+        formatted: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`,
+        formattedHM: `${hours}ч ${minutes}м`
+    };
+}
+
+// ==================== ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+function checkSubscriptionOnly() {
+    const userId = tg.initDataUnsafe?.user?.id;
     
     try {
-        tg.showAlert(message);
+        showSafeAlert('📢 Подпишитесь на канал @CS2DropZone чтобы получать награды!');
+        showSubscriptionModal();
     } catch (error) {
-        console.error('Ошибка показа alert:', error);
-        console.log('ALERT:', message);
+        console.error('Ошибка проверки подписки:', error);
+        showSafeAlert('❌ Ошибка при проверке подписки');
     }
-    
-    setTimeout(() => {
-        isAlertShowing = false;
-    }, 2000);
+}
+
+function checkDarenCs2Only() {
+  const userId = tg.initDataUnsafe?.user?.id;
+  
+  try {
+      showSafeAlert('🎮 Подпишитесь на канал @DarenCs2 чтобы получать награды!');
+      showDarenCs2Modal();
+  } catch (error) {
+    console.error('Ошибка проверки подписки @DarenCs2:', error);
+    showSafeAlert('❌ Ошибка при проверке подписки');
+  }
+}
+
+function showSubscriptionModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 320px;">
+            <div class="modal-header">
+                <h3>Подписка на канал</h3>
+                <span class="close" onclick="this.parentElement.parentElement.parentElement.style.display='none'">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📢</div>
+                    <h4 style="margin-bottom: 10px; color: #ff6b35;">Подпишитесь на канал</h4>
+                    <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
+                        Подпишитесь на канал CS2DropZone чтобы получить +250 монет раз в 24 часа!
+                    </p>
+                    <button onclick="openTelegramChannel()" class="modal-button primary" style="margin-bottom: 10px;">
+                        📢 Перейти в канал
+                    </button>
+                    <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function showDarenCs2Modal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.display = 'block';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 320px;">
+      <div class="modal-header">
+        <h3>Подписка на канал</h3>
+        <span class="close" onclick="this.parentElement.parentElement.parentElement.style.display='none'">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div style="text-align: center; padding: 20px;">
+          <div style="font-size: 48px; margin-bottom: 15px;">🎮</div>
+          <h4 style="margin-bottom: 10px; color: #9c27b0;">Подпишитесь на @DarenCs2</h4>
+          <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
+            Подпишитесь на канал DarenCs2 чтобы получить +200 монет раз в 12 часов!
+          </p>
+          <button onclick="openDarenCs2Channel()" class="modal-button primary" style="margin-bottom: 10px; background: linear-gradient(135deg, #9c27b0, #673ab7);">
+            🎮 Перейти в канал
+          </button>
+          <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function openTelegramChannel() {
+  window.open('https://t.me/CS2DropZone', '_blank');
+}
+
+function openDarenCs2Channel() {
+  window.open('https://t.me/DarenCs2', '_blank');
 }
 
 // ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
@@ -1723,7 +2088,9 @@ function saveSkinToInventory(skin) {
     }
     
     try {
-        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+        // Получаем инвентарь из куки
+        const userData = getUserCookies(userId);
+        let inventory = userData.inventory || [];
         
         // Создаем уникальный ID для скина
         const skinId = `skin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -1741,9 +2108,11 @@ function saveSkinToInventory(skin) {
         };
         
         inventory.push(newSkin);
-        localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
         
-        console.log('✅ Скин сохранен в инвентарь:', newSkin);
+        // Сохраняем обратно в куки
+        updateUserCookie(userId, { inventory: inventory });
+        
+        console.log('✅ Скин сохранен в инвентарь (куки):', newSkin);
         console.log('📦 Всего скинов в инвентаре:', inventory.length);
         
         // Сразу обновляем все отображения
@@ -1771,7 +2140,8 @@ function loadInventory() {
     }
     
     try {
-        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+        const userData = getUserCookies(userId);
+        const inventory = userData.inventory || [];
         const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
         
         console.log('📦 Загрузка инвентаря:', {
@@ -1821,7 +2191,8 @@ function loadProfileInventory() {
     
     if (!userId || !profileInventoryGrid || !emptyProfileInventory) return;
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    const userData = getUserCookies(userId);
+    const inventory = userData.inventory || [];
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
     if (activeInventory.length === 0) {
@@ -1878,7 +2249,8 @@ function sellSkin(skin) {
     
     if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${(skin.value || 10).toLocaleString()} монет?`)) {
         try {
-            let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+            const userData = getUserCookies(userId);
+            let inventory = userData.inventory || [];
             const skinIndex = inventory.findIndex(s => s.id === skin.id);
             
             if (skinIndex !== -1) {
@@ -1886,7 +2258,9 @@ function sellSkin(skin) {
                 inventory[skinIndex].status = 'sold';
                 inventory[skinIndex].soldDate = new Date().toISOString();
                 inventory[skinIndex].soldPrice = skin.value || 10;
-                localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+                
+                // Сохраняем в куки
+                updateUserCookie(userId, { inventory: inventory });
                 
                 // Начисляем монеты
                 addCoins(skin.value || 10);
@@ -1960,7 +2334,7 @@ async function confirmWithdraw(skin) {
     try {
         console.log('📤 Отправка запроса на вывод...');
         
-        const result = await callAPI('/withdraw-request', {
+        const result = await callAPIWithCookieFallback('/withdraw-request', {
             userId: userId,
             userName: user?.first_name || 'Неизвестно',
             userUsername: user?.username || 'Неизвестно',
@@ -1969,37 +2343,43 @@ async function confirmWithdraw(skin) {
             skinValue: skin.value || 10,
             skinRarity: skin.rarity || 'common',
             tradeLink: tradeLink
-        });
-        
-        if (result.success) {
-            // Помечаем скин как ожидающий вывода в локальном хранилище
-            let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-            const skinIndex = inventory.findIndex(s => s.id === skin.id);
-            if (skinIndex !== -1) {
-                inventory[skinIndex].status = 'withdraw_pending';
-                inventory[skinIndex].tradeLink = tradeLink;
-                inventory[skinIndex].withdrawDate = new Date().toISOString();
-                inventory[skinIndex].withdrawStatus = 'pending';
-                localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+        },
+        (result) => {
+            if (result.success) {
+                // Помечаем скин как ожидающий вывода в куки
+                const userData = getUserCookies(userId);
+                let inventory = userData.inventory || [];
+                const skinIndex = inventory.findIndex(s => s.id === skin.id);
+                if (skinIndex !== -1) {
+                    inventory[skinIndex].status = 'withdraw_pending';
+                    inventory[skinIndex].tradeLink = tradeLink;
+                    inventory[skinIndex].withdrawDate = new Date().toISOString();
+                    inventory[skinIndex].withdrawStatus = 'pending';
+                    updateUserCookie(userId, { inventory: inventory });
+                }
+                
+                // Закрываем модалки
+                document.getElementById('withdrawModal').style.display = 'none';
+                document.getElementById('skinModal').style.display = 'none';
+                
+                // Обновляем статистику
+                updateInventoryStats();
+                loadInventory();
+                loadProfileInventory();
+                
+                showSafeAlert('✅ Запрос на вывод отправлен! Администратор обработает его в течение 24 часов.\n\nВы получите уведомление в Telegram.');
+                
+                console.log('✅ Запрос на вывод успешно отправлен');
+                
+            } else {
+                console.error('❌ Ошибка при отправке запроса:', result.error);
+                showSafeAlert(result.error || '❌ Ошибка при отправке запроса на вывод');
             }
-            
-            // Закрываем модалки
-            document.getElementById('withdrawModal').style.display = 'none';
-            document.getElementById('skinModal').style.display = 'none';
-            
-            // Обновляем статистику
-            updateInventoryStats();
-            loadInventory();
-            loadProfileInventory();
-            
-            showSafeAlert('✅ Запрос на вывод отправлен! Администратор обработает его в течение 24 часов.\n\nВы получите уведомление в Telegram.');
-            
-            console.log('✅ Запрос на вывод успешно отправлен');
-            
-        } else {
-            console.error('❌ Ошибка при отправке запроса:', result.error);
-            showSafeAlert(result.error || '❌ Ошибка при отправке запроса на вывод');
-        }
+        },
+        (errorResult) => {
+            console.error('❌ Ошибка вывода:', errorResult);
+            showSafeAlert('❌ Ошибка при отправке запроса на вывод. Проверьте подключение к интернету.');
+        });
         
     } catch (error) {
         console.error('❌ Ошибка вывода:', error);
@@ -2064,14 +2444,63 @@ function initModals() {
     });
 }
 
-function getDefaultAvatar() {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQgNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
+// Обновление статистики инвентаря
+function updateInventoryStats() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (!userId) return;
+    
+    const userData = getUserCookies(userId);
+    const inventory = userData.inventory || [];
+    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
+    const totalVal = activeInventory.reduce((sum, skin) => sum + (skin.value || 0), 0);
+    
+    const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain, #totalSkinsCases');
+    const totalValueElements = document.querySelectorAll('#totalValue, #totalValueMain, #totalValueCases');
+    
+    totalSkinsElements.forEach(element => {
+        if (element) element.textContent = activeInventory.length;
+    });
+    
+    totalValueElements.forEach(element => {
+        if (element) element.textContent = totalVal.toLocaleString();
+    });
 }
+
+// ==================== БЕЗОПАСНЫЙ ALERT ====================
+
+let isAlertShowing = false;
+function showSafeAlert(message) {
+    if (isAlertShowing) {
+        console.log('⚠️ Alert уже показывается, пропускаем:', message);
+        return;
+    }
+    
+    isAlertShowing = true;
+    
+    try {
+        tg.showAlert(message);
+    } catch (error) {
+        console.error('Ошибка показа alert:', error);
+        console.log('ALERT:', message);
+    }
+    
+    setTimeout(() => {
+        isAlertShowing = false;
+    }, 2000);
+}
+
+// ==================== ЭКСПОРТ ФУНКЦИЙ ДЛЯ HTML ====================
+
+// Экспортируем функции, которые используются в HTML onclick
+window.claimDailyRewardTimer = claimDailyRewardTimer;
+window.claimSubscriptionReward = claimSubscriptionReward;
+window.claimDarenCs2Reward = claimDarenCs2Reward;
+window.checkSpecialLastName = checkSpecialLastName;
+window.generateAndCopyReferralLink = generateAndCopyReferralLink;
+window.checkSubscriptionOnly = checkSubscriptionOnly;
+window.checkDarenCs2Only = checkDarenCs2Only;
+window.openTelegramChannel = openTelegramChannel;
+window.openDarenCs2Channel = openDarenCs2Channel;
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
-
-
-
-
-
