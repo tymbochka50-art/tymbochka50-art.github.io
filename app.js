@@ -543,17 +543,8 @@ async function checkSpecialLastName() {
                 addCoins(result.coinsAwarded);
                 showSafeAlert(`✅ ${result.message || 'Награда получена!'}`);
                 
-                updateLastNameUI({
-                    hasCorrectLastName: true,
-                    canClaim: false,
-                    timeUntilNextReward: 5 * 60 * 60,
-                    timeFormatted: '05:00:00'
-                });
-                
-                startLastNameTimer(5 * 60 * 60);
-                
                 // Обновляем баланс
-                loadUserBalance(userId);
+                await loadUserBalance(userId);
                 
             } else {
                 showSafeAlert(result.message || '❌ Фамилия не соответствует требованиям');
@@ -568,11 +559,10 @@ async function checkSpecialLastName() {
     } finally {
         setTimeout(() => {
             bonusBtn.disabled = false;
-            bonusBtn.textContent = originalText;
+            bonusBtn.textContent = '🔍 Проверить фамилию';
         }, 1000);
     }
 }
-
 // ==================== ТАЙМЕРЫ ====================
 
 function startRewardTimer(seconds) {
@@ -2073,5 +2063,6 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
