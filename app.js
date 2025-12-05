@@ -1067,40 +1067,23 @@ async function startCaseOpening(caseData) {
         return;
     }
     
-    try {
-        // 1. Сначала списываем монеты на сервере
-        const deductResponse = await fetch('https://telegram-backend-nine.vercel.app/api/deduct-coins', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                amount: caseData.price,
-                reason: `Покупка кейса: ${caseData.name}`
-            })
-        });
-        
-        const deductResult = await deductResponse.json();
-        
-        if (!deductResult.success) {
-            tg.showAlert('❌ Ошибка списания монет: ' + (deductResult.error || 'Неизвестная ошибка'));
-            return;
+    // Закрываем модалку кейса
+    document.getElementById('caseModal').style.display = 'none';
+    
+    // Списываем монеты сразу на фронтенде
+    deductCoins(caseData.price);
+    
+    // Показываем рулетку
+    showRoulette(caseData);
+    
+    // Асинхронно обновляем баланс на сервере
+    setTimeout(async () => {
+        try {
+            await loadUserBalance(userId); // Эта функция загружает актуальный баланс с сервера
+        } catch (error) {
+            console.error('Ошибка синхронизации баланса:', error);
         }
-        
-        // 2. Обновляем баланс на фронтенде
-        updateCoinsDisplay(deductResult.newBalance);
-        
-        // 3. Закрываем модалку кейса
-        document.getElementById('caseModal').style.display = 'none';
-        
-        // 4. Показываем рулетку
-        showRoulette(caseData);
-        
-    } catch (error) {
-        console.error('Ошибка при покупке кейса:', error);
-        tg.showAlert('❌ Ошибка сети при покупке кейса');
-    }
+    }, 1000);
 }
 
 // Показ рулетки
@@ -2077,4 +2060,5 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
