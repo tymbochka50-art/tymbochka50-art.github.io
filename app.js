@@ -85,6 +85,8 @@ async function initApp() {
         // Скрываем загрузочный экран с задержкой
         setTimeout(() => {
     hideLoadingScreen();
+            // Принудительный рендеринг всех вкладок
+    forceRenderAllTabs();
     
     // Принудительно показываем главную страницу
     const mainTab = document.getElementById('main');
@@ -1522,6 +1524,85 @@ const casesData = [
     }
 ];
 
+// Функция принудительного рендеринга всех вкладок
+function forceRenderAllTabs() {
+    console.log('🔄 Принудительный рендеринг всех вкладок...');
+    
+    // Показываем все вкладки
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'block';
+        tab.style.opacity = '1';
+        tab.style.position = 'relative';
+        tab.style.zIndex = '1';
+    });
+    
+    // Загружаем кейсы
+    setTimeout(() => {
+        loadCases();
+        
+        // Проверяем видимость кейсов
+        const casesGrid = document.getElementById('casesGrid');
+        if (casesGrid) {
+            console.log('🔍 Кейсы загружены:', casesGrid.children.length);
+            if (casesGrid.children.length === 0) {
+                // Если кейсы не загрузились, добавляем тестовые
+                console.log('⚠️ Кейсы не загрузились, добавляем тестовые...');
+                casesGrid.innerHTML = `
+                    <div class="case-item light">
+                        <img src="https://via.placeholder.com/300x120/667eea/ffffff?text=TEST+CASE" class="case-image">
+                        <div class="case-name">TEST CASE</div>
+                        <div class="case-price">500 монет</div>
+                    </div>
+                `;
+            }
+        }
+    }, 100);
+    
+    // Загружаем инвентарь
+    setTimeout(() => {
+        loadInventory();
+        
+        // Проверяем видимость инвентаря
+        const inventoryGrid = document.getElementById('inventoryGrid');
+        if (inventoryGrid && inventoryGrid.children.length === 0) {
+            console.log('⚠️ Инвентарь пуст, добавляем тестовый скин...');
+            
+            // Добавляем тестовый скин в localStorage
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (userId) {
+                let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+                if (inventory.length === 0) {
+                    inventory.push({
+                        id: 'test_' + Date.now(),
+                        name: 'TEST SKIN | Debug',
+                        image: 'https://assets.lis-skins.com/market_images/152617_b.png',
+                        rarity: 'common',
+                        value: 10,
+                        obtainedAt: new Date().toISOString(),
+                        status: 'in_inventory'
+                    });
+                    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+                    
+                    // Перезагружаем инвентарь
+                    loadInventory();
+                }
+            }
+        }
+    }, 200);
+    
+    // Загружаем инвентарь профиля
+    setTimeout(() => {
+        loadProfileInventory();
+    }, 300);
+    
+    // Обновляем статистику
+    setTimeout(() => {
+        updateInventoryStats();
+    }, 400);
+    
+    console.log('✅ Принудительный рендеринг завершен');
+}
+
 // Глобальная переменная для отслеживания текущей покупки кейса
 let currentCasePurchase = {
     caseId: null,
@@ -1559,9 +1640,19 @@ async function restorePendingPurchases(userId) {
 // Загрузка кейсов
 function loadCases() {
     const casesGrid = document.getElementById('casesGrid');
-    if (!casesGrid) return;
+    if (!casesGrid) {
+        console.error('❌ casesGrid не найден!');
+        return;
+    }
     
+    console.log('🔄 Загрузка кейсов...');
     casesGrid.innerHTML = '';
+    
+    if (!casesData || casesData.length === 0) {
+        console.error('❌ Данные кейсов пусты!');
+        casesGrid.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Нет доступных кейсов</div>';
+        return;
+    }
     
     casesData.forEach(caseData => {
         const caseElement = document.createElement('div');
@@ -1572,10 +1663,13 @@ function loadCases() {
             <div class="case-price">${caseData.price.toLocaleString()} монет</div>
         `;
         
-        caseElement.addEventListener('click', () => openCaseModal(caseData));
+        caseElemfunction loadInventory() {ent.addEventListener('click', () => openCaseModal(caseData));
         casesGrid.appendChild(caseElement);
     });
+    
+    console.log(`✅ Загружено ${casesData.length} кейсов`);
 }
+
 
 // Открытие модального окна кейса
 function openCaseModal(caseData) {
@@ -1782,19 +1876,33 @@ function loadInventory() {
     const inventoryGrid = document.getElementById('inventoryGrid');
     const emptyInventory = document.getElementById('emptyInventory');
     
-    if (!userId || !inventoryGrid) return;
+    console.log('🔄 Загрузка инвентаря для пользователя:', userId);
+    
+    if (!userId || !inventoryGrid) {
+        console.error('❌ userId или inventoryGrid не найден!');
+        return;
+    }
     
     let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
+    console.log('📦 Инвентарь из localStorage:', inventory);
+    console.log('🎯 Активный инвентарь:', activeInventory);
+    
+    inventoryGrid.innerHTML = '';
+    
     if (activeInventory.length === 0) {
-        inventoryGrid.style.display = 'none';
-        emptyInventory.style.display = 'block';
+        if (emptyInventory) {
+            inventoryGrid.style.display = 'none';
+            emptyInventory.style.display = 'block';
+        }
+        console.log('📭 Инвентарь пуст');
     } else {
-        inventoryGrid.style.display = 'grid';
-        emptyInventory.style.display = 'none';
+        if (emptyInventory) {
+            inventoryGrid.style.display = 'grid';
+            emptyInventory.style.display = 'none';
+        }
         
-        inventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
             const skinElement = document.createElement('div');
             skinElement.className = 'skin-item';
@@ -1807,6 +1915,8 @@ function loadInventory() {
             skinElement.addEventListener('click', () => openSkinModal(skin));
             inventoryGrid.appendChild(skinElement);
         });
+        
+        console.log(`✅ Загружено ${activeInventory.length} скинов`);
     }
 }
 
@@ -1816,19 +1926,29 @@ function loadProfileInventory() {
     const profileInventoryGrid = document.getElementById('profileInventoryGrid');
     const emptyProfileInventory = document.getElementById('emptyProfileInventory');
     
-    if (!userId || !profileInventoryGrid) return;
+    console.log('🔄 Загрузка инвентаря профиля для пользователя:', userId);
+    
+    if (!userId || !profileInventoryGrid) {
+        console.error('❌ userId или profileInventoryGrid не найден!');
+        return;
+    }
     
     let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
+    profileInventoryGrid.innerHTML = '';
+    
     if (activeInventory.length === 0) {
-        profileInventoryGrid.style.display = 'none';
-        emptyProfileInventory.style.display = 'block';
+        if (emptyProfileInventory) {
+            profileInventoryGrid.style.display = 'none';
+            emptyProfileInventory.style.display = 'block';
+        }
     } else {
-        profileInventoryGrid.style.display = 'grid';
-        emptyProfileInventory.style.display = 'none';
+        if (emptyProfileInventory) {
+            profileInventoryGrid.style.display = 'grid';
+            emptyProfileInventory.style.display = 'none';
+        }
         
-        profileInventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
             const skinElement = document.createElement('div');
             skinElement.className = 'profile-skin-item';
@@ -1840,6 +1960,8 @@ function loadProfileInventory() {
             skinElement.addEventListener('click', () => openSkinModal(skin));
             profileInventoryGrid.appendChild(skinElement);
         });
+        
+        console.log(`✅ Загружено ${activeInventory.length} скинов в профиле`);
     }
 }
 
@@ -2232,5 +2354,6 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
 
