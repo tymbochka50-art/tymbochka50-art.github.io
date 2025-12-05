@@ -84,21 +84,25 @@ async function initApp() {
 
         // Скрываем загрузочный экран с задержкой
         setTimeout(() => {
-            hideLoadingScreen();
-            
-            // Принудительно показываем главную страницу
-            const mainTab = document.getElementById('main');
-            if (mainTab) {
-                mainTab.style.display = 'block';
-                mainTab.classList.add('active');
-            }
-            
-            // Убедимся что активна правильная кнопка навигации
-            const mainNav = document.querySelector('[data-tab="main"]');
-            if (mainNav) {
-                mainNav.classList.add('active');
-            }
-        }, 500);
+    hideLoadingScreen();
+    
+    // Принудительно показываем главную страницу
+    const mainTab = document.getElementById('main');
+    if (mainTab) {
+        mainTab.style.display = 'block';
+        mainTab.classList.add('active');
+    }
+    
+    // Убедимся что активна правильная кнопка навигации
+    const mainNav = document.querySelector('[data-tab="main"]');
+    if (mainNav) {
+        mainNav.classList.add('active');
+    }
+    
+    // Обновляем все вкладки
+    refreshAllTabs();
+    
+}, 500);
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
@@ -2056,7 +2060,7 @@ function initNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
     
-    // Сначала показываем активную вкладку (главную)
+    // Показываем главную вкладку, остальные скрываем
     tabContents.forEach(tab => {
         if (tab.id === 'main') {
             tab.style.display = 'block';
@@ -2075,6 +2079,10 @@ function initNavigation() {
             tabContents.forEach(tab => {
                 tab.style.display = 'none';
                 tab.classList.remove('active');
+                // Добавляем небольшую задержку для плавной анимации
+                setTimeout(() => {
+                    tab.style.opacity = '0';
+                }, 10);
             });
             
             // Убираем активный класс у всех кнопок
@@ -2083,8 +2091,13 @@ function initNavigation() {
             // Показываем выбранную вкладку
             const activeTab = document.getElementById(tabId);
             if (activeTab) {
-                activeTab.style.display = 'block';
-                activeTab.classList.add('active');
+                setTimeout(() => {
+                    activeTab.style.display = 'block';
+                    setTimeout(() => {
+                        activeTab.style.opacity = '1';
+                        activeTab.classList.add('active');
+                    }, 50);
+                }, 50);
             }
             
             // Добавляем активный класс к выбранной кнопке
@@ -2095,12 +2108,45 @@ function initNavigation() {
             
             // При переключении на инвентарь или профиль обновляем их
             if (tabId === 'inventory') {
-                loadInventory();
+                setTimeout(() => {
+                    loadInventory();
+                }, 100);
             } else if (tabId === 'profile') {
-                loadProfileInventory();
+                setTimeout(() => {
+                    loadProfileInventory();
+                }, 100);
+            } else if (tabId === 'cases') {
+                setTimeout(() => {
+                    loadCases();
+                }, 100);
             }
+            
+            // Прокрутка вверх при переключении вкладок
+            window.scrollTo(0, 0);
         });
     });
+}
+
+function refreshAllTabs() {
+    loadCases();
+    loadInventory();
+    loadProfileInventory();
+    updateInventoryStats();
+    
+    // Принудительно показываем загруженные данные
+    const casesGrid = document.getElementById('casesGrid');
+    const inventoryGrid = document.getElementById('inventoryGrid');
+    const profileGrid = document.getElementById('profileInventoryGrid');
+    
+    if (casesGrid && casesGrid.children.length === 0) {
+        setTimeout(loadCases, 500);
+    }
+    
+    if (inventoryGrid && inventoryGrid.style.display === 'none') {
+        setTimeout(loadInventory, 500);
+    }
+    
+    console.log('🔄 Все вкладки обновлены');
 }
 
 // Загрузка данных пользователя
@@ -2186,4 +2232,5 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
 
