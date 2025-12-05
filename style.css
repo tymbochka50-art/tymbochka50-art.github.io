@@ -21,6 +21,25 @@ body {
     position: relative;
 }
 
+/* Принудительное отображение всех вкладок для отладки */
+.tab-content {
+    display: block !important;
+    opacity: 1 !important;
+}
+
+/* Отладочные стили для видимости */
+#cases, #inventory, #profile {
+    background: rgba(15, 52, 96, 0.9);
+    min-height: 100vh;
+    padding-top: 20px;
+}
+
+/* Убедимся, что контейнеры видны */
+.cases-grid, .inventory-grid, .profile-inventory-grid {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
 /* Дополнительные стили для загрузочного экрана и реферальной системы */
 .task-card .referral-link-container {
     margin-top: 15px;
@@ -1326,5 +1345,6 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
 
 
