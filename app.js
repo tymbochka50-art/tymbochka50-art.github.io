@@ -1058,7 +1058,7 @@ function openCaseModal(caseData) {
 }
 
 // Начало открытия кейса
-function startCaseOpening(caseData) {
+async function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
     const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     
@@ -1067,14 +1067,40 @@ function startCaseOpening(caseData) {
         return;
     }
     
-    // Закрываем модалку кейса
-    document.getElementById('caseModal').style.display = 'none';
-    
-    // Списываем монеты сразу
-    deductCoins(caseData.price);
-    
-    // Показываем рулетку
-    showRoulette(caseData);
+    try {
+        // 1. Сначала списываем монеты на сервере
+        const deductResponse = await fetch('https://telegram-backend-nine.vercel.app/api/deduct-coins', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                amount: caseData.price,
+                reason: `Покупка кейса: ${caseData.name}`
+            })
+        });
+        
+        const deductResult = await deductResponse.json();
+        
+        if (!deductResult.success) {
+            tg.showAlert('❌ Ошибка списания монет: ' + (deductResult.error || 'Неизвестная ошибка'));
+            return;
+        }
+        
+        // 2. Обновляем баланс на фронтенде
+        updateCoinsDisplay(deductResult.newBalance);
+        
+        // 3. Закрываем модалку кейса
+        document.getElementById('caseModal').style.display = 'none';
+        
+        // 4. Показываем рулетку
+        showRoulette(caseData);
+        
+    } catch (error) {
+        console.error('Ошибка при покупке кейса:', error);
+        tg.showAlert('❌ Ошибка сети при покупке кейса');
+    }
 }
 
 // Показ рулетки
@@ -2051,3 +2077,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
