@@ -42,11 +42,20 @@ async function initApp() {
 
         // Обновляем все таймеры
         await updateAllTimers();
+        // ПЕРВОЕ: Проверяем реферальный переход
+        await checkReferralOnStart(user.id);
+
+        // Восстанавливаем незавершенные покупки
+        await restorePendingPurchases(user.id);
 
         console.log('📊 Данные пользователя:', user);
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
+    }
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+        hideLoadingScreen();
     }
 }
 
@@ -374,6 +383,12 @@ async function generateAndCopyReferralLink() {
         console.log('🔗 Referral generation result:', result);
         
         if (result.success) {
+            // Обновляем реферальную статистику
+            updateReferralStats(result);
+            
+            // Показываем ссылку в поле
+            updateReferralLinkDisplay(result.referralLink);
+            
             // Копируем ссылку в буфер обмена
             try {
                 await navigator.clipboard.writeText(result.referralLink);
@@ -382,9 +397,6 @@ async function generateAndCopyReferralLink() {
                     `✅ Реферальная ссылка скопирована!\n\n` +
                     `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
-                
-                // Обновляем статистику
-                updateReferralStats(result);
                 
                 // Визуальная обратная связь
                 generateBtn.textContent = '✅ Скопировано!';
@@ -406,8 +418,6 @@ async function generateAndCopyReferralLink() {
                     `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
                 
-                updateReferralStats(result);
-                
                 generateBtn.textContent = '✅ Скопировано!';
                 setTimeout(() => {
                     generateBtn.textContent = originalText;
@@ -425,6 +435,62 @@ async function generateAndCopyReferralLink() {
         setTimeout(() => {
             generateBtn.disabled = false;
         }, 2000);
+    }
+}
+
+// Функция обновления отображения реферальной ссылки
+function updateReferralLinkDisplay(link) {
+    let referralLinkContainer = document.getElementById('referralLinkContainer');
+    
+    if (!referralLinkContainer) {
+        // Создаем контейнер если его нет
+        const referralCard = document.querySelector('.task-card:has(.task-button.primary)');
+        if (referralCard) {
+            referralLinkContainer = document.createElement('div');
+            referralLinkContainer.id = 'referralLinkContainer';
+            referralLinkContainer.className = 'referral-link-container';
+            
+            const linkDisplay = document.createElement('div');
+            linkDisplay.className = 'referral-link-display';
+            linkDisplay.id = 'referralLinkDisplay';
+            linkDisplay.textContent = link;
+            
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-link-btn';
+            copyBtn.innerHTML = '📋';
+            copyBtn.title = 'Скопировать ссылку';
+            copyBtn.onclick = () => copyReferralLink(link);
+            
+            referralLinkContainer.appendChild(linkDisplay);
+            referralLinkContainer.appendChild(copyBtn);
+            
+            // Вставляем после кнопки приглашения друзей
+            const primaryButton = referralCard.querySelector('.task-button.primary');
+            referralCard.insertBefore(referralLinkContainer, primaryButton.nextSibling);
+        }
+    } else {
+        // Обновляем существующую ссылку
+        const linkDisplay = document.getElementById('referralLinkDisplay');
+        if (linkDisplay) {
+            linkDisplay.textContent = link;
+        }
+    }
+}
+
+// Функция копирования ссылки
+async function copyReferralLink(link) {
+    try {
+        await navigator.clipboard.writeText(link);
+        tg.showAlert('✅ Ссылка скопирована в буфер обмена!');
+    } catch (error) {
+        // Fallback
+        const tempInput = document.createElement('input');
+        tempInput.value = link;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        tg.showAlert('✅ Ссылка скопирована!');
     }
 }
 
@@ -1057,7 +1123,16 @@ function openCaseModal(caseData) {
     modal.style.display = 'block';
 }
 
-// Начало открытия кейса
+// Глобальная переменная для отслеживания текущей покупки кейса
+let currentCasePurchase = {
+    caseId: null,
+    price: 0,
+    timestamp: null,
+    completed: false
+};
+
+
+// Начало открытия кейса с сохранением состояния
 function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
     const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
@@ -1067,11 +1142,22 @@ function startCaseOpening(caseData) {
         return;
     }
     
+    // Сохраняем данные о покупке
+    currentCasePurchase = {
+        caseId: caseData.id,
+        price: caseData.price,
+        timestamp: Date.now(),
+        completed: false
+    };
+    
+    // Сохраняем в localStorage на случай перезагрузки
+    localStorage.setItem(`case_purchase_${userId}`, JSON.stringify(currentCasePurchase));
+    
+    // Списываем монеты
+    deductCoins(caseData.price);
+    
     // Закрываем модалку кейса
     document.getElementById('caseModal').style.display = 'none';
-    
-    // Списываем монеты сразу
-    deductCoins(caseData.price);
     
     // Показываем рулетку
     showRoulette(caseData);
@@ -1179,6 +1265,36 @@ function showResult(item, caseData) {
     };
     
     modal.style.display = 'block';
+}
+
+// Функция восстановления покупок при загрузке
+async function restorePendingPurchases(userId) {
+    try {
+        const purchaseData = localStorage.getItem(`case_purchase_${userId}`);
+        
+        if (purchaseData) {
+            const purchase = JSON.parse(purchaseData);
+            
+            // Проверяем не завершенную покупку (старше 5 минут)
+            if (!purchase.completed && (Date.now() - purchase.timestamp) < 5 * 60 * 1000) {
+                console.log('🔄 Восстанавливаем незавершенную покупку кейса:', purchase);
+                
+                // Возвращаем деньги
+                const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+                updateCoinsDisplay(currentCoins + purchase.price);
+                
+                tg.showAlert('⚠️ Незавершенная покупка кейса отменена. Деньги возвращены.');
+                
+                // Удаляем запись о покупке
+                localStorage.removeItem(`case_purchase_${userId}`);
+            } else if (!purchase.completed) {
+                // Покупка слишком старая - удаляем
+                localStorage.removeItem(`case_purchase_${userId}`);
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка восстановления покупок:', error);
+    }
 }
 
 // Сохранение скина в инвентарь
@@ -2051,3 +2167,4 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
+
