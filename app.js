@@ -1,43 +1,9 @@
 // Инициализация Telegram Web App
 const tg = window.Telegram.WebApp;
 
-// ==================== ЗАГРУЗОЧНЫЙ ЭКРАН ====================
-
-// Показ загрузочного экрана
-function showLoadingScreen() {
-    const loadingScreen = document.createElement('div');
-    loadingScreen.id = 'loadingScreen';
-    loadingScreen.className = 'loading-screen';
-    loadingScreen.innerHTML = `
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Загрузка...</div>
-            <div class="loading-subtext">Получаем информацию о пользователе</div>
-        </div>
-    `;
-    document.body.appendChild(loadingScreen);
-}
-
-// Скрытие загрузочного экрана
-function hideLoadingScreen() {
-    const loadingScreen = document.getElementById('loadingScreen');
-    if (loadingScreen) {
-        loadingScreen.style.opacity = '0';
-        setTimeout(() => {
-            if (loadingScreen.parentNode) {
-                loadingScreen.parentNode.removeChild(loadingScreen);
-            }
-        }, 500);
-    }
-}
-
-// ==================== ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ====================
-
+// Основная функция инициализации
 async function initApp() {
     try {
-        // Показываем загрузочный экран
-        showLoadingScreen();
-        
         tg.expand();
         tg.enableClosingConfirmation();
         
@@ -48,15 +14,10 @@ async function initApp() {
             return;
         }
 
-        console.log('👤 Получены данные пользователя:', user);
-
         // ПЕРВОЕ: Проверяем реферальный переход
         await checkReferralOnStart(user.id);
 
-        // Восстанавливаем незавершенные покупки
-        await restorePendingPurchases(user.id);
-
-        // Инициализация навигации и модальных окон
+        // Инициализация навигации
         initNavigation();
         initModals();
 
@@ -82,894 +43,14 @@ async function initApp() {
         // Обновляем все таймеры
         await updateAllTimers();
 
-        console.log('✅ Все данные загружены');
-
-        // Скрываем загрузочный экран с задержкой
-        setTimeout(() => {
-            hideLoadingScreen();
-        }, 500);
+        console.log('📊 Данные пользователя:', user);
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
-        hideLoadingScreen();
     }
 }
 
-// ==================== ИНИЦИАЛИЗАЦИЯ НАВИГАЦИИ ====================
-
-function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    console.log('🔍 Инициализация навигации:', {
-        navItems: navItems.length,
-        tabContents: tabContents.length
-    });
-    
-    // Сначала показываем активную вкладку (главную)
-    tabContents.forEach(tab => {
-        if (tab.id === 'main') {
-            tab.style.display = 'block';
-            tab.classList.add('active');
-            console.log(`✅ Показана вкладка: ${tab.id}`);
-        } else {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        }
-    });
-    
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const tabId = item.getAttribute('data-tab');
-            console.log(`🔄 Переключение на вкладку: ${tabId}`);
-            
-            // Скрываем все вкладки
-            tabContents.forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-            });
-            
-            // Убираем активный класс у всех кнопок
-            navItems.forEach(nav => nav.classList.remove('active'));
-            
-            // Показываем выбранную вкладку
-            const activeTab = document.getElementById(tabId);
-            if (activeTab) {
-                activeTab.style.display = 'block';
-                activeTab.classList.add('active');
-                console.log(`✅ Отображена вкладка ${tabId}:`, activeTab);
-            } else {
-                console.error(`❌ Вкладка ${tabId} не найдена!`);
-            }
-            
-            // Добавляем активный класс к выбранной кнопке
-            item.classList.add('active');
-            
-            // Обновляем статистику при переключении
-            updateInventoryStats();
-            
-            // При переключении на инвентарь или профиль обновляем их
-            if (tabId === 'inventory') {
-                loadInventory();
-            } else if (tabId === 'profile') {
-                loadProfileInventory();
-            } else if (tabId === 'cases') {
-                loadCases();
-            }
-        });
-    });
-}
-
-// ==================== ИНИЦИАЛИЗАЦИЯ МОДАЛЬНЫХ ОКОН ====================
-
-function initModals() {
-    document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
-        });
-    });
-    
-    window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
-        }
-    });
-}
-
-// ==================== ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ====================
-
-async function loadUserData(user) {
-    // Основные данные
-    document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
-    
-    // Аватар
-    const avatar = document.getElementById('userAvatar');
-    avatar.src = user.photo_url || getDefaultAvatar();
-
-    // Имя пользователя
-    const userName = document.getElementById('userName');
-    userName.textContent = user.first_name || 'Пользователь';
-
-    // Данные профиля
-    document.getElementById('profileFirstName').textContent = user.first_name || 'Не указано';
-    document.getElementById('profileLastName').textContent = user.last_name || 'Не указано';
-    document.getElementById('profileUsername').textContent = user.username ? '@' + user.username : 'Не указано';
-}
-
-// ==================== ЕЖЕДНЕВНЫЕ НАГРАДЫ ====================
-
-// Получение ежедневной награды
-async function claimDailyRewardTimer() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const claimBtn = document.getElementById('claimRewardBtn');
-    
-    if (!userId) {
-        tg.showAlert('❌ Не удалось определить пользователя');
-        return;
-    }
-    
-    try {
-        const originalText = claimBtn.textContent;
-        claimBtn.disabled = true;
-        claimBtn.textContent = '🔄 Получаем...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/daily-reward-timer';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('🎁 Daily reward result:', result);
-        
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                updateCoinsDisplay(result.coins);
-                tg.showAlert('🎉 +50 монет за ежедневный бонус!');
-            }
-            
-            updateRewardUI(result);
-            
-            if (!result.canClaim && result.timeUntilNextReward > 0) {
-                startRewardTimer(userId);
-            }
-        } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
-        }
-        
-        claimBtn.textContent = originalText;
-        
-    } catch (error) {
-        console.error('Ошибка получения награды:', error);
-        tg.showAlert('❌ Ошибка сети');
-        claimBtn.textContent = '🎁 Забрать +50 монет';
-    } finally {
-        setTimeout(() => {
-            claimBtn.disabled = false;
-        }, 1000);
-    }
-}
-
-// Загрузка статуса ежедневных наград
-async function loadRewardStatus(userId) {
-    try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/reward-status';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId
-            })
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            updateRewardUI(result);
-            
-            if (!result.canClaim && result.timeUntilNextReward > 0) {
-                startRewardTimer(userId);
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки статуса наград:', error);
-    }
-}
-
-// Обновление интерфейса наград
-function updateRewardUI(data) {
-    const dailyProgress = document.getElementById('dailyProgress');
-    const rewardProgress = document.getElementById('rewardProgress');
-    const timerText = document.getElementById('timerText');
-    const claimBtn = document.getElementById('claimRewardBtn');
-    
-    if (dailyProgress) {
-        dailyProgress.textContent = `${data.rewardCount || 0}/${data.maxRewards || 30} наград`;
-    }
-    
-    if (rewardProgress) {
-        const progressPercent = ((data.rewardCount || 0) / (data.maxRewards || 30)) * 100;
-        rewardProgress.style.width = `${progressPercent}%`;
-    }
-    
-    if (timerText && claimBtn) {
-        if (data.rewardCount >= data.maxRewards) {
-            timerText.textContent = '🎉 Все награды получены!';
-            claimBtn.disabled = true;
-            claimBtn.textContent = '✅ Завершено';
-            if (rewardProgress) rewardProgress.classList.add('progress-pulse');
-        } else if (data.canClaim) {
-            timerText.textContent = '✅ Готово к получению!';
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +50 монет';
-            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
-        } else {
-            timerText.textContent = `⏳ До следующей награды: ${data.timeUntilNextReward}с`;
-            claimBtn.disabled = true;
-            claimBtn.textContent = '⏳ Ждите...';
-            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
-        }
-    }
-    
-    document.getElementById('profileRewards').textContent = data.rewardCount || 0;
-}
-
-// Таймер обратного отсчета
-function startRewardTimer(userId) {
-    const timerText = document.getElementById('timerText');
-    const claimBtn = document.getElementById('claimRewardBtn');
-    
-    if (!timerText || !claimBtn) return;
-    
-    fetch('https://telegram-backend-nine.vercel.app/api/reward-status', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            userId: userId
-        })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success && !result.canClaim && result.timeUntilNextReward > 0) {
-            let timeLeft = result.timeUntilNextReward;
-            
-            const timer = setInterval(() => {
-                if (timeLeft > 0) {
-                    const hours = Math.floor(timeLeft / 3600);
-                    const minutes = Math.floor((timeLeft % 3600) / 60);
-                    const seconds = timeLeft % 60;
-                    timerText.textContent = `⏳ До следующей награды: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                    claimBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                    claimBtn.disabled = true;
-                    timeLeft--;
-                } else {
-                    clearInterval(timer);
-                    timerText.textContent = '✅ Готово к получению!';
-                    claimBtn.disabled = false;
-                    claimBtn.textContent = '🎁 Забрать +50 монет';
-                    loadRewardStatus(userId);
-                }
-            }, 1000);
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка запуска таймера:', error);
-    });
-}
-
-// ==================== ПОДПИСКА НА CS2DROPSKINBOT ====================
-
-// Получение награды за подписку на CS2DropZone
-async function claimSubscriptionReward() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1];
-    
-    if (!userId) {
-        tg.showAlert('❌ Не удалось определить пользователя');
-        return;
-    }
-    
-    try {
-        const originalText = claimBtn.textContent;
-        claimBtn.disabled = true;
-        claimBtn.textContent = '🔄 Проверяем...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                channel: '@CS2DropZone',
-                rewardAmount: 250
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('📢 Subscription reward result:', result);
-        
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                updateCoinsDisplay(result.coins);
-                tg.showAlert('🎉 +250 монет за подписку на канал!');
-            }
-            
-            updateSubscriptionUI(result);
-            
-            if (!result.isSubscribed) {
-                showSubscriptionModal('CS2DropZone');
-            }
-            
-        } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
-        }
-        
-    } catch (error) {
-        console.error('Ошибка получения награды за подписку:', error);
-        tg.showAlert('❌ Ошибка сети');
-    } finally {
-        setTimeout(() => {
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +250 монет';
-        }, 1000);
-    }
-}
-
-// Загрузка статуса подписки на CS2DropZone
-async function loadSubscriptionStatus(userId) {
-    try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                channel: '@CS2DropZone'
-            })
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            updateSubscriptionUI(result);
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки статуса подписки:', error);
-    }
-}
-
-// Обновление интерфейса подписки на CS2DropZone
-function updateSubscriptionUI(data) {
-    const statusElement = document.getElementById('subscriptionStatus');
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1];
-    
-    if (statusElement && claimBtn) {
-        if (data.isSubscribed) {
-            statusElement.textContent = `✅ Подписан на CS2DropZone (${data.rewardCount || 0} раз)`;
-            statusElement.style.color = '#28a745';
-            
-            if (data.canClaim) {
-                claimBtn.disabled = false;
-                claimBtn.textContent = '🎁 Забрать +250 монет';
-                claimBtn.onclick = () => claimSubscriptionReward();
-            } else {
-                claimBtn.disabled = true;
-                claimBtn.textContent = '⏳ Ждите...';
-                if (data.timeUntilNextReward > 0) {
-                    startSubscriptionTimer(data.timeUntilNextReward, claimBtn);
-                }
-            }
-        } else {
-            statusElement.textContent = '❌ Не подписан на CS2DropZone';
-            statusElement.style.color = '#dc3545';
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🔍 Проверить подписку';
-            claimBtn.onclick = () => checkSubscriptionOnly('@CS2DropZone');
-        }
-    }
-}
-
-// ==================== ПОДПИСКА НА DARENCS2 ====================
-
-// Получение награды за подписку на DarenCs2
-async function claimDarenSubscriptionReward() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[2];
-    
-    if (!userId) {
-        tg.showAlert('❌ Не удалось определить пользователя');
-        return;
-    }
-    
-    try {
-        const originalText = claimBtn.textContent;
-        claimBtn.disabled = true;
-        claimBtn.textContent = '🔄 Проверяем...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                channel: '@DarenCs2',
-                rewardAmount: 150
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('📢 DarenCs2 subscription reward result:', result);
-        
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                updateCoinsDisplay(result.coins);
-                tg.showAlert('🎉 +150 монет за подписку на канал DarenCs2!');
-            }
-            
-            updateDarenSubscriptionUI(result);
-            
-            if (!result.isSubscribed) {
-                showSubscriptionModal('DarenCs2');
-            }
-            
-        } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
-        }
-        
-    } catch (error) {
-        console.error('Ошибка получения награды за подписку на DarenCs2:', error);
-        tg.showAlert('❌ Ошибка сети');
-    } finally {
-        setTimeout(() => {
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +150 монет';
-        }, 1000);
-    }
-}
-
-// Загрузка статуса подписки на DarenCs2
-async function loadDarenSubscriptionStatus(userId) {
-    try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                channel: '@DarenCs2'
-            })
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            updateDarenSubscriptionUI(result);
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки статуса подписки на DarenCs2:', error);
-    }
-}
-
-// Обновление интерфейса подписки на DarenCs2
-function updateDarenSubscriptionUI(data) {
-    const statusElement = document.getElementById('darenSubscriptionStatus');
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[2];
-    
-    if (statusElement && claimBtn) {
-        if (data.isSubscribed) {
-            statusElement.textContent = `✅ Подписан на DarenCs2 (${data.rewardCount || 0} раз)`;
-            statusElement.style.color = '#28a745';
-            
-            if (data.canClaim) {
-                claimBtn.disabled = false;
-                claimBtn.textContent = '🎁 Забрать +150 монет';
-                claimBtn.onclick = () => claimDarenSubscriptionReward();
-            } else {
-                claimBtn.disabled = true;
-                claimBtn.textContent = '⏳ Ждите...';
-                if (data.timeUntilNextReward > 0) {
-                    startSubscriptionTimer(data.timeUntilNextReward, claimBtn);
-                }
-            }
-        } else {
-            statusElement.textContent = '❌ Не подписан на DarenCs2';
-            statusElement.style.color = '#dc3545';
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🔍 Проверить подписку';
-            claimBtn.onclick = () => checkSubscriptionOnly('@DarenCs2');
-        }
-    }
-}
-
-// Функция показа модального окна подписки
-function showSubscriptionModal(channelName) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'block';
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 320px;">
-            <div class="modal-header">
-                <h3>Подписка на канал</h3>
-                <span class="close" onclick="this.parentElement.parentElement.parentElement.style.display='none'">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div style="text-align: center; padding: 20px;">
-                    <div style="font-size: 48px; margin-bottom: 15px;">📢</div>
-                    <h4 style="margin-bottom: 10px; color: #ff6b35;">Вы не подписаны на канал</h4>
-                    <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
-                        Подпишитесь на канал ${channelName} чтобы получить ${channelName === '@CS2DropZone' ? '+250' : '+150'} монет!
-                    </p>
-                    <button onclick="openTelegramChannel('${channelName}')" class="modal-button primary" style="margin-bottom: 10px;">
-                        📢 Перейти в канал
-                    </button>
-                    <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
-                        Закрыть
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
-
-// Функция открытия канала Telegram
-function openTelegramChannel(channelName) {
-    window.open(`https://t.me/${channelName.replace('@', '')}`, '_blank');
-}
-
-// Таймер для подписки
-function startSubscriptionTimer(seconds, claimBtn) {
-    if (!claimBtn) return;
-    
-    let timeLeft = seconds;
-    
-    const timer = setInterval(() => {
-        if (timeLeft > 0) {
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const secs = timeLeft % 60;
-            claimBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            timeLeft--;
-        } else {
-            clearInterval(timer);
-            claimBtn.disabled = false;
-            if (claimBtn.onclick.toString().includes('claimSubscriptionReward')) {
-                claimBtn.textContent = '🎁 Забрать +250 монет';
-            } else if (claimBtn.onclick.toString().includes('claimDarenSubscriptionReward')) {
-                claimBtn.textContent = '🎁 Забрать +150 монет';
-            }
-        }
-    }, 1000);
-}
-
-// Проверка только подписки (без награды)
-async function checkSubscriptionOnly(channel) {
-    const userId = tg.initDataUnsafe?.user?.id;
-    
-    try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                channel: channel
-            })
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            if (channel === '@CS2DropZone') {
-                updateSubscriptionUI(result);
-            } else if (channel === '@DarenCs2') {
-                updateDarenSubscriptionUI(result);
-            }
-            
-            if (result.isSubscribed) {
-                tg.showAlert(`✅ Вы подписаны на канал ${channel}! Теперь можете получать награды.`);
-            } else {
-                tg.showAlert(`❌ Вы не подписаны на канал ${channel}`);
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка проверки подписки:', error);
-        tg.showAlert('❌ Ошибка сети');
-    }
-}
-
-// ==================== СИСТЕМА ФАМИЛИИ С ПОВТОРНЫМИ НАГРАДАМИ ====================
-
-// Проверка специальной фамилии (первоначальный бонус)
-async function checkSpecialLastName() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const user = tg.initDataUnsafe?.user;
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3];
-    const nameStatus = document.getElementById('nameStatus');
-    
-    if (!userId || !user) {
-        tg.showAlert('❌ Не удалось получить данные пользователя');
-        return;
-    }
-    
-    try {
-        const originalText = bonusBtn.textContent;
-        bonusBtn.disabled = true;
-        bonusBtn.textContent = '🔄 Проверяем...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-special-lastname';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                lastName: user.last_name || '',
-                firstName: user.first_name || '',
-                username: user.username || ''
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('🔍 Special lastname check result:', result);
-        
-        if (result.success) {
-            if (result.bonusAwarded) {
-                nameStatus.textContent = '✅ Фамилия установлена';
-                nameStatus.style.color = '#28a745';
-                
-                updateCoinsDisplay(result.newBalance);
-                
-                tg.showAlert('🎉 +50 монет за специальную фамилию!');
-                
-                bonusBtn.textContent = '✅ Получено';
-                setTimeout(() => {
-                    bonusBtn.textContent = '🎁 Забрать +50 монет';
-                }, 2000);
-                
-            } else if (result.alreadyGotBonus) {
-                nameStatus.textContent = '✅ Фамилия установлена';
-                nameStatus.style.color = '#28a745';
-                
-                tg.showAlert('✅ Вы уже получали бонус за фамилию!');
-                
-                bonusBtn.textContent = '✅ Получено';
-                
-            } else {
-                nameStatus.textContent = '❌ Не выполнено';
-                nameStatus.style.color = '#dc3545';
-                
-                let alertMessage = '❌ Фамилия не соответствует требованиям.\n\n';
-                alertMessage += `Ваша фамилия: "${result.userLastName}"\n`;
-                alertMessage += `Требуется: "${result.requiredName}"\n\n`;
-                alertMessage += `Убедитесь, что фамилия точно совпадает, включая все символы!`;
-                
-                tg.showAlert(alertMessage);
-                bonusBtn.textContent = originalText;
-            }
-        } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
-            bonusBtn.textContent = originalText;
-        }
-        
-    } catch (error) {
-        console.error('Ошибка проверки фамилии:', error);
-        tg.showAlert('❌ Ошибка сети');
-        bonusBtn.textContent = '🔍 Проверить фамилию';
-    } finally {
-        setTimeout(() => {
-            bonusBtn.disabled = false;
-        }, 2000);
-    }
-}
-
-// Получение повторной награды за фамилию
-async function claimLastNameRepeatReward() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const user = tg.initDataUnsafe?.user;
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3];
-    
-    if (!userId || !user) {
-        tg.showAlert('❌ Не удалось определить пользователя');
-        return;
-    }
-    
-    try {
-        const originalText = bonusBtn.textContent;
-        bonusBtn.disabled = true;
-        bonusBtn.textContent = '🔄 Получаем...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-reward';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                lastName: user.last_name || '',
-                firstName: user.first_name || '',
-                username: user.username || ''
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('🔄 Lastname repeat reward result:', result);
-        
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                updateCoinsDisplay(result.coins);
-                tg.showAlert(result.message);
-                
-                bonusBtn.textContent = '✅ Получено!';
-                setTimeout(() => {
-                    bonusBtn.textContent = '🔄 Забрать +5 монет';
-                }, 2000);
-                
-                if (!result.canClaim) {
-                    startLastNameTimer(86400);
-                }
-            } else {
-                tg.showAlert(result.message);
-                bonusBtn.textContent = originalText;
-                
-                if (result.timeUntilNextReward > 0) {
-                    startLastNameTimer(result.timeUntilNextReward);
-                }
-            }
-        } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
-            bonusBtn.textContent = originalText;
-        }
-        
-    } catch (error) {
-        console.error('Ошибка получения повторной награды:', error);
-        tg.showAlert('❌ Ошибка сети');
-        bonusBtn.textContent = '🔄 Забрать +5 монет';
-    } finally {
-        setTimeout(() => {
-            bonusBtn.disabled = false;
-        }, 2000);
-    }
-}
-
-// Загрузка статуса фамилии
-async function loadLastNameStatus() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const user = tg.initDataUnsafe?.user;
-    
-    if (!userId || !user) return;
-    
-    try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-status';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                lastName: user.last_name || ''
-            })
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            updateLastNameUI(result);
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки статуса фамилии:', error);
-    }
-}
-
-// Обновление интерфейса фамилии
-function updateLastNameUI(data) {
-    const nameStatus = document.getElementById('nameStatus');
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3];
-    
-    if (nameStatus && bonusBtn) {
-        if (data.gotInitialBonus) {
-            nameStatus.textContent = '✅ Фамилия установлена';
-            nameStatus.style.color = '#28a745';
-            bonusBtn.textContent = '🔄 Забрать +5 монет';
-            bonusBtn.onclick = () => claimLastNameRepeatReward();
-            
-            if (data.canClaim) {
-                bonusBtn.disabled = false;
-            } else {
-                bonusBtn.disabled = true;
-                bonusBtn.textContent = '⏳ Ждите...';
-                if (data.timeUntilNextReward > 0) {
-                    startLastNameTimer(data.timeUntilNextReward);
-                }
-            }
-        } else if (data.hasCorrectLastName) {
-            nameStatus.textContent = '✅ Готово к получению';
-            nameStatus.style.color = '#28a745';
-            bonusBtn.disabled = false;
-            bonusBtn.textContent = '🎁 Забрать +50 монет';
-            bonusBtn.onclick = () => checkSpecialLastName();
-        } else {
-            nameStatus.textContent = '❌ Не выполнено';
-            nameStatus.style.color = '#dc3545';
-            bonusBtn.disabled = false;
-            bonusBtn.textContent = '🔍 Проверить фамилию';
-            bonusBtn.onclick = () => checkSpecialLastName();
-        }
-    }
-}
-
-// Таймер для повторной награды за фамилию
-function startLastNameTimer(seconds) {
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3];
-    
-    if (!bonusBtn) return;
-    
-    let timeLeft = seconds;
-    
-    const timer = setInterval(() => {
-        if (timeLeft > 0) {
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const secs = timeLeft % 60;
-            bonusBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            bonusBtn.disabled = true;
-            timeLeft--;
-        } else {
-            clearInterval(timer);
-            bonusBtn.disabled = false;
-            bonusBtn.textContent = '🔄 Забрать +5 монет';
-        }
-    }, 1000);
-}
-
-// ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
-
-// Проверка реферала при старте
+// Добавьте функцию проверки реферала при старте
 async function checkReferralOnStart(userId) {
     try {
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-referral-on-start';
@@ -989,8 +70,10 @@ async function checkReferralOnStart(userId) {
         console.log('🔍 Referral check on start result:', result);
         
         if (result.success && result.referralProcessed) {
+            // Показываем уведомление о успешном реферале
             tg.showAlert(`🎉 Вы были приглашены другом! Владелец ссылки получил +${result.reward} монет.`);
             
+            // Обновляем статистику если это владелец ссылки
             if (result.referrerId === userId.toString()) {
                 await loadReferralStats(userId);
                 await loadUserBalance(userId);
@@ -1002,7 +85,264 @@ async function checkReferralOnStart(userId) {
     }
 }
 
-// Генерация и копирование реферальной ссылки
+// Исправленная функция инициализации навигации
+function initNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // Сначала скрываем все вкладки кроме активной
+    tabContents.forEach(tab => {
+        if (!tab.classList.contains('active')) {
+            tab.style.display = 'none';
+        }
+    });
+    
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const tabId = item.getAttribute('data-tab');
+            
+            // Скрываем все вкладки
+            tabContents.forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
+            
+            // Убираем активный класс у всех кнопок
+            navItems.forEach(nav => nav.classList.remove('active'));
+            
+            // Показываем выбранную вкладку
+            const activeTab = document.getElementById(tabId);
+            if (activeTab) {
+                activeTab.style.display = 'block';
+                activeTab.classList.add('active');
+            }
+            
+            // Добавляем активный класс к выбранной кнопке
+            item.classList.add('active');
+            
+            // Обновляем статистику при переключении
+            updateInventoryStats();
+            
+            // При переключении на инвентарь или профиль обновляем их
+            if (tabId === 'inventory') {
+                loadInventory();
+            } else if (tabId === 'profile') {
+                loadProfileInventory();
+            }
+        });
+    });
+}
+
+// Загрузка данных пользователя
+async function loadUserData(user) {
+    // Основные данные
+    document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
+    
+    // Аватар
+    const avatar = document.getElementById('userAvatar');
+    avatar.src = user.photo_url || getDefaultAvatar();
+
+    // Имя пользователя
+    const userName = document.getElementById('userName');
+    userName.textContent = user.first_name || 'Пользователь';
+
+    // Данные профиля
+    document.getElementById('profileFirstName').textContent = user.first_name || 'Не указано';
+    document.getElementById('profileLastName').textContent = user.last_name || 'Не указано';
+    document.getElementById('profileUsername').textContent = user.username ? '@' + user.username : 'Не указано';
+}
+
+// ==================== ОБНОВЛЕНИЕ СТАТИСТИКИ ИНВЕНТАРЯ ====================
+
+// Обновление статистики инвентаря для всех разделов
+function updateInventoryStats() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (!userId) return;
+    
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
+    const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
+    
+    // Обновляем все разделы
+    const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain, #totalSkinsCases');
+    const totalValueElements = document.querySelectorAll('#totalValue, #totalValueMain, #totalValueCases');
+    
+    totalSkinsElements.forEach(element => {
+        if (element) element.textContent = activeInventory.length;
+    });
+    
+    totalValueElements.forEach(element => {
+        if (element) element.textContent = totalVal.toLocaleString();
+    });
+}
+
+// ==================== ФУНКЦИИ ДЛЯ ОБНОВЛЕНИЯ ТАЙМЕРОВ ====================
+
+// Функция для обновления всех таймеров
+async function updateAllTimers() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (!userId) return;
+
+    try {
+        // Таймер для ежедневного бонуса
+        const dailyResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'daily'
+            })
+        });
+        
+        const dailyResult = await dailyResponse.json();
+        if (dailyResult.success) {
+            updateDailyTimer(dailyResult.timeUntilNextReward);
+        }
+
+        // Таймер для подписки на CS2DropZone
+        const subResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'subscription'
+            })
+        });
+        
+        const subResult = await subResponse.json();
+        if (subResult.success) {
+            updateSubscriptionTimer(subResult.timeUntilNextReward);
+        }
+
+        // Таймер для подписки на DarenCs2
+        const darenResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'daren_subscription'
+            })
+        });
+        
+        const darenResult = await darenResponse.json();
+        if (darenResult.success) {
+            updateDarenSubscriptionTimer(darenResult.timeUntilNextReward);
+        }
+
+        // Таймер для фамилии
+        const nameResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'lastname'
+            })
+        });
+        
+        const nameResult = await nameResponse.json();
+        if (nameResult.success) {
+            updateLastNameTimer(nameResult.timeUntilNextReward);
+        }
+
+    } catch (error) {
+        console.error('❌ Error updating timers:', error);
+    }
+}
+
+// Функции для обновления таймеров
+function updateDailyTimer(seconds) {
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (seconds > 0) {
+        startTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет');
+    } else {
+        timerText.textContent = '✅ Готово к получению!';
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +50 монет';
+    }
+}
+
+function updateSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1]; // Первая кнопка подписки (CS2DropZone)
+    
+    if (seconds > 0) {
+        startTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет');
+    } else {
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +250 монет';
+    }
+}
+
+function updateDarenSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[2]; // Вторая кнопка подписки (DarenCs2)
+    
+    if (seconds > 0) {
+        startTimer(seconds, null, claimBtn, '🎁 Забрать +150 монет');
+    } else {
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +150 монет';
+    }
+}
+
+function updateLastNameTimer(seconds) {
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[3]; // Кнопка фамилии (после двух подписок)
+    
+    if (seconds > 0) {
+        startTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет');
+    } else {
+        bonusBtn.disabled = false;
+        bonusBtn.textContent = '🎁 Забрать +50 монет';
+    }
+}
+
+// Универсальная функция таймера
+function startTimer(seconds, timerElement, buttonElement, buttonText) {
+    let timeLeft = seconds;
+    
+    buttonElement.disabled = true;
+    
+    const timer = setInterval(() => {
+        if (timeLeft > 0) {
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const secs = timeLeft % 60;
+            
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            if (timerElement) {
+                timerElement.textContent = `⏳ До следующей награды: ${timeString}`;
+            }
+            
+            buttonElement.textContent = `⏳ ${timeString}`;
+            timeLeft--;
+        } else {
+            clearInterval(timer);
+            
+            if (timerElement) {
+                timerElement.textContent = '✅ Готово к получению!';
+            }
+            
+            buttonElement.disabled = false;
+            buttonElement.textContent = buttonText;
+        }
+    }, 1000);
+}
+
+// ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
+
+// Генерация и копирование реферальной ссылки одной кнопкой
 async function generateAndCopyReferralLink() {
     const userId = tg.initDataUnsafe?.user?.id;
     const generateBtn = document.querySelector('.task-button.primary');
@@ -1034,9 +374,13 @@ async function generateAndCopyReferralLink() {
         console.log('🔗 Referral generation result:', result);
         
         if (result.success) {
+            // Обновляем реферальную статистику
             updateReferralStats(result);
+            
+            // Показываем ссылку в поле
             updateReferralLinkDisplay(result.referralLink);
             
+            // Копируем ссылку в буфер обмена
             try {
                 await navigator.clipboard.writeText(result.referralLink);
                 
@@ -1045,12 +389,14 @@ async function generateAndCopyReferralLink() {
                     `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
                 
+                // Визуальная обратная связь
                 generateBtn.textContent = '✅ Скопировано!';
                 setTimeout(() => {
                     generateBtn.textContent = originalText;
                 }, 2000);
                 
             } catch (error) {
+                // Fallback для старых браузеров
                 const tempInput = document.createElement('input');
                 tempInput.value = result.referralLink;
                 document.body.appendChild(tempInput);
@@ -1083,11 +429,12 @@ async function generateAndCopyReferralLink() {
     }
 }
 
-// Обновление отображения реферальной ссылки
+// Функция обновления отображения реферальной ссылки
 function updateReferralLinkDisplay(link) {
     let referralLinkContainer = document.getElementById('referralLinkContainer');
     
     if (!referralLinkContainer) {
+        // Создаем контейнер если его нет
         const referralCard = document.querySelector('.task-card:has(.task-button.primary)');
         if (referralCard) {
             referralLinkContainer = document.createElement('div');
@@ -1108,10 +455,12 @@ function updateReferralLinkDisplay(link) {
             referralLinkContainer.appendChild(linkDisplay);
             referralLinkContainer.appendChild(copyBtn);
             
+            // Вставляем после кнопки приглашения друзей
             const primaryButton = referralCard.querySelector('.task-button.primary');
             referralCard.insertBefore(referralLinkContainer, primaryButton.nextSibling);
         }
     } else {
+        // Обновляем существующую ссылку
         const linkDisplay = document.getElementById('referralLinkDisplay');
         if (linkDisplay) {
             linkDisplay.textContent = link;
@@ -1119,12 +468,13 @@ function updateReferralLinkDisplay(link) {
     }
 }
 
-// Копирование ссылки
+// Функция копирования ссылки
 async function copyReferralLink(link) {
     try {
         await navigator.clipboard.writeText(link);
         tg.showAlert('✅ Ссылка скопирована в буфер обмена!');
     } catch (error) {
+        // Fallback
         const tempInput = document.createElement('input');
         tempInput.value = link;
         document.body.appendChild(tempInput);
@@ -1153,6 +503,7 @@ function updateReferralStats(data) {
         referralProgress.textContent = `${data.totalReferrals || 0} приглашено`;
     }
     
+    // Обновляем профиль
     const profileReferrals = document.getElementById('profileReferrals');
     if (profileReferrals) {
         profileReferrals.textContent = data.totalReferrals || 0;
@@ -1189,9 +540,275 @@ async function loadReferralStats(userId) {
     }
 }
 
+// ==================== СИСТЕМА ФАМИЛИИ С ПОВТОРНЫМИ НАГРАДАМИ ====================
+
+// Загрузка статуса фамилии
+async function loadLastNameStatus() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const user = tg.initDataUnsafe?.user;
+    
+    if (!userId || !user) return;
+    
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-status';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                lastName: user.last_name || ''
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateLastNameUI(result);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса фамилии:', error);
+    }
+}
+
+// Обновление интерфейса фамилии
+function updateLastNameUI(data) {
+    const nameStatus = document.getElementById('nameStatus');
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка (после двух подписок)
+    
+    if (nameStatus && bonusBtn) {
+        if (data.gotInitialBonus) {
+            // Первоначальный бонус уже получен
+            nameStatus.textContent = '✅ Фамилия установлена';
+            nameStatus.style.color = '#28a745';
+            bonusBtn.textContent = '🔄 Забрать +5 монет';
+            bonusBtn.onclick = () => claimLastNameRepeatReward();
+            
+            if (data.canClaim) {
+                bonusBtn.disabled = false;
+            } else {
+                bonusBtn.disabled = true;
+                bonusBtn.textContent = '⏳ Ждите...';
+                if (data.timeUntilNextReward > 0) {
+                    startLastNameTimer(data.timeUntilNextReward);
+                }
+            }
+        } else if (data.hasCorrectLastName) {
+            // Фамилия правильная, но бонус еще не получен
+            nameStatus.textContent = '✅ Готово к получению';
+            nameStatus.style.color = '#28a745';
+            bonusBtn.disabled = false;
+            bonusBtn.textContent = '🎁 Забрать +50 монет';
+            bonusBtn.onclick = () => checkSpecialLastName();
+        } else {
+            // Неправильная фамилия
+            nameStatus.textContent = '❌ Не выполнено';
+            nameStatus.style.color = '#dc3545';
+            bonusBtn.disabled = false;
+            bonusBtn.textContent = '🔍 Проверить фамилию';
+            bonusBtn.onclick = () => checkSpecialLastName();
+        }
+    }
+}
+
+// Проверка специальной фамилии (первоначальный бонус)
+async function checkSpecialLastName() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const user = tg.initDataUnsafe?.user;
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
+    const nameStatus = document.getElementById('nameStatus');
+    
+    if (!userId || !user) {
+        tg.showAlert('❌ Не удалось получить данные пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = bonusBtn.textContent;
+        bonusBtn.disabled = true;
+        bonusBtn.textContent = '🔄 Проверяем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-special-lastname';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                lastName: user.last_name || '',
+                firstName: user.first_name || '',
+                username: user.username || ''
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('🔍 Special lastname check result:', result);
+        
+        if (result.success) {
+            if (result.bonusAwarded) {
+                // Бонус начислен
+                nameStatus.textContent = '✅ Фамилия установлена';
+                nameStatus.style.color = '#28a745';
+                
+                // Обновляем баланс на сайте
+                updateCoinsDisplay(result.newBalance);
+                
+                tg.showAlert('🎉 +50 монет за специальную фамилию!');
+                
+                bonusBtn.textContent = '✅ Получено';
+                setTimeout(() => {
+                    bonusBtn.textContent = '🎁 Забрать +50 монет';
+                }, 2000);
+                
+            } else if (result.alreadyGotBonus) {
+                // Бонус уже был получен ранее
+                nameStatus.textContent = '✅ Фамилия установлена';
+                nameStatus.style.color = '#28a745';
+                
+                tg.showAlert('✅ Вы уже получали бонус за фамилию!');
+                
+                bonusBtn.textContent = '✅ Получено';
+                
+            } else {
+                // Фамилия не подходит
+                nameStatus.textContent = '❌ Не выполнено';
+                nameStatus.style.color = '#dc3545';
+                
+                let alertMessage = '❌ Фамилия не соответствует требованиям.\n\n';
+                alertMessage += `Ваша фамилия: "${result.userLastName}"\n`;
+                alertMessage += `Требуется: "${result.requiredName}"\n\n`;
+                alertMessage += `Убедитесь, что фамилия точно совпадает, включая все символы!`;
+                
+                tg.showAlert(alertMessage);
+                bonusBtn.textContent = originalText;
+            }
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            bonusBtn.textContent = originalText;
+        }
+        
+    } catch (error) {
+        console.error('Ошибка проверки фамилии:', error);
+        tg.showAlert('❌ Ошибка сети');
+        bonusBtn.textContent = '🔍 Проверить фамилию';
+    } finally {
+        setTimeout(() => {
+            bonusBtn.disabled = false;
+        }, 2000);
+    }
+}
+
+// Получение повторной награды за фамилию
+async function claimLastNameRepeatReward() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const user = tg.initDataUnsafe?.user;
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
+    
+    if (!userId || !user) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = bonusBtn.textContent;
+        bonusBtn.disabled = true;
+        bonusBtn.textContent = '🔄 Получаем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/special-lastname-reward';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                lastName: user.last_name || '',
+                firstName: user.first_name || '',
+                username: user.username || ''
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('🔄 Lastname repeat reward result:', result);
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                // Награда начислена
+                updateCoinsDisplay(result.coins);
+                tg.showAlert(result.message);
+                
+                bonusBtn.textContent = '✅ Получено!';
+                setTimeout(() => {
+                    bonusBtn.textContent = '🔄 Забрать +5 монет';
+                }, 2000);
+                
+                // Запускаем таймер
+                if (!result.canClaim) {
+                    startLastNameTimer(86400); // 24 часа
+                }
+            } else {
+                // Нельзя получить награду сейчас
+                tg.showAlert(result.message);
+                bonusBtn.textContent = originalText;
+                
+                if (result.timeUntilNextReward > 0) {
+                    startLastNameTimer(result.timeUntilNextReward);
+                }
+            }
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+            bonusBtn.textContent = originalText;
+        }
+        
+    } catch (error) {
+        console.error('Ошибка получения повторной награды:', error);
+        tg.showAlert('❌ Ошибка сети');
+        bonusBtn.textContent = '🔄 Забрать +5 монет';
+    } finally {
+        setTimeout(() => {
+            bonusBtn.disabled = false;
+        }, 2000);
+    }
+}
+
+// Таймер для повторной награды за фамилию
+function startLastNameTimer(seconds) {
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
+    
+    if (!bonusBtn) return;
+    
+    let timeLeft = seconds;
+    
+    const timer = setInterval(() => {
+        if (timeLeft > 0) {
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const secs = timeLeft % 60;
+            bonusBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            bonusBtn.disabled = true;
+            timeLeft--;
+        } else {
+            clearInterval(timer);
+            bonusBtn.disabled = false;
+            bonusBtn.textContent = '🔄 Забрать +5 монет';
+        }
+    }, 1000);
+}
+
 // ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
 
-// Данные кейсов
+// Данные кейсов с обновленными названиями
 const casesData = [
     {
         id: 'case1',
@@ -1443,56 +1060,12 @@ const casesData = [
     }
 ];
 
-// Глобальная переменная для отслеживания текущей покупки кейса
-let currentCasePurchase = {
-    caseId: null,
-    price: 0,
-    timestamp: null,
-    completed: false
-};
-
-// Восстановление незавершенных покупок
-async function restorePendingPurchases(userId) {
-    try {
-        const purchaseData = localStorage.getItem(`case_purchase_${userId}`);
-        
-        if (purchaseData) {
-            const purchase = JSON.parse(purchaseData);
-            
-            if (!purchase.completed && (Date.now() - purchase.timestamp) < 5 * 60 * 1000) {
-                console.log('🔄 Восстанавливаем незавершенную покупку кейса:', purchase);
-                
-                const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
-                updateCoinsDisplay(currentCoins + purchase.price);
-                
-                tg.showAlert('⚠️ Незавершенная покупка кейса отменена. Деньги возвращены.');
-                
-                localStorage.removeItem(`case_purchase_${userId}`);
-            } else if (!purchase.completed) {
-                localStorage.removeItem(`case_purchase_${userId}`);
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка восстановления покупок:', error);
-    }
-}
-
 // Загрузка кейсов
 function loadCases() {
     const casesGrid = document.getElementById('casesGrid');
-    if (!casesGrid) {
-        console.error('❌ Элемент casesGrid не найден!');
-        return;
-    }
-    
-    console.log('✅ Загружаем кейсы в элемент:', casesGrid);
+    if (!casesGrid) return;
     
     casesGrid.innerHTML = '';
-    
-    if (casesData.length === 0) {
-        casesGrid.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Нет доступных кейсов</div>';
-        return;
-    }
     
     casesData.forEach(caseData => {
         const caseElement = document.createElement('div');
@@ -1551,21 +1124,11 @@ function startCaseOpening(caseData) {
         return;
     }
     
-    // Сохраняем данные о покупке
-    currentCasePurchase = {
-        caseId: caseData.id,
-        price: caseData.price,
-        timestamp: Date.now(),
-        completed: false
-    };
-    
-    localStorage.setItem(`case_purchase_${userId}`, JSON.stringify(currentCasePurchase));
-    
-    // Списываем монеты
-    deductCoins(caseData.price);
-    
     // Закрываем модалку кейса
     document.getElementById('caseModal').style.display = 'none';
+    
+    // Списываем монеты сразу
+    deductCoins(caseData.price);
     
     // Показываем рулетку
     showRoulette(caseData);
@@ -1576,7 +1139,7 @@ function showRoulette(caseData) {
     const modal = document.getElementById('rouletteModal');
     const rouletteItems = document.getElementById('rouletteItems');
     
-    // Заполняем рулетку предметами
+    // Заполняем рулетку предметами (повторяем для эффекта)
     rouletteItems.innerHTML = '';
     for (let i = 0; i < 30; i++) {
         caseData.items.forEach(item => {
@@ -1599,6 +1162,7 @@ function showRoulette(caseData) {
 // Анимация рулетки
 function startRouletteAnimation(caseData) {
     const rouletteItems = document.getElementById('rouletteItems');
+    const spinningText = document.getElementById('rouletteSpinning');
     
     let startTime = Date.now();
     let animationFrame;
@@ -1629,31 +1193,14 @@ function startRouletteAnimation(caseData) {
 
 // Завершение открытия кейса
 function finishCaseOpening(caseData) {
-    const userId = tg.initDataUnsafe?.user?.id;
-    
     const wonItem = getRandomItem(caseData.items);
     
     document.getElementById('rouletteModal').style.display = 'none';
     showResult(wonItem, caseData);
     saveSkinToInventory(wonItem);
-    
-    // Отмечаем покупку как завершенную
-    currentCasePurchase.completed = true;
-    
-    localStorage.setItem(`case_purchase_${userId}`, JSON.stringify(currentCasePurchase));
-    
-    setTimeout(() => {
-        currentCasePurchase = {
-            caseId: null,
-            price: 0,
-            timestamp: null,
-            completed: false
-        };
-        localStorage.removeItem(`case_purchase_${userId}`);
-    }, 5000);
 }
 
-// Выбор случайного предмета
+// Выбор случайного предмета с учетом шансов
 function getRandomItem(items) {
     const random = Math.random() * 100;
     let currentChance = 0;
@@ -1710,6 +1257,7 @@ function saveSkinToInventory(skin) {
     
     localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
     
+    // Обновляем все разделы
     updateInventoryStats();
     loadInventory();
     loadProfileInventory();
@@ -1728,10 +1276,10 @@ function loadInventory() {
     
     if (activeInventory.length === 0) {
         inventoryGrid.style.display = 'none';
-        if (emptyInventory) emptyInventory.style.display = 'block';
+        emptyInventory.style.display = 'block';
     } else {
         inventoryGrid.style.display = 'grid';
-        if (emptyInventory) emptyInventory.style.display = 'none';
+        emptyInventory.style.display = 'none';
         
         inventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
@@ -1762,10 +1310,10 @@ function loadProfileInventory() {
     
     if (activeInventory.length === 0) {
         profileInventoryGrid.style.display = 'none';
-        if (emptyProfileInventory) emptyProfileInventory.style.display = 'block';
+        emptyProfileInventory.style.display = 'block';
     } else {
         profileInventoryGrid.style.display = 'grid';
-        if (emptyProfileInventory) emptyProfileInventory.style.display = 'none';
+        emptyProfileInventory.style.display = 'none';
         
         profileInventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
@@ -1815,6 +1363,7 @@ function sellSkin(skin) {
         
         document.getElementById('skinModal').style.display = 'none';
         
+        // Обновляем статистику
         updateInventoryStats();
         loadInventory();
         loadProfileInventory();
@@ -1873,6 +1422,7 @@ async function confirmWithdraw(skin) {
             document.getElementById('withdrawModal').style.display = 'none';
             document.getElementById('skinModal').style.display = 'none';
             
+            // Обновляем статистику
             updateInventoryStats();
             loadInventory();
             loadProfileInventory();
@@ -1918,26 +1468,522 @@ async function sendWithdrawRequest(user, skin, tradeLink) {
     }
 }
 
-// ==================== ОБНОВЛЕНИЕ СТАТИСТИКИ ИНВЕНТАРЯ ====================
+// ==================== СИСТЕМА ПОДПИСКИ НА CS2DROPSKINBOT ====================
 
-// Обновление статистики инвентаря
-function updateInventoryStats() {
+// Загрузка статуса подписки на CS2DropZone
+async function loadSubscriptionStatus(userId) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                channel: '@CS2DropZone'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateSubscriptionUI(result);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса подписки:', error);
+    }
+}
+
+// Получение награды за подписку на CS2DropZone
+async function claimSubscriptionReward() {
     const userId = tg.initDataUnsafe?.user?.id;
-    if (!userId) return;
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-    const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
-    const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
     
-    const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain, #totalSkinsCases');
-    const totalValueElements = document.querySelectorAll('#totalValue, #totalValueMain, #totalValueCases');
+    try {
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Проверяем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                channel: '@CS2DropZone',
+                rewardAmount: 250
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('📢 Subscription reward result:', result);
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                updateCoinsDisplay(result.coins);
+                tg.showAlert('🎉 +250 монет за подписку на канал!');
+            }
+            
+            updateSubscriptionUI(result);
+            
+            if (!result.isSubscribed) {
+                // Показываем окошко с предложением подписаться
+                showSubscriptionModal('CS2DropZone');
+            }
+            
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка получения награды за подписку:', error);
+        tg.showAlert('❌ Ошибка сети');
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +250 монет';
+        }, 1000);
+    }
+}
+
+// ==================== СИСТЕМА ПОДПИСКИ НА DARENCS2 ====================
+
+// Загрузка статуса подписки на DarenCs2
+async function loadDarenSubscriptionStatus(userId) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                channel: '@DarenCs2'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateDarenSubscriptionUI(result);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса подписки на DarenCs2:', error);
+    }
+}
+
+// Получение награды за подписку на DarenCs2
+async function claimDarenSubscriptionReward() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[2];
     
-    totalSkinsElements.forEach(element => {
-        if (element) element.textContent = activeInventory.length;
-    });
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
     
-    totalValueElements.forEach(element => {
-        if (element) element.textContent = totalVal.toLocaleString();
+    try {
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Проверяем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                channel: '@DarenCs2',
+                rewardAmount: 150
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('📢 DarenCs2 subscription reward result:', result);
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                updateCoinsDisplay(result.coins);
+                tg.showAlert('🎉 +150 монет за подписку на канал DarenCs2!');
+            }
+            
+            updateDarenSubscriptionUI(result);
+            
+            if (!result.isSubscribed) {
+                // Показываем окошко с предложением подписаться
+                showSubscriptionModal('DarenCs2');
+            }
+            
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка получения награды за подписку на DarenCs2:', error);
+        tg.showAlert('❌ Ошибка сети');
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +150 монет';
+        }, 1000);
+    }
+}
+
+// Функция показа модального окна подписки
+function showSubscriptionModal(channelName) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 320px;">
+            <div class="modal-header">
+                <h3>Подписка на канал</h3>
+                <span class="close" onclick="this.parentElement.parentElement.parentElement.style.display='none'">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📢</div>
+                    <h4 style="margin-bottom: 10px; color: #ff6b35;">Вы не подписаны на канал</h4>
+                    <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
+                        Подпишитесь на канал ${channelName} чтобы получить ${channelName === '@CS2DropZone' ? '+250' : '+150'} монет!
+                    </p>
+                    <button onclick="openTelegramChannel('${channelName}')" class="modal-button primary" style="margin-bottom: 10px;">
+                        📢 Перейти в канал
+                    </button>
+                    <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Функция открытия канала Telegram
+function openTelegramChannel(channelName) {
+    window.open(`https://t.me/${channelName.replace('@', '')}`, '_blank');
+}
+
+// Обновление интерфейса подписки на CS2DropZone
+function updateSubscriptionUI(data) {
+    const statusElement = document.getElementById('subscriptionStatus');
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
+    
+    if (statusElement && claimBtn) {
+        if (data.isSubscribed) {
+            statusElement.textContent = `✅ Подписан на CS2DropZone (${data.rewardCount || 0} раз)`;
+            statusElement.style.color = '#28a745';
+            
+            if (data.canClaim) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = '🎁 Забрать +250 монет';
+                claimBtn.onclick = () => claimSubscriptionReward();
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.textContent = '⏳ Ждите...';
+                if (data.timeUntilNextReward > 0) {
+                    startSubscriptionTimer(data.timeUntilNextReward, claimBtn);
+                }
+            }
+        } else {
+            statusElement.textContent = '❌ Не подписан на CS2DropZone';
+            statusElement.style.color = '#dc3545';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🔍 Проверить подписку';
+            claimBtn.onclick = () => checkSubscriptionOnly('@CS2DropZone');
+        }
+    }
+}
+
+// Обновление интерфейса подписки на DarenCs2
+function updateDarenSubscriptionUI(data) {
+    const statusElement = document.getElementById('darenSubscriptionStatus');
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[2];
+    
+    if (statusElement && claimBtn) {
+        if (data.isSubscribed) {
+            statusElement.textContent = `✅ Подписан на DarenCs2 (${data.rewardCount || 0} раз)`;
+            statusElement.style.color = '#28a745';
+            
+            if (data.canClaim) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = '🎁 Забрать +150 монет';
+                claimBtn.onclick = () => claimDarenSubscriptionReward();
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.textContent = '⏳ Ждите...';
+                if (data.timeUntilNextReward > 0) {
+                    startSubscriptionTimer(data.timeUntilNextReward, claimBtn);
+                }
+            }
+        } else {
+            statusElement.textContent = '❌ Не подписан на DarenCs2';
+            statusElement.style.color = '#dc3545';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🔍 Проверить подписку';
+            claimBtn.onclick = () => checkSubscriptionOnly('@DarenCs2');
+        }
+    }
+}
+
+// Таймер для подписки
+function startSubscriptionTimer(seconds, claimBtn) {
+    if (!claimBtn) return;
+    
+    let timeLeft = seconds;
+    
+    const timer = setInterval(() => {
+        if (timeLeft > 0) {
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const secs = timeLeft % 60;
+            claimBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            timeLeft--;
+        } else {
+            clearInterval(timer);
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать награду';
+            if (claimBtn.onclick.toString().includes('claimSubscriptionReward')) {
+                claimBtn.textContent = '🎁 Забрать +250 монет';
+            } else if (claimBtn.onclick.toString().includes('claimDarenSubscriptionReward')) {
+                claimBtn.textContent = '🎁 Забрать +150 монет';
+            }
+        }
+    }, 1000);
+}
+
+// Проверка только подписки (без награды)
+async function checkSubscriptionOnly(channel) {
+    const userId = tg.initDataUnsafe?.user?.id;
+    
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                channel: channel
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            if (channel === '@CS2DropZone') {
+                updateSubscriptionUI(result);
+            } else if (channel === '@DarenCs2') {
+                updateDarenSubscriptionUI(result);
+            }
+            
+            if (result.isSubscribed) {
+                tg.showAlert(`✅ Вы подписаны на канал ${channel}! Теперь можете получать награды.`);
+            } else {
+                tg.showAlert(`❌ Вы не подписаны на канал ${channel}`);
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка проверки подписки:', error);
+        tg.showAlert('❌ Ошибка сети');
+    }
+}
+
+// ==================== СИСТЕМА ЕЖЕДНЕВНЫХ НАГРАД ====================
+
+// Запрос ежедневной награды
+async function claimDailyRewardTimer() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Получаем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/daily-reward-timer';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('🎁 Daily reward result:', result);
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                updateCoinsDisplay(result.coins);
+                tg.showAlert('🎉 +50 монет за ежедневный бонус!');
+            }
+            
+            updateRewardUI(result);
+            
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
+                startRewardTimer(userId);
+            }
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+        claimBtn.textContent = originalText;
+        
+    } catch (error) {
+        console.error('Ошибка получения награды:', error);
+        tg.showAlert('❌ Ошибка сети');
+        claimBtn.textContent = '🎁 Забрать +50 монет';
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+        }, 1000);
+    }
+}
+
+// Загрузка статуса ежедневных наград
+async function loadRewardStatus(userId) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/reward-status';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateRewardUI(result);
+            
+            if (!result.canClaim && result.timeUntilNextReward > 0) {
+                startRewardTimer(userId);
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса наград:', error);
+    }
+}
+
+// Обновление интерфейса наград
+function updateRewardUI(data) {
+    const rewardCount = document.getElementById('rewardCount');
+    const dailyProgress = document.getElementById('dailyProgress');
+    const rewardProgress = document.getElementById('rewardProgress');
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (dailyProgress) {
+        dailyProgress.textContent = `${data.rewardCount || 0}/${data.maxRewards || 30} наград`;
+    }
+    
+    if (rewardProgress) {
+        const progressPercent = ((data.rewardCount || 0) / (data.maxRewards || 30)) * 100;
+        rewardProgress.style.width = `${progressPercent}%`;
+    }
+    
+    if (timerText && claimBtn) {
+        if (data.rewardCount >= data.maxRewards) {
+            timerText.textContent = '🎉 Все награды получены!';
+            claimBtn.disabled = true;
+            claimBtn.textContent = '✅ Завершено';
+            if (rewardProgress) rewardProgress.classList.add('progress-pulse');
+        } else if (data.canClaim) {
+            timerText.textContent = '✅ Готово к получению!';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +50 монет';
+            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
+        } else {
+            timerText.textContent = `⏳ До следующей награды: ${data.timeUntilNextReward}с`;
+            claimBtn.disabled = true;
+            claimBtn.textContent = '⏳ Ждите...';
+            if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
+        }
+    }
+    
+    document.getElementById('profileRewards').textContent = data.rewardCount || 0;
+}
+
+// Таймер обратного отсчета
+function startRewardTimer(userId) {
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (!timerText || !claimBtn) return;
+    
+    fetch('https://telegram-backend-nine.vercel.app/api/reward-status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            userId: userId
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success && !result.canClaim && result.timeUntilNextReward > 0) {
+            let timeLeft = result.timeUntilNextReward;
+            
+            const timer = setInterval(() => {
+                if (timeLeft > 0) {
+                    const hours = Math.floor(timeLeft / 3600);
+                    const minutes = Math.floor((timeLeft % 3600) / 60);
+                    const seconds = timeLeft % 60;
+                    timerText.textContent = `⏳ До следующей награды: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    claimBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    claimBtn.disabled = true;
+                    timeLeft--;
+                } else {
+                    clearInterval(timer);
+                    timerText.textContent = '✅ Готово к получению!';
+                    claimBtn.disabled = false;
+                    claimBtn.textContent = '🎁 Забрать +50 монет';
+                    loadRewardStatus(userId);
+                }
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка запуска таймера:', error);
     });
 }
 
@@ -1953,7 +1999,7 @@ function updateCoinsDisplay(coins) {
     });
 }
 
-// Загрузка баланса
+// Загружаем баланс при старте
 async function loadUserBalance(userId) {
     try {
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/get-balance';
@@ -1992,170 +2038,6 @@ function addCoins(amount) {
     updateCoinsDisplay(newCoins);
 }
 
-// ==================== ФУНКЦИИ ДЛЯ ОБНОВЛЕНИЯ ТАЙМЕРОВ ====================
-
-// Функция для обновления всех таймеров
-async function updateAllTimers() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    if (!userId) return;
-
-    try {
-        // Таймер для ежедневного бонуса
-        const dailyResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'daily'
-            })
-        });
-        
-        const dailyResult = await dailyResponse.json();
-        if (dailyResult.success) {
-            updateDailyTimer(dailyResult.timeUntilNextReward);
-        }
-
-        // Таймер для подписки на CS2DropZone
-        const subResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'subscription'
-            })
-        });
-        
-        const subResult = await subResponse.json();
-        if (subResult.success) {
-            updateSubscriptionTimer(subResult.timeUntilNextReward);
-        }
-
-        // Таймер для подписки на DarenCs2
-        const darenResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'daren_subscription'
-            })
-        });
-        
-        const darenResult = await darenResponse.json();
-        if (darenResult.success) {
-            updateDarenSubscriptionTimer(darenResult.timeUntilNextReward);
-        }
-
-        // Таймер для фамилии
-        const nameResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'lastname'
-            })
-        });
-        
-        const nameResult = await nameResponse.json();
-        if (nameResult.success) {
-            updateLastNameTimer(nameResult.timeUntilNextReward);
-        }
-
-    } catch (error) {
-        console.error('❌ Error updating timers:', error);
-    }
-}
-
-// Функции для обновления таймеров
-function updateDailyTimer(seconds) {
-    const timerText = document.getElementById('timerText');
-    const claimBtn = document.getElementById('claimRewardBtn');
-    
-    if (seconds > 0) {
-        startTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет');
-    } else {
-        timerText.textContent = '✅ Готово к получению!';
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +50 монет';
-    }
-}
-
-function updateSubscriptionTimer(seconds) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1];
-    
-    if (seconds > 0) {
-        startTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет');
-    } else {
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +250 монет';
-    }
-}
-
-function updateDarenSubscriptionTimer(seconds) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[2];
-    
-    if (seconds > 0) {
-        startTimer(seconds, null, claimBtn, '🎁 Забрать +150 монет');
-    } else {
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +150 монет';
-    }
-}
-
-function updateLastNameTimer(seconds) {
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3];
-    
-    if (seconds > 0) {
-        startTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет');
-    } else {
-        bonusBtn.disabled = false;
-        bonusBtn.textContent = '🎁 Забрать +50 монет';
-    }
-}
-
-// Универсальная функция таймера
-function startTimer(seconds, timerElement, buttonElement, buttonText) {
-    let timeLeft = seconds;
-    
-    buttonElement.disabled = true;
-    
-    const timer = setInterval(() => {
-        if (timeLeft > 0) {
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const secs = timeLeft % 60;
-            
-            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            
-            if (timerElement) {
-                timerElement.textContent = `⏳ До следующей награды: ${timeString}`;
-            }
-            
-            buttonElement.textContent = `⏳ ${timeString}`;
-            timeLeft--;
-        } else {
-            clearInterval(timer);
-            
-            if (timerElement) {
-                timerElement.textContent = '✅ Готово к получению!';
-            }
-            
-            buttonElement.disabled = false;
-            buttonElement.textContent = buttonText;
-        }
-    }, 1000);
-}
-
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
 function getRarityText(rarity) {
@@ -2168,7 +2050,7 @@ function getRarityText(rarity) {
     return rarityMap[rarity] || 'Обычный';
 }
 
-// Функция переключения вкладок
+// Обновите функцию switchToTab
 function switchToTab(tabName) {
     const navItems = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -2202,13 +2084,26 @@ function switchToTab(tabName) {
         loadInventory();
     } else if (tabName === 'profile') {
         loadProfileInventory();
-    } else if (tabName === 'cases') {
-        loadCases();
     }
 }
 
+// Инициализация модальных окон
+function initModals() {
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+    
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    });
+}
+
 function getDefaultAvatar() {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQgNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
 }
 
 // Инициализируем приложение когда страница загрузится
