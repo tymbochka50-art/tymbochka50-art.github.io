@@ -1058,7 +1058,7 @@ function openCaseModal(caseData) {
 }
 
 // Начало открытия кейса
-async function startCaseOpening(caseData) {
+function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
     const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     
@@ -1067,48 +1067,14 @@ async function startCaseOpening(caseData) {
         return;
     }
     
-    try {
-        // 1. Сначала списываем монеты на СЕРВЕРЕ
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/update-balance';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                amount: -caseData.price, // Отрицательное значение = списание
-                action: 'purchase_case',
-                description: `Покупка кейса: ${caseData.name}`
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('💰 Purchase result:', result);
-        
-        if (result.success) {
-            // 2. Обновляем баланс на фронтенде
-            updateCoinsDisplay(result.newBalance);
-            
-            // 3. Закрываем модалку кейса
-            document.getElementById('caseModal').style.display = 'none';
-            
-            // 4. Показываем рулетку
-            showRoulette(caseData);
-        } else {
-            tg.showAlert(`❌ Ошибка: ${result.error || 'Не удалось списать монеты'}`);
-        }
-        
-    } catch (error) {
-        console.error('Ошибка при покупке кейса:', error);
-        tg.showAlert('❌ Ошибка сети при покупке кейса');
-        
-        // Показываем кнопку "Открыть кейс" снова
-        const openBtn = document.getElementById('openCaseBtn');
-        if (openBtn) openBtn.disabled = false;
-    }
+    // Закрываем модалку кейса
+    document.getElementById('caseModal').style.display = 'none';
+    
+    // Списываем монеты сразу
+    deductCoins(caseData.price);
+    
+    // Показываем рулетку
+    showRoulette(caseData);
 }
 
 // Показ рулетки
@@ -2001,7 +1967,12 @@ async function loadUserBalance(userId) {
     }
 }
 
-
+// Списание монет
+function deductCoins(amount) {
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const newCoins = currentCoins - amount;
+    updateCoinsDisplay(newCoins);
+}
 
 // Добавление монет
 function addCoins(amount) {
@@ -2080,6 +2051,3 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
-
-
-
