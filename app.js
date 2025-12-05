@@ -29,7 +29,6 @@ async function initApp() {
         await loadRewardStatus(user.id);
         await loadReferralStats(user.id);
         await loadSubscriptionStatus(user.id);
-        await loadDarenSubscriptionStatus(user.id);
         await loadLastNameStatus();
 
         // Загрузка кейсов и инвентаря
@@ -40,40 +39,10 @@ async function initApp() {
         // Обновляем статистику инвентаря
         updateInventoryStats();
 
-        // Обновляем все таймеры
-        await updateAllTimers();
-
         console.log('📊 Данные пользователя:', user);
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
-    }
-}
-
-// Функция безопасного парсинга JSON из localStorage
-function getSafeLocalStorage(key, defaultValue = []) {
-    try {
-        const data = localStorage.getItem(key);
-        if (!data) return defaultValue;
-        
-        const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed : defaultValue;
-    } catch (error) {
-        console.error(`❌ Ошибка парсинга localStorage для ключа "${key}":`, error);
-        // Удаляем поврежденные данные
-        localStorage.removeItem(key);
-        return defaultValue;
-    }
-}
-
-// Функция безопасной записи в localStorage
-function setSafeLocalStorage(key, data) {
-    try {
-        localStorage.setItem(key, JSON.stringify(data));
-        return true;
-    } catch (error) {
-        console.error(`❌ Ошибка записи в localStorage для ключа "${key}":`, error);
-        return false;
     }
 }
 
@@ -186,9 +155,9 @@ function updateInventoryStats() {
     const userId = tg.initDataUnsafe?.user?.id;
     if (!userId) return;
     
-    const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
-    const totalVal = activeInventory.reduce((sum, skin) => sum + (skin.value || 0), 0);
+    const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
     
     // Обновляем все разделы
     const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain, #totalSkinsCases');
@@ -201,170 +170,6 @@ function updateInventoryStats() {
     totalValueElements.forEach(element => {
         if (element) element.textContent = totalVal.toLocaleString();
     });
-}
-
-// ==================== ФУНКЦИИ ДЛЯ ОБНОВЛЕНИЯ ТАЙМЕРОВ ====================
-
-// Функция для обновления всех таймеров
-async function updateAllTimers() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    if (!userId) return;
-
-    try {
-        // Таймер для ежедневного бонуса
-        const dailyResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'daily'
-            })
-        });
-        
-        const dailyResult = await dailyResponse.json();
-        if (dailyResult.success) {
-            updateDailyTimer(dailyResult.timeUntilNextReward);
-        }
-
-        // Таймер для подписки на CS2DropZone
-        const subResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'subscription'
-            })
-        });
-        
-        const subResult = await subResponse.json();
-        if (subResult.success) {
-            updateSubscriptionTimer(subResult.timeUntilNextReward);
-        }
-
-        // Таймер для подписки на DarenCs2
-        const darenResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'daren_subscription'
-            })
-        });
-        
-        const darenResult = await darenResponse.json();
-        if (darenResult.success) {
-            updateDarenSubscriptionTimer(darenResult.timeUntilNextReward);
-        }
-
-        // Таймер для фамилии
-        const nameResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'lastname'
-            })
-        });
-        
-        const nameResult = await nameResponse.json();
-        if (nameResult.success) {
-            updateLastNameTimer(nameResult.timeUntilNextReward);
-        }
-
-    } catch (error) {
-        console.error('❌ Error updating timers:', error);
-    }
-}
-
-// Функции для обновления таймеров
-function updateDailyTimer(seconds) {
-    const timerText = document.getElementById('timerText');
-    const claimBtn = document.getElementById('claimRewardBtn');
-    
-    if (seconds > 0) {
-        startTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет');
-    } else {
-        timerText.textContent = '✅ Готово к получению!';
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +50 монет';
-    }
-}
-
-function updateSubscriptionTimer(seconds) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1]; // Первая кнопка подписки (CS2DropZone)
-    
-    if (seconds > 0) {
-        startTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет');
-    } else {
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +250 монет';
-    }
-}
-
-function updateDarenSubscriptionTimer(seconds) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[2]; // Вторая кнопка подписки (DarenCs2)
-    
-    if (seconds > 0) {
-        startTimer(seconds, null, claimBtn, '🎁 Забрать +150 монет');
-    } else {
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +150 монет';
-    }
-}
-
-function updateLastNameTimer(seconds) {
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3]; // Кнопка фамилии (после двух подписок)
-    
-    if (seconds > 0) {
-        startTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет');
-    } else {
-        bonusBtn.disabled = false;
-        bonusBtn.textContent = '🎁 Забрать +50 монет';
-    }
-}
-
-// Универсальная функция таймера
-function startTimer(seconds, timerElement, buttonElement, buttonText) {
-    let timeLeft = seconds;
-    
-    buttonElement.disabled = true;
-    
-    const timer = setInterval(() => {
-        if (timeLeft > 0) {
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const secs = timeLeft % 60;
-            
-            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            
-            if (timerElement) {
-                timerElement.textContent = `⏳ До следующей награды: ${timeString}`;
-            }
-            
-            buttonElement.textContent = `⏳ ${timeString}`;
-            timeLeft--;
-        } else {
-            clearInterval(timer);
-            
-            if (timerElement) {
-                timerElement.textContent = '✅ Готово к получению!';
-            }
-            
-            buttonElement.disabled = false;
-            buttonElement.textContent = buttonText;
-        }
-    }, 1000);
 }
 
 // ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
@@ -401,12 +206,6 @@ async function generateAndCopyReferralLink() {
         console.log('🔗 Referral generation result:', result);
         
         if (result.success) {
-            // Обновляем реферальную статистику
-            updateReferralStats(result);
-            
-            // Показываем ссылку в поле
-            updateReferralLinkDisplay(result.referralLink);
-            
             // Копируем ссылку в буфер обмена
             try {
                 await navigator.clipboard.writeText(result.referralLink);
@@ -415,6 +214,9 @@ async function generateAndCopyReferralLink() {
                     `✅ Реферальная ссылка скопирована!\n\n` +
                     `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
+                
+                // Обновляем статистику
+                updateReferralStats(result);
                 
                 // Визуальная обратная связь
                 generateBtn.textContent = '✅ Скопировано!';
@@ -436,6 +238,8 @@ async function generateAndCopyReferralLink() {
                     `Приглашайте друзей и получайте +500 монет за каждого!`
                 );
                 
+                updateReferralStats(result);
+                
                 generateBtn.textContent = '✅ Скопировано!';
                 setTimeout(() => {
                     generateBtn.textContent = originalText;
@@ -453,62 +257,6 @@ async function generateAndCopyReferralLink() {
         setTimeout(() => {
             generateBtn.disabled = false;
         }, 2000);
-    }
-}
-
-// Функция обновления отображения реферальной ссылки
-function updateReferralLinkDisplay(link) {
-    let referralLinkContainer = document.getElementById('referralLinkContainer');
-    
-    if (!referralLinkContainer) {
-        // Создаем контейнер если его нет
-        const referralCard = document.querySelector('.task-card:has(.task-button.primary)');
-        if (referralCard) {
-            referralLinkContainer = document.createElement('div');
-            referralLinkContainer.id = 'referralLinkContainer';
-            referralLinkContainer.className = 'referral-link-container';
-            
-            const linkDisplay = document.createElement('div');
-            linkDisplay.className = 'referral-link-display';
-            linkDisplay.id = 'referralLinkDisplay';
-            linkDisplay.textContent = link;
-            
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-link-btn';
-            copyBtn.innerHTML = '📋';
-            copyBtn.title = 'Скопировать ссылку';
-            copyBtn.onclick = () => copyReferralLink(link);
-            
-            referralLinkContainer.appendChild(linkDisplay);
-            referralLinkContainer.appendChild(copyBtn);
-            
-            // Вставляем после кнопки приглашения друзей
-            const primaryButton = referralCard.querySelector('.task-button.primary');
-            referralCard.insertBefore(referralLinkContainer, primaryButton.nextSibling);
-        }
-    } else {
-        // Обновляем существующую ссылку
-        const linkDisplay = document.getElementById('referralLinkDisplay');
-        if (linkDisplay) {
-            linkDisplay.textContent = link;
-        }
-    }
-}
-
-// Функция копирования ссылки
-async function copyReferralLink(link) {
-    try {
-        await navigator.clipboard.writeText(link);
-        tg.showAlert('✅ Ссылка скопирована в буфер обмена!');
-    } catch (error) {
-        // Fallback
-        const tempInput = document.createElement('input');
-        tempInput.value = link;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand('copy');
-        document.body.removeChild(tempInput);
-        tg.showAlert('✅ Ссылка скопирована!');
     }
 }
 
@@ -604,7 +352,7 @@ async function loadLastNameStatus() {
 function updateLastNameUI(data) {
     const nameStatus = document.getElementById('nameStatus');
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка (после двух подписок)
+    const bonusBtn = bonusBtns[2];
     
     if (nameStatus && bonusBtn) {
         if (data.gotInitialBonus) {
@@ -628,7 +376,7 @@ function updateLastNameUI(data) {
             nameStatus.textContent = '✅ Готово к получению';
             nameStatus.style.color = '#28a745';
             bonusBtn.disabled = false;
-            bonusBtn.textContent = '🎁 Забрать +50 монет';
+            bonusBtn.textContent = '🎁 Забрать +20 монет';
             bonusBtn.onclick = () => checkSpecialLastName();
         } else {
             // Неправильная фамилия
@@ -646,7 +394,7 @@ async function checkSpecialLastName() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
+    const bonusBtn = bonusBtns[2];
     const nameStatus = document.getElementById('nameStatus');
     
     if (!userId || !user) {
@@ -737,7 +485,7 @@ async function claimLastNameRepeatReward() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
+    const bonusBtn = bonusBtns[2];
     
     if (!userId || !user) {
         tg.showAlert('❌ Не удалось определить пользователя');
@@ -781,7 +529,7 @@ async function claimLastNameRepeatReward() {
                 
                 // Запускаем таймер
                 if (!result.canClaim) {
-                    startLastNameTimer(86400); // 24 часа
+                    startLastNameTimer(180); // 3 минуты
                 }
             } else {
                 // Нельзя получить награду сейчас
@@ -811,7 +559,7 @@ async function claimLastNameRepeatReward() {
 // Таймер для повторной награды за фамилию
 function startLastNameTimer(seconds) {
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
+    const bonusBtn = bonusBtns[2];
     
     if (!bonusBtn) return;
     
@@ -819,10 +567,9 @@ function startLastNameTimer(seconds) {
     
     const timer = setInterval(() => {
         if (timeLeft > 0) {
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const secs = timeLeft % 60;
-            bonusBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            bonusBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
             bonusBtn.disabled = true;
             timeLeft--;
         } else {
@@ -845,32 +592,46 @@ const casesData = [
         color: 'light',
         items: [
             { 
-                name: 'MP5-SD | Necro Jr.', 
-                image: 'https://assets.lis-skins.com/market_images/152617_b.png',
-                chance: 40,
+                name: 'AK-47 | Redline', 
+                image: 'https://assets.lis-skins.com/market_images/639_b.png',
+                chance: 15,
                 rarity: 'common',
-                value: 5
+                value: 8
             },
             { 
-                name: 'XM1014 | Mockingbird', 
-                image: 'https://assets.lis-skins.com/market_images/186837_b.png',
+                name: 'AWP | Asiimov', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 10,
+                rarity: 'rare',
+                value: 12
+            },
+            { 
+                name: 'M4A1-S | Hyper Beast', 
+                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
+                chance: 5,
+                rarity: 'epic',
+                value: 15
+            },
+            { 
+                name: 'Glock-18 | Water Elemental', 
+                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
                 chance: 30,
                 rarity: 'common',
                 value: 6
             },
             { 
-                name: 'AUG | Luxe Trim', 
-                image: 'https://assets.lis-skins.com/market_images/184732_b.png',
-                chance: 20,
+                name: 'USP-S | Orion', 
+                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
+                chance: 25,
                 rarity: 'common',
-                value: 8
+                value: 7
             },
             { 
-                name: 'MAG-7 | Resupply', 
-                image: 'https://assets.lis-skins.com/market_images/186763_b.png',
-                chance: 10,
+                name: 'Desert Eagle | Conspiracy', 
+                image: 'https://assets.lis-skins.com/market_images/640_b.png',
+                chance: 15,
                 rarity: 'rare',
-                value: 12
+                value: 10
             }
         ]
     },
@@ -882,39 +643,60 @@ const casesData = [
         color: 'danger',
         items: [
             { 
-                name: 'P90 | Blue Tac', 
-                image: 'https://assets.lis-skins.com/market_images/187319_b.png',
-                chance: 35,
-                rarity: 'common',
-                value: 10
+                name: 'Karambit | Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 2,
+                rarity: 'legendary',
+                value: 25
             },
             { 
-                name: 'M4A4 | Choppa', 
-                image: 'https://assets.lis-skins.com/market_images/186871_b.png',
-                chance: 25,
-                rarity: 'rare',
-                value: 15
+                name: 'M9 Bayonet | Tiger Tooth', 
+                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 20
             },
             { 
-                name: 'Souvenir R8 Revolver | Desert Brush', 
-                image: 'https://assets.lis-skins.com/market_images/152332_b.png',
-                chance: 20,
-                rarity: 'rare',
+                name: 'Butterfly Knife | Crimson Web', 
+                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
+                chance: 1,
+                rarity: 'legendary',
+                value: 30
+            },
+            { 
+                name: 'AK-47 | Fire Serpent', 
+                image: 'https://assets.lis-skins.com/market_images/639_b.png',
+                chance: 8,
+                rarity: 'epic',
                 value: 18
             },
             { 
-                name: '★ Karambit | Doppler Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/98944_b.png',
-                chance: 0.0001,
+                name: 'AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 1,
                 rarity: 'legendary',
-                value: 100
+                value: 35
             },
             { 
-                name: '★ Butterfly Knife | Gamma Doppler Emerald', 
-                image: 'https://assets.lis-skins.com/market_images/151422_b.png',
-                chance: 0.0001,
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
+                chance: 2,
                 rarity: 'legendary',
-                value: 95
+                value: 28
+            },
+            { 
+                name: 'Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 22
+            },
+            { 
+                name: 'Driver Gloves | Snow Leopard', 
+                image: 'https://assets.lis-skins.com/market_images/16514_b.png',
+                chance: 10,
+                rarity: 'rare',
+                value: 15
             }
         ]
     },
@@ -926,46 +708,60 @@ const casesData = [
         color: 'mystic',
         items: [
             { 
-                name: 'M4A4 | Choppa', 
-                image: 'https://assets.lis-skins.com/market_images/186871_b.png',
-                chance: 30,
-                rarity: 'rare',
-                value: 20
+                name: 'StatTrak™ Karambit | Emerald', 
+                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
+                chance: 1,
+                rarity: 'legendary',
+                value: 50
             },
             { 
-                name: 'Souvenir R8 Revolver | Desert Brush', 
-                image: 'https://assets.lis-skins.com/market_images/152332_b.png',
-                chance: 25,
+                name: 'Souvenir AWP | Medusa', 
+                image: 'https://assets.lis-skins.com/market_images/30944_b.png',
+                chance: 2,
+                rarity: 'legendary',
+                value: 45
+            },
+            { 
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16515_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 35
+            },
+            { 
+                name: 'Talon Knife | Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
+                chance: 4,
+                rarity: 'epic',
+                value: 30
+            },
+            { 
+                name: 'AWP | Gungnir', 
+                image: 'https://assets.lis-skins.com/market_images/30946_b.png',
+                chance: 5,
+                rarity: 'epic',
+                value: 28
+            },
+            { 
+                name: 'Specialist Gloves | Emerald Web', 
+                image: 'https://assets.lis-skins.com/market_images/16516_b.png',
+                chance: 10,
                 rarity: 'rare',
                 value: 25
             },
             { 
-                name: 'Sport Gloves | Pandora\'s Box', 
-                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
-                chance: 0.0001,
-                rarity: 'legendary',
-                value: 120
+                name: 'Bayonet | Marble Fade', 
+                image: 'https://assets.lis-skins.com/market_images/99100_b.png',
+                chance: 15,
+                rarity: 'rare',
+                value: 22
             },
             { 
-                name: '★ Sport Gloves | Hedge Maze', 
-                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 0.0001,
-                rarity: 'legendary',
-                value: 110
-            },
-            { 
-                name: 'M4A4 | Howl', 
-                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
-                chance: 0.0001,
-                rarity: 'legendary',
-                value: 105
-            },
-            { 
-                name: '★ Specialist Gloves | Emerald Web', 
-                image: 'https://assets.lis-skins.com/market_images/16613_b.png',
-                chance: 0.0001,
-                rarity: 'legendary',
-                value: 115
+                name: 'M4A1-S | Knight', 
+                image: 'https://assets.lis-skins.com/market_images/30945_b.png',
+                chance: 20,
+                rarity: 'rare',
+                value: 20
             }
         ]
     },
@@ -977,46 +773,60 @@ const casesData = [
         color: 'heat',
         items: [
             { 
-                name: '★ Butterfly Knife | Doppler Ruby', 
-                image: 'https://assets.lis-skins.com/market_images/139237_b.png',
-                chance: 0.0001,
+                name: '★ StatTrak™ Karambit | Crimson Web', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 0.5,
                 rarity: 'legendary',
-                value: 130
+                value: 80
             },
             { 
-                name: '★ M9 Bayonet | Doppler Black Pearl', 
-                image: 'https://assets.lis-skins.com/market_images/98956_b.png',
-                chance: 0.0001,
+                name: '★ Souvenir M9 Bayonet | Gamma Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
+                chance: 1,
                 rarity: 'legendary',
-                value: 125
+                value: 70
             },
             { 
-                name: '★ Butterfly Knife | Doppler Black Pearl', 
-                image: 'https://assets.lis-skins.com/market_images/99065_b.png',
-                chance: 0.0001,
-                rarity: 'legendary',
-                value: 135
-            },
-            { 
-                name: 'Sport Gloves | Pandora\'s Box', 
-                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
-                chance: 0.001,
-                rarity: 'legendary',
-                value: 120
-            },
-            { 
-                name: '★ Sport Gloves | Hedge Maze', 
+                name: '★ Sport Gloves | Vice', 
                 image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 0.001,
-                rarity: 'legendary',
-                value: 110
+                chance: 2,
+                rarity: 'epic',
+                value: 60
             },
             { 
-                name: 'M4A4 | Howl', 
-                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
-                chance: 0.001,
-                rarity: 'legendary',
-                value: 105
+                name: '★ Driver Gloves | Crimson Weave', 
+                image: 'https://assets.lis-skins.com/market_images/16514_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 55
+            },
+            { 
+                name: '★ Specialist Gloves | Foundation', 
+                image: 'https://assets.lis-skins.com/market_images/16516_b.png',
+                chance: 5,
+                rarity: 'epic',
+                value: 50
+            },
+            { 
+                name: '★ Butterfly Knife | Fade', 
+                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
+                chance: 8,
+                rarity: 'rare',
+                value: 45
+            },
+            { 
+                name: '★ Talon Knife | Case Hardened', 
+                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
+                chance: 10,
+                rarity: 'rare',
+                value: 40
+            },
+            { 
+                name: '★ Karambit | Ultraviolet', 
+                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
+                chance: 15,
+                rarity: 'rare',
+                value: 35
             }
         ]
     },
@@ -1028,60 +838,60 @@ const casesData = [
         color: 'ice',
         items: [
             { 
-                name: '★ Butterfly Knife | Gamma Doppler Emerald', 
-                image: 'https://assets.lis-skins.com/market_images/151422_b.png',
-                chance: 0.0001,
+                name: '★★ StatTrak™ Karambit | Emerald', 
+                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
+                chance: 0.1,
                 rarity: 'legendary',
-                value: 150
+                value: 100
             },
             { 
-                name: '★ Karambit | Doppler Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/98944_b.png',
-                chance: 0.0001,
+                name: '★★ Souvenir AWP | Dragon Lore', 
+                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
+                chance: 0.2,
                 rarity: 'legendary',
-                value: 160
+                value: 95
             },
             { 
-                name: '★ Butterfly Knife | Doppler Ruby', 
-                image: 'https://assets.lis-skins.com/market_images/139237_b.png',
-                chance: 0.0001,
+                name: '★★ M4A4 | Howl (Factory New)', 
+                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
+                chance: 0.5,
                 rarity: 'legendary',
-                value: 140
+                value: 90
             },
             { 
-                name: '★ Butterfly Knife | Doppler Black Pearl', 
-                image: 'https://assets.lis-skins.com/market_images/99065_b.png',
-                chance: 0.0001,
+                name: '★★ Sport Gloves | Pandora\'s Box (FN)', 
+                image: 'https://assets.lis-skins.com/market_images/16515_b.png',
+                chance: 1,
                 rarity: 'legendary',
-                value: 155
+                value: 85
             },
             { 
-                name: '★ M9 Bayonet | Doppler Black Pearl', 
-                image: 'https://assets.lis-skins.com/market_images/98956_b.png',
-                chance: 0.0001,
-                rarity: 'legendary',
-                value: 145
+                name: '★★ Butterfly Knife | Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
+                chance: 2,
+                rarity: 'epic',
+                value: 80
             },
             { 
-                name: '★ Specialist Gloves | Emerald Web', 
-                image: 'https://assets.lis-skins.com/market_images/16613_b.png',
-                chance: 0.0001,
-                rarity: 'legendary',
-                value: 135
+                name: '★★ Karambit | Ruby', 
+                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
+                chance: 3,
+                rarity: 'epic',
+                value: 75
             },
             { 
-                name: 'Sport Gloves | Pandora\'s Box', 
-                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
-                chance: 0.0005,
-                rarity: 'legendary',
-                value: 130
+                name: '★★ M9 Bayonet | Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
+                chance: 5,
+                rarity: 'epic',
+                value: 70
             },
             { 
-                name: 'M4A4 | Howl', 
-                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
-                chance: 0.0005,
-                rarity: 'legendary',
-                value: 125
+                name: '★★ Talon Knife | Gamma Doppler', 
+                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
+                chance: 8,
+                rarity: 'rare',
+                value: 65
             }
         ]
     }
@@ -1144,7 +954,7 @@ function openCaseModal(caseData) {
 // Начало открытия кейса
 function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, '')) || 0;
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     
     if (currentCoins < caseData.price) {
         tg.showAlert('❌ Недостаточно монет для открытия кейса!');
@@ -1270,20 +1080,19 @@ function saveSkinToInventory(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
     if (!userId) return;
     
-    const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     
-    const newSkin = {
+    inventory.push({
         id: Date.now().toString(),
-        name: skin.name || 'Неизвестный скин',
-        image: skin.image || '',
-        rarity: skin.rarity || 'common',
-        value: skin.value || 0,
+        name: skin.name,
+        image: skin.image,
+        rarity: skin.rarity,
+        value: skin.value,
         obtainedAt: new Date().toISOString(),
         status: 'in_inventory'
-    };
+    });
     
-    inventory.push(newSkin);
-    setSafeLocalStorage(`inventory_${userId}`, inventory);
+    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
     
     // Обновляем все разделы
     updateInventoryStats();
@@ -1299,15 +1108,15 @@ function loadInventory() {
     
     if (!userId || !inventoryGrid) return;
     
-    const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
     if (activeInventory.length === 0) {
         inventoryGrid.style.display = 'none';
-        if (emptyInventory) emptyInventory.style.display = 'block';
+        emptyInventory.style.display = 'block';
     } else {
         inventoryGrid.style.display = 'grid';
-        if (emptyInventory) emptyInventory.style.display = 'none';
+        emptyInventory.style.display = 'none';
         
         inventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
@@ -1316,7 +1125,7 @@ function loadInventory() {
             skinElement.innerHTML = `
                 <img src="${skin.image}" alt="${skin.name}" class="skin-image">
                 <div class="skin-name">${skin.name}</div>
-                <div class="skin-rarity ${skin.rarity || 'common'}">${getRarityText(skin.rarity)}</div>
+                <div class="skin-rarity ${skin.rarity}">${getRarityText(skin.rarity)}</div>
             `;
             
             skinElement.addEventListener('click', () => openSkinModal(skin));
@@ -1333,15 +1142,15 @@ function loadProfileInventory() {
     
     if (!userId || !profileInventoryGrid) return;
     
-    const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
+    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
     if (activeInventory.length === 0) {
         profileInventoryGrid.style.display = 'none';
-        if (emptyProfileInventory) emptyProfileInventory.style.display = 'block';
+        emptyProfileInventory.style.display = 'block';
     } else {
         profileInventoryGrid.style.display = 'grid';
-        if (emptyProfileInventory) emptyProfileInventory.style.display = 'none';
+        emptyProfileInventory.style.display = 'none';
         
         profileInventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
@@ -1362,12 +1171,12 @@ function loadProfileInventory() {
 function openSkinModal(skin) {
     const modal = document.getElementById('skinModal');
     
-    document.getElementById('skinModalTitle').textContent = skin.name || 'Скин';
-    document.getElementById('skinModalImage').src = skin.image || '';
-    document.getElementById('skinModalName').textContent = skin.name || 'Неизвестный скин';
+    document.getElementById('skinModalTitle').textContent = skin.name;
+    document.getElementById('skinModalImage').src = skin.image;
+    document.getElementById('skinModalName').textContent = skin.name;
     document.getElementById('skinModalRarity').textContent = getRarityText(skin.rarity);
-    document.getElementById('skinModalRarity').className = `skin-rarity ${skin.rarity || 'common'}`;
-    document.getElementById('skinModalValue').textContent = (skin.value || 0).toLocaleString();
+    document.getElementById('skinModalRarity').className = `skin-rarity ${skin.rarity}`;
+    document.getElementById('skinModalValue').textContent = skin.value.toLocaleString();
     
     document.getElementById('sellSkinBtn').onclick = () => sellSkin(skin);
     document.getElementById('withdrawSkinBtn').onclick = () => openWithdrawModal(skin);
@@ -1379,15 +1188,15 @@ function openSkinModal(skin) {
 function sellSkin(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
     
-    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${(skin.value || 0).toLocaleString()} монет?`)) {
-        const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
+    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value.toLocaleString()} монет?`)) {
+        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
         const skinIndex = inventory.findIndex(s => s.id === skin.id);
         if (skinIndex !== -1) {
             inventory[skinIndex].status = 'sold';
-            setSafeLocalStorage(`inventory_${userId}`, inventory);
+            localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
         }
         
-        addCoins(skin.value || 0);
+        addCoins(skin.value);
         
         document.getElementById('skinModal').style.display = 'none';
         
@@ -1396,7 +1205,7 @@ function sellSkin(skin) {
         loadInventory();
         loadProfileInventory();
         
-        tg.showAlert(`✅ Скин продан за ${(skin.value || 0).toLocaleString()} монет!`);
+        tg.showAlert(`✅ Скин продан за ${skin.value.toLocaleString()} монет!`);
     }
 }
 
@@ -1404,9 +1213,9 @@ function sellSkin(skin) {
 function openWithdrawModal(skin) {
     const modal = document.getElementById('withdrawModal');
     
-    document.getElementById('withdrawSkinImage').src = skin.image || '';
-    document.getElementById('withdrawSkinName').textContent = skin.name || 'Неизвестный скин';
-    document.getElementById('withdrawSkinValue').textContent = (skin.value || 0).toLocaleString();
+    document.getElementById('withdrawSkinImage').src = skin.image;
+    document.getElementById('withdrawSkinName').textContent = skin.name;
+    document.getElementById('withdrawSkinValue').textContent = skin.value.toLocaleString();
     
     document.getElementById('confirmWithdrawBtn').onclick = () => confirmWithdraw(skin);
     document.getElementById('cancelWithdrawBtn').onclick = () => modal.style.display = 'none';
@@ -1438,13 +1247,13 @@ async function confirmWithdraw(skin) {
         const response = await sendWithdrawRequest(user, skin, tradeLink);
         
         if (response.success) {
-            const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
+            let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
             const skinIndex = inventory.findIndex(s => s.id === skin.id);
             if (skinIndex !== -1) {
                 inventory[skinIndex].status = 'withdraw_pending';
                 inventory[skinIndex].tradeLink = tradeLink;
                 inventory[skinIndex].withdrawDate = new Date().toISOString();
-                setSafeLocalStorage(`inventory_${userId}`, inventory);
+                localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
             }
             
             document.getElementById('withdrawModal').style.display = 'none';
@@ -1496,9 +1305,9 @@ async function sendWithdrawRequest(user, skin, tradeLink) {
     }
 }
 
-// ==================== СИСТЕМА ПОДПИСКИ НА CS2DROPSKINBOT ====================
+// ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ ====================
 
-// Загрузка статуса подписки на CS2DropZone
+// Загрузка статуса подписки
 async function loadSubscriptionStatus(userId) {
     try {
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
@@ -1509,8 +1318,7 @@ async function loadSubscriptionStatus(userId) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                userId: userId,
-                channel: '@CS2DropZone'
+                userId: userId
             })
         });
 
@@ -1524,7 +1332,7 @@ async function loadSubscriptionStatus(userId) {
     }
 }
 
-// Получение награды за подписку на CS2DropZone
+// Получение награды за подписку
 async function claimSubscriptionReward() {
     const userId = tg.initDataUnsafe?.user?.id;
     const claimBtns = document.querySelectorAll('.task-button');
@@ -1548,9 +1356,7 @@ async function claimSubscriptionReward() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                userId: userId,
-                channel: '@CS2DropZone',
-                rewardAmount: 250
+                userId: userId
             })
         });
 
@@ -1568,7 +1374,7 @@ async function claimSubscriptionReward() {
             
             if (!result.isSubscribed) {
                 // Показываем окошко с предложением подписаться
-                showSubscriptionModal('CS2DropZone');
+                showSubscriptionModal();
             }
             
         } else {
@@ -1586,98 +1392,8 @@ async function claimSubscriptionReward() {
     }
 }
 
-// ==================== СИСТЕМА ПОДПИСКИ НА DARENCS2 ====================
-
-// Загрузка статуса подписки на DarenCs2
-async function loadDarenSubscriptionStatus(userId) {
-    try {
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                channel: '@DarenCs2'
-            })
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            updateDarenSubscriptionUI(result);
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки статуса подписки на DarenCs2:', error);
-    }
-}
-
-// Получение награды за подписку на DarenCs2
-async function claimDarenSubscriptionReward() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[2];
-    
-    if (!userId) {
-        tg.showAlert('❌ Не удалось определить пользователя');
-        return;
-    }
-    
-    try {
-        const originalText = claimBtn.textContent;
-        claimBtn.disabled = true;
-        claimBtn.textContent = '🔄 Проверяем...';
-        
-        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                channel: '@DarenCs2',
-                rewardAmount: 150
-            })
-        });
-
-        const result = await response.json();
-        
-        console.log('📢 DarenCs2 subscription reward result:', result);
-        
-        if (result.success) {
-            if (result.coinsAwarded > 0) {
-                updateCoinsDisplay(result.coins);
-                tg.showAlert('🎉 +150 монет за подписку на канал DarenCs2!');
-            }
-            
-            updateDarenSubscriptionUI(result);
-            
-            if (!result.isSubscribed) {
-                // Показываем окошко с предложением подписаться
-                showSubscriptionModal('DarenCs2');
-            }
-            
-        } else {
-            tg.showAlert(`❌ Ошибка: ${result.error}`);
-        }
-        
-    } catch (error) {
-        console.error('Ошибка получения награды за подписку на DarenCs2:', error);
-        tg.showAlert('❌ Ошибка сети');
-    } finally {
-        setTimeout(() => {
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +150 монет';
-        }, 1000);
-    }
-}
-
 // Функция показа модального окна подписки
-function showSubscriptionModal(channelName) {
+function showSubscriptionModal() {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'block';
@@ -1692,9 +1408,9 @@ function showSubscriptionModal(channelName) {
                     <div style="font-size: 48px; margin-bottom: 15px;">📢</div>
                     <h4 style="margin-bottom: 10px; color: #ff6b35;">Вы не подписаны на канал</h4>
                     <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
-                        Подпишитесь на канал ${channelName} чтобы получить ${channelName === '@CS2DropZone' ? '+250' : '+150'} монет!
+                        Подпишитесь на канал CS2DropZone чтобы получить +250 монет!
                     </p>
-                    <button onclick="openTelegramChannel('${channelName}')" class="modal-button primary" style="margin-bottom: 10px;">
+                    <button onclick="openTelegramChannel()" class="modal-button primary" style="margin-bottom: 10px;">
                         📢 Перейти в канал
                     </button>
                     <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
@@ -1708,11 +1424,11 @@ function showSubscriptionModal(channelName) {
 }
 
 // Функция открытия канала Telegram
-function openTelegramChannel(channelName) {
-    window.open(`https://t.me/${channelName.replace('@', '')}`, '_blank');
+function openTelegramChannel() {
+    window.open('https://t.me/CS2DropZone', '_blank');
 }
 
-// Обновление интерфейса подписки на CS2DropZone
+// Обновление интерфейса подписки
 function updateSubscriptionUI(data) {
     const statusElement = document.getElementById('subscriptionStatus');
     const claimBtns = document.querySelectorAll('.task-button');
@@ -1720,90 +1436,57 @@ function updateSubscriptionUI(data) {
     
     if (statusElement && claimBtn) {
         if (data.isSubscribed) {
-            statusElement.textContent = `✅ Подписан на CS2DropZone (${data.rewardCount || 0} раз)`;
+            statusElement.textContent = `✅ Подписан (${data.rewardCount || 0} раз)`;
             statusElement.style.color = '#28a745';
             
             if (data.canClaim) {
                 claimBtn.disabled = false;
-                claimBtn.textContent = '🎁 Забрать +250 монет';
+                claimBtn.textContent = '🎁 Забрать +15 монет';
                 claimBtn.onclick = () => claimSubscriptionReward();
             } else {
                 claimBtn.disabled = true;
                 claimBtn.textContent = '⏳ Ждите...';
                 if (data.timeUntilNextReward > 0) {
-                    startSubscriptionTimer(data.timeUntilNextReward, claimBtn);
+                    startSubscriptionTimer(data.timeUntilNextReward);
                 }
             }
         } else {
-            statusElement.textContent = '❌ Не подписан на CS2DropZone';
+            statusElement.textContent = '❌ Не подписан';
             statusElement.style.color = '#dc3545';
             claimBtn.disabled = false;
             claimBtn.textContent = '🔍 Проверить подписку';
-            claimBtn.onclick = () => checkSubscriptionOnly('@CS2DropZone');
-        }
-    }
-}
-
-// Обновление интерфейса подписки на DarenCs2
-function updateDarenSubscriptionUI(data) {
-    const statusElement = document.getElementById('darenSubscriptionStatus');
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[2];
-    
-    if (statusElement && claimBtn) {
-        if (data.isSubscribed) {
-            statusElement.textContent = `✅ Подписан на DarenCs2 (${data.rewardCount || 0} раз)`;
-            statusElement.style.color = '#28a745';
-            
-            if (data.canClaim) {
-                claimBtn.disabled = false;
-                claimBtn.textContent = '🎁 Забрать +150 монет';
-                claimBtn.onclick = () => claimDarenSubscriptionReward();
-            } else {
-                claimBtn.disabled = true;
-                claimBtn.textContent = '⏳ Ждите...';
-                if (data.timeUntilNextReward > 0) {
-                    startSubscriptionTimer(data.timeUntilNextReward, claimBtn);
-                }
-            }
-        } else {
-            statusElement.textContent = '❌ Не подписан на DarenCs2';
-            statusElement.style.color = '#dc3545';
-            claimBtn.disabled = false;
-            claimBtn.textContent = '🔍 Проверить подписку';
-            claimBtn.onclick = () => checkSubscriptionOnly('@DarenCs2');
+            claimBtn.onclick = () => checkSubscriptionOnly();
         }
     }
 }
 
 // Таймер для подписки
-function startSubscriptionTimer(seconds, claimBtn) {
-    if (!claimBtn) return;
+function startSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
+    const statusElement = document.getElementById('subscriptionStatus');
+    
+    if (!claimBtn || !statusElement) return;
     
     let timeLeft = seconds;
     
     const timer = setInterval(() => {
         if (timeLeft > 0) {
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const secs = timeLeft % 60;
-            claimBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            claimBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
             timeLeft--;
         } else {
             clearInterval(timer);
             claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать награду';
-            if (claimBtn.onclick && claimBtn.onclick.toString().includes('claimSubscriptionReward')) {
-                claimBtn.textContent = '🎁 Забрать +250 монет';
-            } else if (claimBtn.onclick && claimBtn.onclick.toString().includes('claimDarenSubscriptionReward')) {
-                claimBtn.textContent = '🎁 Забрать +150 монет';
-            }
+            claimBtn.textContent = '🎁 Забрать +15 монет';
+            loadSubscriptionStatus(tg.initDataUnsafe?.user?.id);
         }
     }, 1000);
 }
 
 // Проверка только подписки (без награды)
-async function checkSubscriptionOnly(channel) {
+async function checkSubscriptionOnly() {
     const userId = tg.initDataUnsafe?.user?.id;
     
     try {
@@ -1815,24 +1498,18 @@ async function checkSubscriptionOnly(channel) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                userId: userId,
-                channel: channel
+                userId: userId
             })
         });
 
         const result = await response.json();
         
         if (result.success) {
-            if (channel === '@CS2DropZone') {
-                updateSubscriptionUI(result);
-            } else if (channel === '@DarenCs2') {
-                updateDarenSubscriptionUI(result);
-            }
-            
+            updateSubscriptionUI(result);
             if (result.isSubscribed) {
-                tg.showAlert(`✅ Вы подписаны на канал ${channel}! Теперь можете получать награды.`);
+                tg.showAlert('✅ Вы подписаны на канал! Теперь можете получать награды.');
             } else {
-                tg.showAlert(`❌ Вы не подписаны на канал ${channel}`);
+                tg.showAlert('❌ Вы не подписаны на канал @CS2DropZone');
             }
         }
     } catch (error) {
@@ -1957,7 +1634,7 @@ function updateRewardUI(data) {
         } else if (data.canClaim) {
             timerText.textContent = '✅ Готово к получению!';
             claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +50 монет';
+            claimBtn.textContent = '🎁 Забрать +10 монет';
             if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
         } else {
             timerText.textContent = `⏳ До следующей награды: ${data.timeUntilNextReward}с`;
@@ -1993,18 +1670,15 @@ function startRewardTimer(userId) {
             
             const timer = setInterval(() => {
                 if (timeLeft > 0) {
-                    const hours = Math.floor(timeLeft / 3600);
-                    const minutes = Math.floor((timeLeft % 3600) / 60);
-                    const seconds = timeLeft % 60;
-                    timerText.textContent = `⏳ До следующей награды: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                    claimBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    timerText.textContent = `⏳ До следующей награды: ${timeLeft}с`;
+                    claimBtn.textContent = `⏳ ${timeLeft}с`;
                     claimBtn.disabled = true;
                     timeLeft--;
                 } else {
                     clearInterval(timer);
                     timerText.textContent = '✅ Готово к получению!';
                     claimBtn.disabled = false;
-                    claimBtn.textContent = '🎁 Забрать +50 монет';
+                    claimBtn.textContent = '🎁 Забрать +10 монет';
                     loadRewardStatus(userId);
                 }
             }, 1000);
@@ -2021,7 +1695,7 @@ function startRewardTimer(userId) {
 function updateCoinsDisplay(coins) {
     const coinsElements = document.querySelectorAll('#userCoins, #profileCoins');
     coinsElements.forEach(element => {
-        element.textContent = (coins || 0).toLocaleString();
+        element.textContent = coins.toLocaleString();
         element.classList.add('coin-animation');
         setTimeout(() => element.classList.remove('coin-animation'), 600);
     });
@@ -2054,14 +1728,14 @@ async function loadUserBalance(userId) {
 
 // Списание монет
 function deductCoins(amount) {
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, '')) || 0;
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     const newCoins = currentCoins - amount;
     updateCoinsDisplay(newCoins);
 }
 
 // Добавление монет
 function addCoins(amount) {
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, '')) || 0;
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     const newCoins = currentCoins + amount;
     updateCoinsDisplay(newCoins);
 }
@@ -2131,7 +1805,7 @@ function initModals() {
 }
 
 function getDefaultAvatar() {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQgNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
 }
 
 // Инициализируем приложение когда страница загрузится
