@@ -31,9 +31,11 @@ function hideLoadingScreen() {
     }
 }
 
-// Основная функция инициализации
+// ==================== ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ====================
+
 async function initApp() {
     try {
+        // Показываем загрузочный экран
         showLoadingScreen();
         
         tg.expand();
@@ -84,27 +86,8 @@ async function initApp() {
 
         // Скрываем загрузочный экран с задержкой
         setTimeout(() => {
-    hideLoadingScreen();
-            // Принудительный рендеринг всех вкладок
-    forceRenderAllTabs();
-    
-    // Принудительно показываем главную страницу
-    const mainTab = document.getElementById('main');
-    if (mainTab) {
-        mainTab.style.display = 'block';
-        mainTab.classList.add('active');
-    }
-    
-    // Убедимся что активна правильная кнопка навигации
-    const mainNav = document.querySelector('[data-tab="main"]');
-    if (mainNav) {
-        mainNav.classList.add('active');
-    }
-    
-    // Обновляем все вкладки
-    refreshAllTabs();
-    
-}, 500);
+            hideLoadingScreen();
+        }, 500);
 
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
@@ -112,168 +95,105 @@ async function initApp() {
     }
 }
 
-// ==================== ФУНКЦИИ ДЛЯ ОБНОВЛЕНИЯ ТАЙМЕРОВ ====================
+// ==================== ИНИЦИАЛИЗАЦИЯ НАВИГАЦИИ ====================
 
-// Функция для обновления всех таймеров
-async function updateAllTimers() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    if (!userId) return;
-
-    try {
-        // Таймер для ежедневного бонуса
-        const dailyResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'daily'
-            })
-        });
-        
-        const dailyResult = await dailyResponse.json();
-        if (dailyResult.success) {
-            updateDailyTimer(dailyResult.timeUntilNextReward);
-        }
-
-        // Таймер для подписки на CS2DropZone
-        const subResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'subscription'
-            })
-        });
-        
-        const subResult = await subResponse.json();
-        if (subResult.success) {
-            updateSubscriptionTimer(subResult.timeUntilNextReward);
-        }
-
-        // Таймер для подписки на DarenCs2
-        const darenResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'daren_subscription'
-            })
-        });
-        
-        const darenResult = await darenResponse.json();
-        if (darenResult.success) {
-            updateDarenSubscriptionTimer(darenResult.timeUntilNextReward);
-        }
-
-        // Таймер для фамилии
-        const nameResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                rewardType: 'lastname'
-            })
-        });
-        
-        const nameResult = await nameResponse.json();
-        if (nameResult.success) {
-            updateLastNameTimer(nameResult.timeUntilNextReward);
-        }
-
-    } catch (error) {
-        console.error('❌ Error updating timers:', error);
-    }
-}
-
-// Функции для обновления таймеров
-function updateDailyTimer(seconds) {
-    const timerText = document.getElementById('timerText');
-    const claimBtn = document.getElementById('claimRewardBtn');
+function initNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
     
-    if (seconds > 0) {
-        startTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет');
-    } else {
-        timerText.textContent = '✅ Готово к получению!';
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +50 монет';
-    }
-}
-
-function updateSubscriptionTimer(seconds) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1]; // Первая кнопка подписки (CS2DropZone)
+    console.log('🔍 Инициализация навигации:', {
+        navItems: navItems.length,
+        tabContents: tabContents.length
+    });
     
-    if (seconds > 0) {
-        startTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет');
-    } else {
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +250 монет';
-    }
-}
-
-function updateDarenSubscriptionTimer(seconds) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[2]; // Вторая кнопка подписки (DarenCs2)
-    
-    if (seconds > 0) {
-        startTimer(seconds, null, claimBtn, '🎁 Забрать +150 монет');
-    } else {
-        claimBtn.disabled = false;
-        claimBtn.textContent = '🎁 Забрать +150 монет';
-    }
-}
-
-function updateLastNameTimer(seconds) {
-    const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[3]; // Кнопка фамилии (после двух подписок)
-    
-    if (seconds > 0) {
-        startTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет');
-    } else {
-        bonusBtn.disabled = false;
-        bonusBtn.textContent = '🎁 Забрать +50 монет';
-    }
-}
-
-// Универсальная функция таймера
-function startTimer(seconds, timerElement, buttonElement, buttonText) {
-    let timeLeft = seconds;
-    
-    buttonElement.disabled = true;
-    
-    const timer = setInterval(() => {
-        if (timeLeft > 0) {
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const secs = timeLeft % 60;
-            
-            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            
-            if (timerElement) {
-                timerElement.textContent = `⏳ До следующей награды: ${timeString}`;
-            }
-            
-            buttonElement.textContent = `⏳ ${timeString}`;
-            timeLeft--;
+    // Сначала показываем активную вкладку (главную)
+    tabContents.forEach(tab => {
+        if (tab.id === 'main') {
+            tab.style.display = 'block';
+            tab.classList.add('active');
+            console.log(`✅ Показана вкладка: ${tab.id}`);
         } else {
-            clearInterval(timer);
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        }
+    });
+    
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const tabId = item.getAttribute('data-tab');
+            console.log(`🔄 Переключение на вкладку: ${tabId}`);
             
-            if (timerElement) {
-                timerElement.textContent = '✅ Готово к получению!';
+            // Скрываем все вкладки
+            tabContents.forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
+            
+            // Убираем активный класс у всех кнопок
+            navItems.forEach(nav => nav.classList.remove('active'));
+            
+            // Показываем выбранную вкладку
+            const activeTab = document.getElementById(tabId);
+            if (activeTab) {
+                activeTab.style.display = 'block';
+                activeTab.classList.add('active');
+                console.log(`✅ Отображена вкладка ${tabId}:`, activeTab);
+            } else {
+                console.error(`❌ Вкладка ${tabId} не найдена!`);
             }
             
-            buttonElement.disabled = false;
-            buttonElement.textContent = buttonText;
+            // Добавляем активный класс к выбранной кнопке
+            item.classList.add('active');
+            
+            // Обновляем статистику при переключении
+            updateInventoryStats();
+            
+            // При переключении на инвентарь или профиль обновляем их
+            if (tabId === 'inventory') {
+                loadInventory();
+            } else if (tabId === 'profile') {
+                loadProfileInventory();
+            } else if (tabId === 'cases') {
+                loadCases();
+            }
+        });
+    });
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ МОДАЛЬНЫХ ОКОН ====================
+
+function initModals() {
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+    
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
         }
-    }, 1000);
+    });
+}
+
+// ==================== ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ====================
+
+async function loadUserData(user) {
+    // Основные данные
+    document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
+    
+    // Аватар
+    const avatar = document.getElementById('userAvatar');
+    avatar.src = user.photo_url || getDefaultAvatar();
+
+    // Имя пользователя
+    const userName = document.getElementById('userName');
+    userName.textContent = user.first_name || 'Пользователь';
+
+    // Данные профиля
+    document.getElementById('profileFirstName').textContent = user.first_name || 'Не указано';
+    document.getElementById('profileLastName').textContent = user.last_name || 'Не указано';
+    document.getElementById('profileUsername').textContent = user.username ? '@' + user.username : 'Не указано';
 }
 
 // ==================== ЕЖЕДНЕВНЫЕ НАГРАДЫ ====================
@@ -368,7 +288,6 @@ async function loadRewardStatus(userId) {
 
 // Обновление интерфейса наград
 function updateRewardUI(data) {
-    const rewardCount = document.getElementById('rewardCount');
     const dailyProgress = document.getElementById('dailyProgress');
     const rewardProgress = document.getElementById('rewardProgress');
     const timerText = document.getElementById('timerText');
@@ -1050,7 +969,7 @@ function startLastNameTimer(seconds) {
 
 // ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
 
-// Добавьте функцию проверки реферала при старте
+// Проверка реферала при старте
 async function checkReferralOnStart(userId) {
     try {
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/check-referral-on-start';
@@ -1083,7 +1002,7 @@ async function checkReferralOnStart(userId) {
     }
 }
 
-// Генерация и копирование реферальной ссылки одной кнопкой
+// Генерация и копирование реферальной ссылки
 async function generateAndCopyReferralLink() {
     const userId = tg.initDataUnsafe?.user?.id;
     const generateBtn = document.querySelector('.task-button.primary');
@@ -1164,7 +1083,7 @@ async function generateAndCopyReferralLink() {
     }
 }
 
-// Функция обновления отображения реферальной ссылки
+// Обновление отображения реферальной ссылки
 function updateReferralLinkDisplay(link) {
     let referralLinkContainer = document.getElementById('referralLinkContainer');
     
@@ -1200,7 +1119,7 @@ function updateReferralLinkDisplay(link) {
     }
 }
 
-// Функция копирования ссылки
+// Копирование ссылки
 async function copyReferralLink(link) {
     try {
         await navigator.clipboard.writeText(link);
@@ -1272,7 +1191,7 @@ async function loadReferralStats(userId) {
 
 // ==================== СИСТЕМА КЕЙСОВ И ИНВЕНТАРЯ ====================
 
-// Данные кейсов с обновленными названиями
+// Данные кейсов
 const casesData = [
     {
         id: 'case1',
@@ -1524,85 +1443,6 @@ const casesData = [
     }
 ];
 
-// Функция принудительного рендеринга всех вкладок
-function forceRenderAllTabs() {
-    console.log('🔄 Принудительный рендеринг всех вкладок...');
-    
-    // Показываем все вкладки
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.display = 'block';
-        tab.style.opacity = '1';
-        tab.style.position = 'relative';
-        tab.style.zIndex = '1';
-    });
-    
-    // Загружаем кейсы
-    setTimeout(() => {
-        loadCases();
-        
-        // Проверяем видимость кейсов
-        const casesGrid = document.getElementById('casesGrid');
-        if (casesGrid) {
-            console.log('🔍 Кейсы загружены:', casesGrid.children.length);
-            if (casesGrid.children.length === 0) {
-                // Если кейсы не загрузились, добавляем тестовые
-                console.log('⚠️ Кейсы не загрузились, добавляем тестовые...');
-                casesGrid.innerHTML = `
-                    <div class="case-item light">
-                        <img src="https://via.placeholder.com/300x120/667eea/ffffff?text=TEST+CASE" class="case-image">
-                        <div class="case-name">TEST CASE</div>
-                        <div class="case-price">500 монет</div>
-                    </div>
-                `;
-            }
-        }
-    }, 100);
-    
-    // Загружаем инвентарь
-    setTimeout(() => {
-        loadInventory();
-        
-        // Проверяем видимость инвентаря
-        const inventoryGrid = document.getElementById('inventoryGrid');
-        if (inventoryGrid && inventoryGrid.children.length === 0) {
-            console.log('⚠️ Инвентарь пуст, добавляем тестовый скин...');
-            
-            // Добавляем тестовый скин в localStorage
-            const userId = tg.initDataUnsafe?.user?.id;
-            if (userId) {
-                let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
-                if (inventory.length === 0) {
-                    inventory.push({
-                        id: 'test_' + Date.now(),
-                        name: 'TEST SKIN | Debug',
-                        image: 'https://assets.lis-skins.com/market_images/152617_b.png',
-                        rarity: 'common',
-                        value: 10,
-                        obtainedAt: new Date().toISOString(),
-                        status: 'in_inventory'
-                    });
-                    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
-                    
-                    // Перезагружаем инвентарь
-                    loadInventory();
-                }
-            }
-        }
-    }, 200);
-    
-    // Загружаем инвентарь профиля
-    setTimeout(() => {
-        loadProfileInventory();
-    }, 300);
-    
-    // Обновляем статистику
-    setTimeout(() => {
-        updateInventoryStats();
-    }, 400);
-    
-    console.log('✅ Принудительный рендеринг завершен');
-}
-
 // Глобальная переменная для отслеживания текущей покупки кейса
 let currentCasePurchase = {
     caseId: null,
@@ -1611,7 +1451,7 @@ let currentCasePurchase = {
     completed: false
 };
 
-// Функция восстановления покупок при загрузке
+// Восстановление незавершенных покупок
 async function restorePendingPurchases(userId) {
     try {
         const purchaseData = localStorage.getItem(`case_purchase_${userId}`);
@@ -1641,15 +1481,15 @@ async function restorePendingPurchases(userId) {
 function loadCases() {
     const casesGrid = document.getElementById('casesGrid');
     if (!casesGrid) {
-        console.error('❌ casesGrid не найден!');
+        console.error('❌ Элемент casesGrid не найден!');
         return;
     }
     
-    console.log('🔄 Загрузка кейсов...');
+    console.log('✅ Загружаем кейсы в элемент:', casesGrid);
+    
     casesGrid.innerHTML = '';
     
-    if (!casesData || casesData.length === 0) {
-        console.error('❌ Данные кейсов пусты!');
+    if (casesData.length === 0) {
         casesGrid.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Нет доступных кейсов</div>';
         return;
     }
@@ -1663,13 +1503,10 @@ function loadCases() {
             <div class="case-price">${caseData.price.toLocaleString()} монет</div>
         `;
         
-        caseElemfunction loadInventory() {ent.addEventListener('click', () => openCaseModal(caseData));
+        caseElement.addEventListener('click', () => openCaseModal(caseData));
         casesGrid.appendChild(caseElement);
     });
-    
-    console.log(`✅ Загружено ${casesData.length} кейсов`);
 }
-
 
 // Открытие модального окна кейса
 function openCaseModal(caseData) {
@@ -1681,6 +1518,7 @@ function openCaseModal(caseData) {
     document.getElementById('caseModalName').textContent = caseData.name;
     document.getElementById('caseModalPrice').textContent = caseData.price.toLocaleString();
     
+    // Заполняем сетку предметов
     caseItemsList.innerHTML = '';
     caseData.items.forEach(item => {
         const itemElement = document.createElement('div');
@@ -1696,13 +1534,14 @@ function openCaseModal(caseData) {
         caseItemsList.appendChild(itemElement);
     });
     
+    // Настройка кнопки открытия
     const openBtn = document.getElementById('openCaseBtn');
     openBtn.onclick = () => startCaseOpening(caseData);
     
     modal.style.display = 'block';
 }
 
-// Начало открытия кейса с сохранением состояния
+// Начало открытия кейса
 function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
     const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
@@ -1712,6 +1551,7 @@ function startCaseOpening(caseData) {
         return;
     }
     
+    // Сохраняем данные о покупке
     currentCasePurchase = {
         caseId: caseData.id,
         price: caseData.price,
@@ -1721,10 +1561,13 @@ function startCaseOpening(caseData) {
     
     localStorage.setItem(`case_purchase_${userId}`, JSON.stringify(currentCasePurchase));
     
+    // Списываем монеты
     deductCoins(caseData.price);
     
+    // Закрываем модалку кейса
     document.getElementById('caseModal').style.display = 'none';
     
+    // Показываем рулетку
     showRoulette(caseData);
 }
 
@@ -1733,6 +1576,7 @@ function showRoulette(caseData) {
     const modal = document.getElementById('rouletteModal');
     const rouletteItems = document.getElementById('rouletteItems');
     
+    // Заполняем рулетку предметами
     rouletteItems.innerHTML = '';
     for (let i = 0; i < 30; i++) {
         caseData.items.forEach(item => {
@@ -1748,13 +1592,13 @@ function showRoulette(caseData) {
     
     modal.style.display = 'block';
     
+    // Запускаем анимацию
     startRouletteAnimation(caseData);
 }
 
 // Анимация рулетки
 function startRouletteAnimation(caseData) {
     const rouletteItems = document.getElementById('rouletteItems');
-    const spinningText = document.getElementById('rouletteSpinning');
     
     let startTime = Date.now();
     let animationFrame;
@@ -1783,7 +1627,7 @@ function startRouletteAnimation(caseData) {
     animationFrame = requestAnimationFrame(animate);
 }
 
-// Завершение открытия кейса с сохранением состояния
+// Завершение открытия кейса
 function finishCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
     
@@ -1793,6 +1637,7 @@ function finishCaseOpening(caseData) {
     showResult(wonItem, caseData);
     saveSkinToInventory(wonItem);
     
+    // Отмечаем покупку как завершенную
     currentCasePurchase.completed = true;
     
     localStorage.setItem(`case_purchase_${userId}`, JSON.stringify(currentCasePurchase));
@@ -1808,7 +1653,7 @@ function finishCaseOpening(caseData) {
     }, 5000);
 }
 
-// Выбор случайного предмета с учетом шансов
+// Выбор случайного предмета
 function getRandomItem(items) {
     const random = Math.random() * 100;
     let currentChance = 0;
@@ -1876,33 +1721,19 @@ function loadInventory() {
     const inventoryGrid = document.getElementById('inventoryGrid');
     const emptyInventory = document.getElementById('emptyInventory');
     
-    console.log('🔄 Загрузка инвентаря для пользователя:', userId);
-    
-    if (!userId || !inventoryGrid) {
-        console.error('❌ userId или inventoryGrid не найден!');
-        return;
-    }
+    if (!userId || !inventoryGrid) return;
     
     let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
-    console.log('📦 Инвентарь из localStorage:', inventory);
-    console.log('🎯 Активный инвентарь:', activeInventory);
-    
-    inventoryGrid.innerHTML = '';
-    
     if (activeInventory.length === 0) {
-        if (emptyInventory) {
-            inventoryGrid.style.display = 'none';
-            emptyInventory.style.display = 'block';
-        }
-        console.log('📭 Инвентарь пуст');
+        inventoryGrid.style.display = 'none';
+        if (emptyInventory) emptyInventory.style.display = 'block';
     } else {
-        if (emptyInventory) {
-            inventoryGrid.style.display = 'grid';
-            emptyInventory.style.display = 'none';
-        }
+        inventoryGrid.style.display = 'grid';
+        if (emptyInventory) emptyInventory.style.display = 'none';
         
+        inventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
             const skinElement = document.createElement('div');
             skinElement.className = 'skin-item';
@@ -1915,8 +1746,6 @@ function loadInventory() {
             skinElement.addEventListener('click', () => openSkinModal(skin));
             inventoryGrid.appendChild(skinElement);
         });
-        
-        console.log(`✅ Загружено ${activeInventory.length} скинов`);
     }
 }
 
@@ -1926,29 +1755,19 @@ function loadProfileInventory() {
     const profileInventoryGrid = document.getElementById('profileInventoryGrid');
     const emptyProfileInventory = document.getElementById('emptyProfileInventory');
     
-    console.log('🔄 Загрузка инвентаря профиля для пользователя:', userId);
-    
-    if (!userId || !profileInventoryGrid) {
-        console.error('❌ userId или profileInventoryGrid не найден!');
-        return;
-    }
+    if (!userId || !profileInventoryGrid) return;
     
     let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
-    profileInventoryGrid.innerHTML = '';
-    
     if (activeInventory.length === 0) {
-        if (emptyProfileInventory) {
-            profileInventoryGrid.style.display = 'none';
-            emptyProfileInventory.style.display = 'block';
-        }
+        profileInventoryGrid.style.display = 'none';
+        if (emptyProfileInventory) emptyProfileInventory.style.display = 'block';
     } else {
-        if (emptyProfileInventory) {
-            profileInventoryGrid.style.display = 'grid';
-            emptyProfileInventory.style.display = 'none';
-        }
+        profileInventoryGrid.style.display = 'grid';
+        if (emptyProfileInventory) emptyProfileInventory.style.display = 'none';
         
+        profileInventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
             const skinElement = document.createElement('div');
             skinElement.className = 'profile-skin-item';
@@ -1960,8 +1779,6 @@ function loadProfileInventory() {
             skinElement.addEventListener('click', () => openSkinModal(skin));
             profileInventoryGrid.appendChild(skinElement);
         });
-        
-        console.log(`✅ Загружено ${activeInventory.length} скинов в профиле`);
     }
 }
 
@@ -2103,7 +1920,7 @@ async function sendWithdrawRequest(user, skin, tradeLink) {
 
 // ==================== ОБНОВЛЕНИЕ СТАТИСТИКИ ИНВЕНТАРЯ ====================
 
-// Обновление статистики инвентаря для всех разделов
+// Обновление статистики инвентаря
 function updateInventoryStats() {
     const userId = tg.initDataUnsafe?.user?.id;
     if (!userId) return;
@@ -2136,7 +1953,7 @@ function updateCoinsDisplay(coins) {
     });
 }
 
-// Загружаем баланс при старте
+// Загрузка баланса
 async function loadUserBalance(userId) {
     try {
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/get-balance';
@@ -2175,116 +1992,171 @@ function addCoins(amount) {
     updateCoinsDisplay(newCoins);
 }
 
-// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+// ==================== ФУНКЦИИ ДЛЯ ОБНОВЛЕНИЯ ТАЙМЕРОВ ====================
 
-// Исправленная функция инициализации навигации
-function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    // Показываем главную вкладку, остальные скрываем
-    tabContents.forEach(tab => {
-        if (tab.id === 'main') {
-            tab.style.display = 'block';
-            tab.classList.add('active');
-        } else {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        }
-    });
-    
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const tabId = item.getAttribute('data-tab');
-            
-            // Скрываем все вкладки
-            tabContents.forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-                // Добавляем небольшую задержку для плавной анимации
-                setTimeout(() => {
-                    tab.style.opacity = '0';
-                }, 10);
-            });
-            
-            // Убираем активный класс у всех кнопок
-            navItems.forEach(nav => nav.classList.remove('active'));
-            
-            // Показываем выбранную вкладку
-            const activeTab = document.getElementById(tabId);
-            if (activeTab) {
-                setTimeout(() => {
-                    activeTab.style.display = 'block';
-                    setTimeout(() => {
-                        activeTab.style.opacity = '1';
-                        activeTab.classList.add('active');
-                    }, 50);
-                }, 50);
-            }
-            
-            // Добавляем активный класс к выбранной кнопке
-            item.classList.add('active');
-            
-            // Обновляем статистику при переключении
-            updateInventoryStats();
-            
-            // При переключении на инвентарь или профиль обновляем их
-            if (tabId === 'inventory') {
-                setTimeout(() => {
-                    loadInventory();
-                }, 100);
-            } else if (tabId === 'profile') {
-                setTimeout(() => {
-                    loadProfileInventory();
-                }, 100);
-            } else if (tabId === 'cases') {
-                setTimeout(() => {
-                    loadCases();
-                }, 100);
-            }
-            
-            // Прокрутка вверх при переключении вкладок
-            window.scrollTo(0, 0);
+// Функция для обновления всех таймеров
+async function updateAllTimers() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (!userId) return;
+
+    try {
+        // Таймер для ежедневного бонуса
+        const dailyResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'daily'
+            })
         });
-    });
-}
+        
+        const dailyResult = await dailyResponse.json();
+        if (dailyResult.success) {
+            updateDailyTimer(dailyResult.timeUntilNextReward);
+        }
 
-function refreshAllTabs() {
-    loadCases();
-    loadInventory();
-    loadProfileInventory();
-    updateInventoryStats();
-    
-    // Принудительно показываем загруженные данные
-    const casesGrid = document.getElementById('casesGrid');
-    const inventoryGrid = document.getElementById('inventoryGrid');
-    const profileGrid = document.getElementById('profileInventoryGrid');
-    
-    if (casesGrid && casesGrid.children.length === 0) {
-        setTimeout(loadCases, 500);
+        // Таймер для подписки на CS2DropZone
+        const subResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'subscription'
+            })
+        });
+        
+        const subResult = await subResponse.json();
+        if (subResult.success) {
+            updateSubscriptionTimer(subResult.timeUntilNextReward);
+        }
+
+        // Таймер для подписки на DarenCs2
+        const darenResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'daren_subscription'
+            })
+        });
+        
+        const darenResult = await darenResponse.json();
+        if (darenResult.success) {
+            updateDarenSubscriptionTimer(darenResult.timeUntilNextReward);
+        }
+
+        // Таймер для фамилии
+        const nameResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'lastname'
+            })
+        });
+        
+        const nameResult = await nameResponse.json();
+        if (nameResult.success) {
+            updateLastNameTimer(nameResult.timeUntilNextReward);
+        }
+
+    } catch (error) {
+        console.error('❌ Error updating timers:', error);
     }
+}
+
+// Функции для обновления таймеров
+function updateDailyTimer(seconds) {
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
     
-    if (inventoryGrid && inventoryGrid.style.display === 'none') {
-        setTimeout(loadInventory, 500);
+    if (seconds > 0) {
+        startTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет');
+    } else {
+        timerText.textContent = '✅ Готово к получению!';
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +50 монет';
     }
-    
-    console.log('🔄 Все вкладки обновлены');
 }
 
-// Загрузка данных пользователя
-async function loadUserData(user) {
-    document.getElementById('debugUserId').textContent = user.id || 'Не доступен';
+function updateSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1];
     
-    const avatar = document.getElementById('userAvatar');
-    avatar.src = user.photo_url || getDefaultAvatar();
-
-    const userName = document.getElementById('userName');
-    userName.textContent = user.first_name || 'Пользователь';
-
-    document.getElementById('profileFirstName').textContent = user.first_name || 'Не указано';
-    document.getElementById('profileLastName').textContent = user.last_name || 'Не указано';
-    document.getElementById('profileUsername').textContent = user.username ? '@' + user.username : 'Не указано';
+    if (seconds > 0) {
+        startTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет');
+    } else {
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +250 монет';
+    }
 }
+
+function updateDarenSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[2];
+    
+    if (seconds > 0) {
+        startTimer(seconds, null, claimBtn, '🎁 Забрать +150 монет');
+    } else {
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +150 монет';
+    }
+}
+
+function updateLastNameTimer(seconds) {
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[3];
+    
+    if (seconds > 0) {
+        startTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет');
+    } else {
+        bonusBtn.disabled = false;
+        bonusBtn.textContent = '🎁 Забрать +50 монет';
+    }
+}
+
+// Универсальная функция таймера
+function startTimer(seconds, timerElement, buttonElement, buttonText) {
+    let timeLeft = seconds;
+    
+    buttonElement.disabled = true;
+    
+    const timer = setInterval(() => {
+        if (timeLeft > 0) {
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const secs = timeLeft % 60;
+            
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            if (timerElement) {
+                timerElement.textContent = `⏳ До следующей награды: ${timeString}`;
+            }
+            
+            buttonElement.textContent = `⏳ ${timeString}`;
+            timeLeft--;
+        } else {
+            clearInterval(timer);
+            
+            if (timerElement) {
+                timerElement.textContent = '✅ Готово к получению!';
+            }
+            
+            buttonElement.disabled = false;
+            buttonElement.textContent = buttonText;
+        }
+    }, 1000);
+}
+
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
 function getRarityText(rarity) {
     const rarityMap = {
@@ -2296,7 +2168,7 @@ function getRarityText(rarity) {
     return rarityMap[rarity] || 'Обычный';
 }
 
-// Обновите функцию switchToTab
+// Функция переключения вкладок
 function switchToTab(tabName) {
     const navItems = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -2330,22 +2202,9 @@ function switchToTab(tabName) {
         loadInventory();
     } else if (tabName === 'profile') {
         loadProfileInventory();
+    } else if (tabName === 'cases') {
+        loadCases();
     }
-}
-
-// Инициализация модальных окон
-function initModals() {
-    document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
-        });
-    });
-    
-    window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
-        }
-    });
 }
 
 function getDefaultAvatar() {
@@ -2354,6 +2213,3 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
-
-
-
