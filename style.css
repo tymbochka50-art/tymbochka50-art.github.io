@@ -21,6 +21,59 @@ body {
     position: relative;
 }
 
+/* Дополнительные стили для загрузочного экрана и реферальной системы */
+.task-card .referral-link-container {
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+.task-reward {
+    font-size: 14px;
+    color: #28a745;
+    font-weight: 500;
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* Анимация для монет */
+.coin-animation {
+    animation: coinPulse 0.6s ease;
+}
+
+@keyframes coinPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Прогресс бар с пульсацией */
+.progress-pulse {
+    animation: progressPulse 2s infinite;
+}
+
+@keyframes progressPulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* Мобильная адаптация */
+@media (max-width: 480px) {
+    .referral-link-display {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+    
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .loading-text {
+        font-size: 18px;
+    }
+}
+
 /* Навигация внизу - стеклянный эффект */
 .navbar.bottom {
     position: fixed;
