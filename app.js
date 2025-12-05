@@ -50,6 +50,33 @@ async function initApp() {
     }
 }
 
+// Функция безопасного парсинга JSON из localStorage
+function getSafeLocalStorage(key, defaultValue = []) {
+    try {
+        const data = localStorage.getItem(key);
+        if (!data) return defaultValue;
+        
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) ? parsed : defaultValue;
+    } catch (error) {
+        console.error(`❌ Ошибка парсинга localStorage для ключа "${key}":`, error);
+        // Удаляем поврежденные данные
+        localStorage.removeItem(key);
+        return defaultValue;
+    }
+}
+
+// Функция безопасной записи в localStorage
+function setSafeLocalStorage(key, data) {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+        return true;
+    } catch (error) {
+        console.error(`❌ Ошибка записи в localStorage для ключа "${key}":`, error);
+        return false;
+    }
+}
+
 // Добавьте функцию проверки реферала при старте
 async function checkReferralOnStart(userId) {
     try {
@@ -159,9 +186,9 @@ function updateInventoryStats() {
     const userId = tg.initDataUnsafe?.user?.id;
     if (!userId) return;
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
-    const totalVal = activeInventory.reduce((sum, skin) => sum + skin.value, 0);
+    const totalVal = activeInventory.reduce((sum, skin) => sum + (skin.value || 0), 0);
     
     // Обновляем все разделы
     const totalSkinsElements = document.querySelectorAll('#totalSkins, #totalSkinsMain, #totalSkinsCases');
@@ -1117,7 +1144,7 @@ function openCaseModal(caseData) {
 // Начало открытия кейса
 function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, '')) || 0;
     
     if (currentCoins < caseData.price) {
         tg.showAlert('❌ Недостаточно монет для открытия кейса!');
@@ -1243,19 +1270,20 @@ function saveSkinToInventory(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
     if (!userId) return;
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
     
-    inventory.push({
+    const newSkin = {
         id: Date.now().toString(),
-        name: skin.name,
-        image: skin.image,
-        rarity: skin.rarity,
-        value: skin.value,
+        name: skin.name || 'Неизвестный скин',
+        image: skin.image || '',
+        rarity: skin.rarity || 'common',
+        value: skin.value || 0,
         obtainedAt: new Date().toISOString(),
         status: 'in_inventory'
-    });
+    };
     
-    localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+    inventory.push(newSkin);
+    setSafeLocalStorage(`inventory_${userId}`, inventory);
     
     // Обновляем все разделы
     updateInventoryStats();
@@ -1271,15 +1299,15 @@ function loadInventory() {
     
     if (!userId || !inventoryGrid) return;
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
     if (activeInventory.length === 0) {
         inventoryGrid.style.display = 'none';
-        emptyInventory.style.display = 'block';
+        if (emptyInventory) emptyInventory.style.display = 'block';
     } else {
         inventoryGrid.style.display = 'grid';
-        emptyInventory.style.display = 'none';
+        if (emptyInventory) emptyInventory.style.display = 'none';
         
         inventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
@@ -1288,7 +1316,7 @@ function loadInventory() {
             skinElement.innerHTML = `
                 <img src="${skin.image}" alt="${skin.name}" class="skin-image">
                 <div class="skin-name">${skin.name}</div>
-                <div class="skin-rarity ${skin.rarity}">${getRarityText(skin.rarity)}</div>
+                <div class="skin-rarity ${skin.rarity || 'common'}">${getRarityText(skin.rarity)}</div>
             `;
             
             skinElement.addEventListener('click', () => openSkinModal(skin));
@@ -1305,15 +1333,15 @@ function loadProfileInventory() {
     
     if (!userId || !profileInventoryGrid) return;
     
-    let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
     const activeInventory = inventory.filter(skin => skin.status === 'in_inventory');
     
     if (activeInventory.length === 0) {
         profileInventoryGrid.style.display = 'none';
-        emptyProfileInventory.style.display = 'block';
+        if (emptyProfileInventory) emptyProfileInventory.style.display = 'block';
     } else {
         profileInventoryGrid.style.display = 'grid';
-        emptyProfileInventory.style.display = 'none';
+        if (emptyProfileInventory) emptyProfileInventory.style.display = 'none';
         
         profileInventoryGrid.innerHTML = '';
         activeInventory.forEach(skin => {
@@ -1334,12 +1362,12 @@ function loadProfileInventory() {
 function openSkinModal(skin) {
     const modal = document.getElementById('skinModal');
     
-    document.getElementById('skinModalTitle').textContent = skin.name;
-    document.getElementById('skinModalImage').src = skin.image;
-    document.getElementById('skinModalName').textContent = skin.name;
+    document.getElementById('skinModalTitle').textContent = skin.name || 'Скин';
+    document.getElementById('skinModalImage').src = skin.image || '';
+    document.getElementById('skinModalName').textContent = skin.name || 'Неизвестный скин';
     document.getElementById('skinModalRarity').textContent = getRarityText(skin.rarity);
-    document.getElementById('skinModalRarity').className = `skin-rarity ${skin.rarity}`;
-    document.getElementById('skinModalValue').textContent = skin.value.toLocaleString();
+    document.getElementById('skinModalRarity').className = `skin-rarity ${skin.rarity || 'common'}`;
+    document.getElementById('skinModalValue').textContent = (skin.value || 0).toLocaleString();
     
     document.getElementById('sellSkinBtn').onclick = () => sellSkin(skin);
     document.getElementById('withdrawSkinBtn').onclick = () => openWithdrawModal(skin);
@@ -1351,15 +1379,15 @@ function openSkinModal(skin) {
 function sellSkin(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
     
-    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value.toLocaleString()} монет?`)) {
-        let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${(skin.value || 0).toLocaleString()} монет?`)) {
+        const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
         const skinIndex = inventory.findIndex(s => s.id === skin.id);
         if (skinIndex !== -1) {
             inventory[skinIndex].status = 'sold';
-            localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+            setSafeLocalStorage(`inventory_${userId}`, inventory);
         }
         
-        addCoins(skin.value);
+        addCoins(skin.value || 0);
         
         document.getElementById('skinModal').style.display = 'none';
         
@@ -1368,7 +1396,7 @@ function sellSkin(skin) {
         loadInventory();
         loadProfileInventory();
         
-        tg.showAlert(`✅ Скин продан за ${skin.value.toLocaleString()} монет!`);
+        tg.showAlert(`✅ Скин продан за ${(skin.value || 0).toLocaleString()} монет!`);
     }
 }
 
@@ -1376,9 +1404,9 @@ function sellSkin(skin) {
 function openWithdrawModal(skin) {
     const modal = document.getElementById('withdrawModal');
     
-    document.getElementById('withdrawSkinImage').src = skin.image;
-    document.getElementById('withdrawSkinName').textContent = skin.name;
-    document.getElementById('withdrawSkinValue').textContent = skin.value.toLocaleString();
+    document.getElementById('withdrawSkinImage').src = skin.image || '';
+    document.getElementById('withdrawSkinName').textContent = skin.name || 'Неизвестный скин';
+    document.getElementById('withdrawSkinValue').textContent = (skin.value || 0).toLocaleString();
     
     document.getElementById('confirmWithdrawBtn').onclick = () => confirmWithdraw(skin);
     document.getElementById('cancelWithdrawBtn').onclick = () => modal.style.display = 'none';
@@ -1410,13 +1438,13 @@ async function confirmWithdraw(skin) {
         const response = await sendWithdrawRequest(user, skin, tradeLink);
         
         if (response.success) {
-            let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
+            const inventory = getSafeLocalStorage(`inventory_${userId}`, []);
             const skinIndex = inventory.findIndex(s => s.id === skin.id);
             if (skinIndex !== -1) {
                 inventory[skinIndex].status = 'withdraw_pending';
                 inventory[skinIndex].tradeLink = tradeLink;
                 inventory[skinIndex].withdrawDate = new Date().toISOString();
-                localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
+                setSafeLocalStorage(`inventory_${userId}`, inventory);
             }
             
             document.getElementById('withdrawModal').style.display = 'none';
@@ -1765,9 +1793,9 @@ function startSubscriptionTimer(seconds, claimBtn) {
             clearInterval(timer);
             claimBtn.disabled = false;
             claimBtn.textContent = '🎁 Забрать награду';
-            if (claimBtn.onclick.toString().includes('claimSubscriptionReward')) {
+            if (claimBtn.onclick && claimBtn.onclick.toString().includes('claimSubscriptionReward')) {
                 claimBtn.textContent = '🎁 Забрать +250 монет';
-            } else if (claimBtn.onclick.toString().includes('claimDarenSubscriptionReward')) {
+            } else if (claimBtn.onclick && claimBtn.onclick.toString().includes('claimDarenSubscriptionReward')) {
                 claimBtn.textContent = '🎁 Забрать +150 монет';
             }
         }
@@ -1993,7 +2021,7 @@ function startRewardTimer(userId) {
 function updateCoinsDisplay(coins) {
     const coinsElements = document.querySelectorAll('#userCoins, #profileCoins');
     coinsElements.forEach(element => {
-        element.textContent = coins.toLocaleString();
+        element.textContent = (coins || 0).toLocaleString();
         element.classList.add('coin-animation');
         setTimeout(() => element.classList.remove('coin-animation'), 600);
     });
@@ -2026,14 +2054,14 @@ async function loadUserBalance(userId) {
 
 // Списание монет
 function deductCoins(amount) {
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, '')) || 0;
     const newCoins = currentCoins - amount;
     updateCoinsDisplay(newCoins);
 }
 
 // Добавление монет
 function addCoins(amount) {
-    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, '')) || 0;
     const newCoins = currentCoins + amount;
     updateCoinsDisplay(newCoins);
 }
@@ -2103,7 +2131,7 @@ function initModals() {
 }
 
 function getDefaultAvatar() {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPgo8cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQgNEg4YTQgNCAwIDAgMC00IDR2MiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+Cjwvc3ZnPg==';
 }
 
 // Инициализируем приложение когда страница загрузится
