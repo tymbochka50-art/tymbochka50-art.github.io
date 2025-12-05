@@ -29,6 +29,7 @@ async function initApp() {
         await loadRewardStatus(user.id);
         await loadReferralStats(user.id);
         await loadSubscriptionStatus(user.id);
+        await loadDarenSubscriptionStatus(user.id);
         await loadLastNameStatus();
 
         // Загрузка кейсов и инвентаря
@@ -38,6 +39,9 @@ async function initApp() {
 
         // Обновляем статистику инвентаря
         updateInventoryStats();
+
+        // Обновляем все таймеры
+        await updateAllTimers();
 
         console.log('📊 Данные пользователя:', user);
 
@@ -170,6 +174,170 @@ function updateInventoryStats() {
     totalValueElements.forEach(element => {
         if (element) element.textContent = totalVal.toLocaleString();
     });
+}
+
+// ==================== ФУНКЦИИ ДЛЯ ОБНОВЛЕНИЯ ТАЙМЕРОВ ====================
+
+// Функция для обновления всех таймеров
+async function updateAllTimers() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    if (!userId) return;
+
+    try {
+        // Таймер для ежедневного бонуса
+        const dailyResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'daily'
+            })
+        });
+        
+        const dailyResult = await dailyResponse.json();
+        if (dailyResult.success) {
+            updateDailyTimer(dailyResult.timeUntilNextReward);
+        }
+
+        // Таймер для подписки на CS2DropZone
+        const subResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'subscription'
+            })
+        });
+        
+        const subResult = await subResponse.json();
+        if (subResult.success) {
+            updateSubscriptionTimer(subResult.timeUntilNextReward);
+        }
+
+        // Таймер для подписки на DarenCs2
+        const darenResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'daren_subscription'
+            })
+        });
+        
+        const darenResult = await darenResponse.json();
+        if (darenResult.success) {
+            updateDarenSubscriptionTimer(darenResult.timeUntilNextReward);
+        }
+
+        // Таймер для фамилии
+        const nameResponse = await fetch('https://telegram-backend-nine.vercel.app/api/next-reward-time', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                rewardType: 'lastname'
+            })
+        });
+        
+        const nameResult = await nameResponse.json();
+        if (nameResult.success) {
+            updateLastNameTimer(nameResult.timeUntilNextReward);
+        }
+
+    } catch (error) {
+        console.error('❌ Error updating timers:', error);
+    }
+}
+
+// Функции для обновления таймеров
+function updateDailyTimer(seconds) {
+    const timerText = document.getElementById('timerText');
+    const claimBtn = document.getElementById('claimRewardBtn');
+    
+    if (seconds > 0) {
+        startTimer(seconds, timerText, claimBtn, '🎁 Забрать +50 монет');
+    } else {
+        timerText.textContent = '✅ Готово к получению!';
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +50 монет';
+    }
+}
+
+function updateSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[1]; // Первая кнопка подписки (CS2DropZone)
+    
+    if (seconds > 0) {
+        startTimer(seconds, null, claimBtn, '🎁 Забрать +250 монет');
+    } else {
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +250 монет';
+    }
+}
+
+function updateDarenSubscriptionTimer(seconds) {
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[2]; // Вторая кнопка подписки (DarenCs2)
+    
+    if (seconds > 0) {
+        startTimer(seconds, null, claimBtn, '🎁 Забрать +150 монет');
+    } else {
+        claimBtn.disabled = false;
+        claimBtn.textContent = '🎁 Забрать +150 монет';
+    }
+}
+
+function updateLastNameTimer(seconds) {
+    const bonusBtns = document.querySelectorAll('.task-button');
+    const bonusBtn = bonusBtns[3]; // Кнопка фамилии (после двух подписок)
+    
+    if (seconds > 0) {
+        startTimer(seconds, null, bonusBtn, '🎁 Забрать +50 монет');
+    } else {
+        bonusBtn.disabled = false;
+        bonusBtn.textContent = '🎁 Забрать +50 монет';
+    }
+}
+
+// Универсальная функция таймера
+function startTimer(seconds, timerElement, buttonElement, buttonText) {
+    let timeLeft = seconds;
+    
+    buttonElement.disabled = true;
+    
+    const timer = setInterval(() => {
+        if (timeLeft > 0) {
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const secs = timeLeft % 60;
+            
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            if (timerElement) {
+                timerElement.textContent = `⏳ До следующей награды: ${timeString}`;
+            }
+            
+            buttonElement.textContent = `⏳ ${timeString}`;
+            timeLeft--;
+        } else {
+            clearInterval(timer);
+            
+            if (timerElement) {
+                timerElement.textContent = '✅ Готово к получению!';
+            }
+            
+            buttonElement.disabled = false;
+            buttonElement.textContent = buttonText;
+        }
+    }, 1000);
 }
 
 // ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
@@ -352,7 +520,7 @@ async function loadLastNameStatus() {
 function updateLastNameUI(data) {
     const nameStatus = document.getElementById('nameStatus');
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[2];
+    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка (после двух подписок)
     
     if (nameStatus && bonusBtn) {
         if (data.gotInitialBonus) {
@@ -376,7 +544,7 @@ function updateLastNameUI(data) {
             nameStatus.textContent = '✅ Готово к получению';
             nameStatus.style.color = '#28a745';
             bonusBtn.disabled = false;
-            bonusBtn.textContent = '🎁 Забрать +20 монет';
+            bonusBtn.textContent = '🎁 Забрать +50 монет';
             bonusBtn.onclick = () => checkSpecialLastName();
         } else {
             // Неправильная фамилия
@@ -394,7 +562,7 @@ async function checkSpecialLastName() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[2];
+    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
     const nameStatus = document.getElementById('nameStatus');
     
     if (!userId || !user) {
@@ -485,7 +653,7 @@ async function claimLastNameRepeatReward() {
     const userId = tg.initDataUnsafe?.user?.id;
     const user = tg.initDataUnsafe?.user;
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[2];
+    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
     
     if (!userId || !user) {
         tg.showAlert('❌ Не удалось определить пользователя');
@@ -529,7 +697,7 @@ async function claimLastNameRepeatReward() {
                 
                 // Запускаем таймер
                 if (!result.canClaim) {
-                    startLastNameTimer(180); // 3 минуты
+                    startLastNameTimer(86400); // 24 часа
                 }
             } else {
                 // Нельзя получить награду сейчас
@@ -559,7 +727,7 @@ async function claimLastNameRepeatReward() {
 // Таймер для повторной награды за фамилию
 function startLastNameTimer(seconds) {
     const bonusBtns = document.querySelectorAll('.task-button');
-    const bonusBtn = bonusBtns[2];
+    const bonusBtn = bonusBtns[3]; // Теперь 4-я кнопка
     
     if (!bonusBtn) return;
     
@@ -567,9 +735,10 @@ function startLastNameTimer(seconds) {
     
     const timer = setInterval(() => {
         if (timeLeft > 0) {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            bonusBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const secs = timeLeft % 60;
+            bonusBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             bonusBtn.disabled = true;
             timeLeft--;
         } else {
@@ -592,46 +761,32 @@ const casesData = [
         color: 'light',
         items: [
             { 
-                name: 'AK-47 | Redline', 
-                image: 'https://assets.lis-skins.com/market_images/639_b.png',
-                chance: 15,
+                name: 'MP5-SD | Necro Jr.', 
+                image: 'https://assets.lis-skins.com/market_images/152617_b.png',
+                chance: 40,
                 rarity: 'common',
-                value: 8
+                value: 5
             },
             { 
-                name: 'AWP | Asiimov', 
-                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 10,
-                rarity: 'rare',
-                value: 12
-            },
-            { 
-                name: 'M4A1-S | Hyper Beast', 
-                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
-                chance: 5,
-                rarity: 'epic',
-                value: 15
-            },
-            { 
-                name: 'Glock-18 | Water Elemental', 
-                image: 'https://assets.lis-skins.com/market_images/187408_b.png',
+                name: 'XM1014 | Mockingbird', 
+                image: 'https://assets.lis-skins.com/market_images/186837_b.png',
                 chance: 30,
                 rarity: 'common',
                 value: 6
             },
             { 
-                name: 'USP-S | Orion', 
-                image: 'https://assets.lis-skins.com/market_images/187150_b.png',
-                chance: 25,
+                name: 'AUG | Luxe Trim', 
+                image: 'https://assets.lis-skins.com/market_images/184732_b.png',
+                chance: 20,
                 rarity: 'common',
-                value: 7
+                value: 8
             },
             { 
-                name: 'Desert Eagle | Conspiracy', 
-                image: 'https://assets.lis-skins.com/market_images/640_b.png',
-                chance: 15,
+                name: 'MAG-7 | Resupply', 
+                image: 'https://assets.lis-skins.com/market_images/186763_b.png',
+                chance: 10,
                 rarity: 'rare',
-                value: 10
+                value: 12
             }
         ]
     },
@@ -643,60 +798,39 @@ const casesData = [
         color: 'danger',
         items: [
             { 
-                name: 'Karambit | Doppler', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 2,
-                rarity: 'legendary',
-                value: 25
+                name: 'P90 | Blue Tac', 
+                image: 'https://assets.lis-skins.com/market_images/187319_b.png',
+                chance: 35,
+                rarity: 'common',
+                value: 10
             },
             { 
-                name: 'M9 Bayonet | Tiger Tooth', 
-                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
-                chance: 3,
-                rarity: 'epic',
-                value: 20
+                name: 'M4A4 | Choppa', 
+                image: 'https://assets.lis-skins.com/market_images/186871_b.png',
+                chance: 25,
+                rarity: 'rare',
+                value: 15
             },
             { 
-                name: 'Butterfly Knife | Crimson Web', 
-                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
-                chance: 1,
-                rarity: 'legendary',
-                value: 30
-            },
-            { 
-                name: 'AK-47 | Fire Serpent', 
-                image: 'https://assets.lis-skins.com/market_images/639_b.png',
-                chance: 8,
-                rarity: 'epic',
+                name: 'Souvenir R8 Revolver | Desert Brush', 
+                image: 'https://assets.lis-skins.com/market_images/152332_b.png',
+                chance: 20,
+                rarity: 'rare',
                 value: 18
             },
             { 
-                name: 'AWP | Dragon Lore', 
-                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 1,
+                name: '★ Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/98944_b.png',
+                chance: 0.0001,
                 rarity: 'legendary',
-                value: 35
+                value: 100
             },
             { 
-                name: 'M4A4 | Howl', 
-                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
-                chance: 2,
+                name: '★ Butterfly Knife | Gamma Doppler Emerald', 
+                image: 'https://assets.lis-skins.com/market_images/151422_b.png',
+                chance: 0.0001,
                 rarity: 'legendary',
-                value: 28
-            },
-            { 
-                name: 'Sport Gloves | Hedge Maze', 
-                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 3,
-                rarity: 'epic',
-                value: 22
-            },
-            { 
-                name: 'Driver Gloves | Snow Leopard', 
-                image: 'https://assets.lis-skins.com/market_images/16514_b.png',
-                chance: 10,
-                rarity: 'rare',
-                value: 15
+                value: 95
             }
         ]
     },
@@ -708,60 +842,46 @@ const casesData = [
         color: 'mystic',
         items: [
             { 
-                name: 'StatTrak™ Karambit | Emerald', 
-                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
-                chance: 1,
-                rarity: 'legendary',
-                value: 50
+                name: 'M4A4 | Choppa', 
+                image: 'https://assets.lis-skins.com/market_images/186871_b.png',
+                chance: 30,
+                rarity: 'rare',
+                value: 20
             },
             { 
-                name: 'Souvenir AWP | Medusa', 
-                image: 'https://assets.lis-skins.com/market_images/30944_b.png',
-                chance: 2,
-                rarity: 'legendary',
-                value: 45
-            },
-            { 
-                name: 'Sport Gloves | Pandora\'s Box', 
-                image: 'https://assets.lis-skins.com/market_images/16515_b.png',
-                chance: 3,
-                rarity: 'epic',
-                value: 35
-            },
-            { 
-                name: 'Talon Knife | Doppler', 
-                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
-                chance: 4,
-                rarity: 'epic',
-                value: 30
-            },
-            { 
-                name: 'AWP | Gungnir', 
-                image: 'https://assets.lis-skins.com/market_images/30946_b.png',
-                chance: 5,
-                rarity: 'epic',
-                value: 28
-            },
-            { 
-                name: 'Specialist Gloves | Emerald Web', 
-                image: 'https://assets.lis-skins.com/market_images/16516_b.png',
-                chance: 10,
+                name: 'Souvenir R8 Revolver | Desert Brush', 
+                image: 'https://assets.lis-skins.com/market_images/152332_b.png',
+                chance: 25,
                 rarity: 'rare',
                 value: 25
             },
             { 
-                name: 'Bayonet | Marble Fade', 
-                image: 'https://assets.lis-skins.com/market_images/99100_b.png',
-                chance: 15,
-                rarity: 'rare',
-                value: 22
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 120
             },
             { 
-                name: 'M4A1-S | Knight', 
-                image: 'https://assets.lis-skins.com/market_images/30945_b.png',
-                chance: 20,
-                rarity: 'rare',
-                value: 20
+                name: '★ Sport Gloves | Hedge Maze', 
+                image: 'https://assets.lis-skins.com/market_images/16512_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 110
+            },
+            { 
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 105
+            },
+            { 
+                name: '★ Specialist Gloves | Emerald Web', 
+                image: 'https://assets.lis-skins.com/market_images/16613_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 115
             }
         ]
     },
@@ -773,60 +893,46 @@ const casesData = [
         color: 'heat',
         items: [
             { 
-                name: '★ StatTrak™ Karambit | Crimson Web', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 0.5,
+                name: '★ Butterfly Knife | Doppler Ruby', 
+                image: 'https://assets.lis-skins.com/market_images/139237_b.png',
+                chance: 0.0001,
                 rarity: 'legendary',
-                value: 80
+                value: 130
             },
             { 
-                name: '★ Souvenir M9 Bayonet | Gamma Doppler', 
-                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
-                chance: 1,
+                name: '★ M9 Bayonet | Doppler Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/98956_b.png',
+                chance: 0.0001,
                 rarity: 'legendary',
-                value: 70
+                value: 125
             },
             { 
-                name: '★ Sport Gloves | Vice', 
+                name: '★ Butterfly Knife | Doppler Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/99065_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 135
+            },
+            { 
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
+                chance: 0.001,
+                rarity: 'legendary',
+                value: 120
+            },
+            { 
+                name: '★ Sport Gloves | Hedge Maze', 
                 image: 'https://assets.lis-skins.com/market_images/16512_b.png',
-                chance: 2,
-                rarity: 'epic',
-                value: 60
+                chance: 0.001,
+                rarity: 'legendary',
+                value: 110
             },
             { 
-                name: '★ Driver Gloves | Crimson Weave', 
-                image: 'https://assets.lis-skins.com/market_images/16514_b.png',
-                chance: 3,
-                rarity: 'epic',
-                value: 55
-            },
-            { 
-                name: '★ Specialist Gloves | Foundation', 
-                image: 'https://assets.lis-skins.com/market_images/16516_b.png',
-                chance: 5,
-                rarity: 'epic',
-                value: 50
-            },
-            { 
-                name: '★ Butterfly Knife | Fade', 
-                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
-                chance: 8,
-                rarity: 'rare',
-                value: 45
-            },
-            { 
-                name: '★ Talon Knife | Case Hardened', 
-                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
-                chance: 10,
-                rarity: 'rare',
-                value: 40
-            },
-            { 
-                name: '★ Karambit | Ultraviolet', 
-                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
-                chance: 15,
-                rarity: 'rare',
-                value: 35
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
+                chance: 0.001,
+                rarity: 'legendary',
+                value: 105
             }
         ]
     },
@@ -838,60 +944,60 @@ const casesData = [
         color: 'ice',
         items: [
             { 
-                name: '★★ StatTrak™ Karambit | Emerald', 
-                image: 'https://assets.lis-skins.com/market_images/99101_b.png',
-                chance: 0.1,
+                name: '★ Butterfly Knife | Gamma Doppler Emerald', 
+                image: 'https://assets.lis-skins.com/market_images/151422_b.png',
+                chance: 0.0001,
                 rarity: 'legendary',
-                value: 100
+                value: 150
             },
             { 
-                name: '★★ Souvenir AWP | Dragon Lore', 
-                image: 'https://assets.lis-skins.com/market_images/13260_b.png',
-                chance: 0.2,
+                name: '★ Karambit | Doppler Sapphire', 
+                image: 'https://assets.lis-skins.com/market_images/98944_b.png',
+                chance: 0.0001,
                 rarity: 'legendary',
-                value: 95
+                value: 160
             },
             { 
-                name: '★★ M4A4 | Howl (Factory New)', 
-                image: 'https://assets.lis-skins.com/market_images/30942_b.png',
-                chance: 0.5,
+                name: '★ Butterfly Knife | Doppler Ruby', 
+                image: 'https://assets.lis-skins.com/market_images/139237_b.png',
+                chance: 0.0001,
                 rarity: 'legendary',
-                value: 90
+                value: 140
             },
             { 
-                name: '★★ Sport Gloves | Pandora\'s Box (FN)', 
-                image: 'https://assets.lis-skins.com/market_images/16515_b.png',
-                chance: 1,
+                name: '★ Butterfly Knife | Doppler Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/99065_b.png',
+                chance: 0.0001,
                 rarity: 'legendary',
-                value: 85
+                value: 155
             },
             { 
-                name: '★★ Butterfly Knife | Sapphire', 
-                image: 'https://assets.lis-skins.com/market_images/99098_b.png',
-                chance: 2,
-                rarity: 'epic',
-                value: 80
+                name: '★ M9 Bayonet | Doppler Black Pearl', 
+                image: 'https://assets.lis-skins.com/market_images/98956_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 145
             },
             { 
-                name: '★★ Karambit | Ruby', 
-                image: 'https://assets.lis-skins.com/market_images/99097_b.png',
-                chance: 3,
-                rarity: 'epic',
-                value: 75
+                name: '★ Specialist Gloves | Emerald Web', 
+                image: 'https://assets.lis-skins.com/market_images/16613_b.png',
+                chance: 0.0001,
+                rarity: 'legendary',
+                value: 135
             },
             { 
-                name: '★★ M9 Bayonet | Black Pearl', 
-                image: 'https://assets.lis-skins.com/market_images/99099_b.png',
-                chance: 5,
-                rarity: 'epic',
-                value: 70
+                name: 'Sport Gloves | Pandora\'s Box', 
+                image: 'https://assets.lis-skins.com/market_images/16599_b.png',
+                chance: 0.0005,
+                rarity: 'legendary',
+                value: 130
             },
             { 
-                name: '★★ Talon Knife | Gamma Doppler', 
-                image: 'https://assets.lis-skins.com/market_images/99102_b.png',
-                chance: 8,
-                rarity: 'rare',
-                value: 65
+                name: 'M4A4 | Howl', 
+                image: 'https://assets.lis-skins.com/market_images/10619_b.png',
+                chance: 0.0005,
+                rarity: 'legendary',
+                value: 125
             }
         ]
     }
@@ -1305,9 +1411,9 @@ async function sendWithdrawRequest(user, skin, tradeLink) {
     }
 }
 
-// ==================== СИСТЕМА ПОДПИСКИ С НАГРАДАМИ ====================
+// ==================== СИСТЕМА ПОДПИСКИ НА CS2DROPSKINBOT ====================
 
-// Загрузка статуса подписки
+// Загрузка статуса подписки на CS2DropZone
 async function loadSubscriptionStatus(userId) {
     try {
         const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
@@ -1318,7 +1424,8 @@ async function loadSubscriptionStatus(userId) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                userId: userId
+                userId: userId,
+                channel: '@CS2DropZone'
             })
         });
 
@@ -1332,7 +1439,7 @@ async function loadSubscriptionStatus(userId) {
     }
 }
 
-// Получение награды за подписку
+// Получение награды за подписку на CS2DropZone
 async function claimSubscriptionReward() {
     const userId = tg.initDataUnsafe?.user?.id;
     const claimBtns = document.querySelectorAll('.task-button');
@@ -1356,7 +1463,9 @@ async function claimSubscriptionReward() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                userId: userId
+                userId: userId,
+                channel: '@CS2DropZone',
+                rewardAmount: 250
             })
         });
 
@@ -1374,7 +1483,7 @@ async function claimSubscriptionReward() {
             
             if (!result.isSubscribed) {
                 // Показываем окошко с предложением подписаться
-                showSubscriptionModal();
+                showSubscriptionModal('CS2DropZone');
             }
             
         } else {
@@ -1392,8 +1501,98 @@ async function claimSubscriptionReward() {
     }
 }
 
+// ==================== СИСТЕМА ПОДПИСКИ НА DARENCS2 ====================
+
+// Загрузка статуса подписки на DarenCs2
+async function loadDarenSubscriptionStatus(userId) {
+    try {
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-status';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                channel: '@DarenCs2'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            updateDarenSubscriptionUI(result);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса подписки на DarenCs2:', error);
+    }
+}
+
+// Получение награды за подписку на DarenCs2
+async function claimDarenSubscriptionReward() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[2];
+    
+    if (!userId) {
+        tg.showAlert('❌ Не удалось определить пользователя');
+        return;
+    }
+    
+    try {
+        const originalText = claimBtn.textContent;
+        claimBtn.disabled = true;
+        claimBtn.textContent = '🔄 Проверяем...';
+        
+        const backendUrl = 'https://telegram-backend-nine.vercel.app/api/subscription-reward';
+        
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                channel: '@DarenCs2',
+                rewardAmount: 150
+            })
+        });
+
+        const result = await response.json();
+        
+        console.log('📢 DarenCs2 subscription reward result:', result);
+        
+        if (result.success) {
+            if (result.coinsAwarded > 0) {
+                updateCoinsDisplay(result.coins);
+                tg.showAlert('🎉 +150 монет за подписку на канал DarenCs2!');
+            }
+            
+            updateDarenSubscriptionUI(result);
+            
+            if (!result.isSubscribed) {
+                // Показываем окошко с предложением подписаться
+                showSubscriptionModal('DarenCs2');
+            }
+            
+        } else {
+            tg.showAlert(`❌ Ошибка: ${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка получения награды за подписку на DarenCs2:', error);
+        tg.showAlert('❌ Ошибка сети');
+    } finally {
+        setTimeout(() => {
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🎁 Забрать +150 монет';
+        }, 1000);
+    }
+}
+
 // Функция показа модального окна подписки
-function showSubscriptionModal() {
+function showSubscriptionModal(channelName) {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'block';
@@ -1408,9 +1607,9 @@ function showSubscriptionModal() {
                     <div style="font-size: 48px; margin-bottom: 15px;">📢</div>
                     <h4 style="margin-bottom: 10px; color: #ff6b35;">Вы не подписаны на канал</h4>
                     <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">
-                        Подпишитесь на канал CS2DropZone чтобы получить +250 монет!
+                        Подпишитесь на канал ${channelName} чтобы получить ${channelName === '@CS2DropZone' ? '+250' : '+150'} монет!
                     </p>
-                    <button onclick="openTelegramChannel()" class="modal-button primary" style="margin-bottom: 10px;">
+                    <button onclick="openTelegramChannel('${channelName}')" class="modal-button primary" style="margin-bottom: 10px;">
                         📢 Перейти в канал
                     </button>
                     <button onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="modal-button secondary">
@@ -1424,11 +1623,11 @@ function showSubscriptionModal() {
 }
 
 // Функция открытия канала Telegram
-function openTelegramChannel() {
-    window.open('https://t.me/CS2DropZone', '_blank');
+function openTelegramChannel(channelName) {
+    window.open(`https://t.me/${channelName.replace('@', '')}`, '_blank');
 }
 
-// Обновление интерфейса подписки
+// Обновление интерфейса подписки на CS2DropZone
 function updateSubscriptionUI(data) {
     const statusElement = document.getElementById('subscriptionStatus');
     const claimBtns = document.querySelectorAll('.task-button');
@@ -1436,57 +1635,90 @@ function updateSubscriptionUI(data) {
     
     if (statusElement && claimBtn) {
         if (data.isSubscribed) {
-            statusElement.textContent = `✅ Подписан (${data.rewardCount || 0} раз)`;
+            statusElement.textContent = `✅ Подписан на CS2DropZone (${data.rewardCount || 0} раз)`;
             statusElement.style.color = '#28a745';
             
             if (data.canClaim) {
                 claimBtn.disabled = false;
-                claimBtn.textContent = '🎁 Забрать +15 монет';
+                claimBtn.textContent = '🎁 Забрать +250 монет';
                 claimBtn.onclick = () => claimSubscriptionReward();
             } else {
                 claimBtn.disabled = true;
                 claimBtn.textContent = '⏳ Ждите...';
                 if (data.timeUntilNextReward > 0) {
-                    startSubscriptionTimer(data.timeUntilNextReward);
+                    startSubscriptionTimer(data.timeUntilNextReward, claimBtn);
                 }
             }
         } else {
-            statusElement.textContent = '❌ Не подписан';
+            statusElement.textContent = '❌ Не подписан на CS2DropZone';
             statusElement.style.color = '#dc3545';
             claimBtn.disabled = false;
             claimBtn.textContent = '🔍 Проверить подписку';
-            claimBtn.onclick = () => checkSubscriptionOnly();
+            claimBtn.onclick = () => checkSubscriptionOnly('@CS2DropZone');
+        }
+    }
+}
+
+// Обновление интерфейса подписки на DarenCs2
+function updateDarenSubscriptionUI(data) {
+    const statusElement = document.getElementById('darenSubscriptionStatus');
+    const claimBtns = document.querySelectorAll('.task-button');
+    const claimBtn = claimBtns[2];
+    
+    if (statusElement && claimBtn) {
+        if (data.isSubscribed) {
+            statusElement.textContent = `✅ Подписан на DarenCs2 (${data.rewardCount || 0} раз)`;
+            statusElement.style.color = '#28a745';
+            
+            if (data.canClaim) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = '🎁 Забрать +150 монет';
+                claimBtn.onclick = () => claimDarenSubscriptionReward();
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.textContent = '⏳ Ждите...';
+                if (data.timeUntilNextReward > 0) {
+                    startSubscriptionTimer(data.timeUntilNextReward, claimBtn);
+                }
+            }
+        } else {
+            statusElement.textContent = '❌ Не подписан на DarenCs2';
+            statusElement.style.color = '#dc3545';
+            claimBtn.disabled = false;
+            claimBtn.textContent = '🔍 Проверить подписку';
+            claimBtn.onclick = () => checkSubscriptionOnly('@DarenCs2');
         }
     }
 }
 
 // Таймер для подписки
-function startSubscriptionTimer(seconds) {
-    const claimBtns = document.querySelectorAll('.task-button');
-    const claimBtn = claimBtns[1];
-    const statusElement = document.getElementById('subscriptionStatus');
-    
-    if (!claimBtn || !statusElement) return;
+function startSubscriptionTimer(seconds, claimBtn) {
+    if (!claimBtn) return;
     
     let timeLeft = seconds;
     
     const timer = setInterval(() => {
         if (timeLeft > 0) {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            claimBtn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const secs = timeLeft % 60;
+            claimBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             timeLeft--;
         } else {
             clearInterval(timer);
             claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +15 монет';
-            loadSubscriptionStatus(tg.initDataUnsafe?.user?.id);
+            claimBtn.textContent = '🎁 Забрать награду';
+            if (claimBtn.onclick.toString().includes('claimSubscriptionReward')) {
+                claimBtn.textContent = '🎁 Забрать +250 монет';
+            } else if (claimBtn.onclick.toString().includes('claimDarenSubscriptionReward')) {
+                claimBtn.textContent = '🎁 Забрать +150 монет';
+            }
         }
     }, 1000);
 }
 
 // Проверка только подписки (без награды)
-async function checkSubscriptionOnly() {
+async function checkSubscriptionOnly(channel) {
     const userId = tg.initDataUnsafe?.user?.id;
     
     try {
@@ -1498,18 +1730,24 @@ async function checkSubscriptionOnly() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                userId: userId
+                userId: userId,
+                channel: channel
             })
         });
 
         const result = await response.json();
         
         if (result.success) {
-            updateSubscriptionUI(result);
+            if (channel === '@CS2DropZone') {
+                updateSubscriptionUI(result);
+            } else if (channel === '@DarenCs2') {
+                updateDarenSubscriptionUI(result);
+            }
+            
             if (result.isSubscribed) {
-                tg.showAlert('✅ Вы подписаны на канал! Теперь можете получать награды.');
+                tg.showAlert(`✅ Вы подписаны на канал ${channel}! Теперь можете получать награды.`);
             } else {
-                tg.showAlert('❌ Вы не подписаны на канал @CS2DropZone');
+                tg.showAlert(`❌ Вы не подписаны на канал ${channel}`);
             }
         }
     } catch (error) {
@@ -1634,7 +1872,7 @@ function updateRewardUI(data) {
         } else if (data.canClaim) {
             timerText.textContent = '✅ Готово к получению!';
             claimBtn.disabled = false;
-            claimBtn.textContent = '🎁 Забрать +10 монет';
+            claimBtn.textContent = '🎁 Забрать +50 монет';
             if (rewardProgress) rewardProgress.classList.remove('progress-pulse');
         } else {
             timerText.textContent = `⏳ До следующей награды: ${data.timeUntilNextReward}с`;
@@ -1670,15 +1908,18 @@ function startRewardTimer(userId) {
             
             const timer = setInterval(() => {
                 if (timeLeft > 0) {
-                    timerText.textContent = `⏳ До следующей награды: ${timeLeft}с`;
-                    claimBtn.textContent = `⏳ ${timeLeft}с`;
+                    const hours = Math.floor(timeLeft / 3600);
+                    const minutes = Math.floor((timeLeft % 3600) / 60);
+                    const seconds = timeLeft % 60;
+                    timerText.textContent = `⏳ До следующей награды: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    claimBtn.textContent = `⏳ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                     claimBtn.disabled = true;
                     timeLeft--;
                 } else {
                     clearInterval(timer);
                     timerText.textContent = '✅ Готово к получению!';
                     claimBtn.disabled = false;
-                    claimBtn.textContent = '🎁 Забрать +10 монет';
+                    claimBtn.textContent = '🎁 Забрать +50 монет';
                     loadRewardStatus(userId);
                 }
             }, 1000);
