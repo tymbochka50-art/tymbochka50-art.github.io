@@ -51,6 +51,49 @@ body {
     animation: progressPulse 2s infinite;
 }
 
+/* Исправление для отображения всех вкладок */
+.tab-content {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Убедимся, что главная вкладка видна при загрузке */
+#main {
+    display: block;
+    opacity: 1;
+}
+
+/* Улучшение отображения контента на всех вкладках */
+#cases, #inventory, #profile {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Оптимизация отображения кейсов */
+.cases-grid {
+    min-height: 300px;
+}
+
+/* Оптимизация отображения инвентаря */
+.inventory-grid {
+    min-height: 200px;
+}
+
+/* Оптимизация отображения профиля */
+.profile-stats {
+    min-height: 100px;
+}
+
 @keyframes progressPulse {
     0% { opacity: 1; }
     50% { opacity: 0.7; }
@@ -1283,4 +1326,5 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
 
