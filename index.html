@@ -99,33 +99,30 @@
                     </div>
 
                     <!-- Приглашение друзей -->
-                   <div class="task-card">
-    <div class="task-header">
-        <div class="task-icon">👥</div>
-        <div class="task-info">
-            <div class="task-title">Пригласи друзей</div>
-            <div class="task-progress" id="referralProgress">0 приглашено</div>
-        </div>
-    </div>
-    <div class="task-stats">
-        <div class="stat">
-            <div class="stat-value" id="totalReferrals">0</div>
-            <div class="stat-label">Приглашено</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value" id="referralEarnings">0</div>
-            <div class="stat-label">Заработано</div>
-        </div>
-    </div>
-    
-    <!-- Контейнер для реферальной ссылки (будет добавлен через JS) -->
-    <!-- Здесь появится ссылка после генерации -->
-    
-    <button onclick="generateAndCopyReferralLink()" class="task-button primary">
-        📋 Сгенерировать реф ссылку
-    </button>
-    <div class="task-reward">+500 монет за каждого друга</div>
-</div>
+                    <div class="task-card">
+                        <div class="task-header">
+                            <div class="task-icon">👥</div>
+                            <div class="task-info">
+                                <div class="task-title">Пригласи друзей</div>
+                                <div class="task-progress" id="referralProgress">0 приглашено</div>
+                            </div>
+                        </div>
+                        <div class="task-stats">
+                            <div class="stat">
+                                <div class="stat-value" id="totalReferrals">0</div>
+                                <div class="stat-label">Приглашено</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="referralEarnings">0</div>
+                                <div class="stat-label">Заработано</div>
+                            </div>
+                        </div>
+                        <button onclick="generateAndCopyReferralLink()" class="task-button primary">
+                            📋 Скопировать реф ссылку
+                        </button>
+                        <div class="task-reward">+500 монет за каждого друга</div>
+                    </div>
+                </div>
 
                 <!-- Инвентарь на главной -->
                 <div class="inventory-section">
@@ -424,4 +421,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
