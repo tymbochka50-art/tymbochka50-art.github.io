@@ -1057,72 +1057,24 @@ function openCaseModal(caseData) {
     modal.style.display = 'block';
 }
 
-// Начало открытия кейса с проверкой баланса на сервере
-async function startCaseOpening(caseData) {
+// Начало открытия кейса
+function startCaseOpening(caseData) {
     const userId = tg.initDataUnsafe?.user?.id;
+    const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     
-    if (!userId) {
-        tg.showAlert('❌ Не удалось определить пользователя');
+    if (currentCoins < caseData.price) {
+        tg.showAlert('❌ Недостаточно монет для открытия кейса!');
         return;
     }
     
-    try {
-        // 1. Сначала проверяем баланс на сервере
-        const checkResponse = await fetch('https://telegram-backend-nine.vercel.app/api/check-coins', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                amount: caseData.price
-            })
-        });
-        
-        const checkResult = await checkResponse.json();
-        
-        if (!checkResult.success) {
-            tg.showAlert(`❌ Ошибка: ${checkResult.error}`);
-            return;
-        }
-        
-        if (!checkResult.hasEnough) {
-            tg.showAlert(`❌ Недостаточно монет! Нужно: ${caseData.price}, у вас: ${checkResult.coins}`);
-            return;
-        }
-        
-        // 2. Списываем монеты на сервере
-        const deductResponse = await fetch('https://telegram-backend-nine.vercel.app/api/deduct-coins', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                amount: caseData.price
-            })
-        });
-        
-        const deductResult = await deductResponse.json();
-        
-        if (!deductResult.success) {
-            tg.showAlert(`❌ Ошибка при списании монет: ${deductResult.error}`);
-            return;
-        }
-        
-        // 3. Обновляем баланс на сайте
-        updateCoinsDisplay(deductResult.coins);
-        
-        // 4. Закрываем модалку кейса
-        document.getElementById('caseModal').style.display = 'none';
-        
-        // 5. Показываем рулетку
-        showRoulette(caseData);
-        
-    } catch (error) {
-        console.error('❌ Ошибка при открытии кейса:', error);
-        tg.showAlert('❌ Ошибка сети при обработке платежа');
-    }
+    // Закрываем модалку кейса
+    document.getElementById('caseModal').style.display = 'none';
+    
+    // Списываем монеты сразу
+    deductCoins(caseData.price);
+    
+    // Показываем рулетку
+    showRoulette(caseData);
 }
 
 // Показ рулетки
@@ -1339,35 +1291,10 @@ function openSkinModal(skin) {
 }
 
 // Продажа скина
-async function sellSkin(skin) {
+function sellSkin(skin) {
     const userId = tg.initDataUnsafe?.user?.id;
     
-    if (!confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value.toLocaleString()} монет?`)) {
-        return;
-    }
-    
-    try {
-        // 1. Добавляем монеты на сервер
-        const addResponse = await fetch('https://telegram-backend-nine.vercel.app/api/add-coins', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: userId,
-                amount: skin.value,
-                reason: 'skin_sale'
-            })
-        });
-        
-        const addResult = await addResponse.json();
-        
-        if (!addResult.success) {
-            tg.showAlert(`❌ Ошибка при продаже: ${addResult.error}`);
-            return;
-        }
-        
-        // 2. Обновляем инвентарь
+    if (confirm(`Вы уверены, что хотите продать "${skin.name}" за ${skin.value.toLocaleString()} монет?`)) {
         let inventory = JSON.parse(localStorage.getItem(`inventory_${userId}`) || '[]');
         const skinIndex = inventory.findIndex(s => s.id === skin.id);
         if (skinIndex !== -1) {
@@ -1375,22 +1302,16 @@ async function sellSkin(skin) {
             localStorage.setItem(`inventory_${userId}`, JSON.stringify(inventory));
         }
         
-        // 3. Обновляем локальный баланс
-        updateCoinsDisplay(addResult.coins);
+        addCoins(skin.value);
         
-        // 4. Закрываем модалку
         document.getElementById('skinModal').style.display = 'none';
         
-        // 5. Обновляем статистику
+        // Обновляем статистику
         updateInventoryStats();
         loadInventory();
         loadProfileInventory();
         
         tg.showAlert(`✅ Скин продан за ${skin.value.toLocaleString()} монет!`);
-        
-    } catch (error) {
-        console.error('Ошибка при продаже скина:', error);
-        tg.showAlert('❌ Ошибка при продаже скина');
     }
 }
 
@@ -2046,19 +1967,18 @@ async function loadUserBalance(userId) {
     }
 }
 
-// Списание монет (только локальное обновление)
+// Списание монет
 function deductCoins(amount) {
     const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     const newCoins = currentCoins - amount;
     updateCoinsDisplay(newCoins);
 }
 
-// Добавление монет (только локальное обновление)
+// Добавление монет
 function addCoins(amount) {
     const currentCoins = parseInt(document.getElementById('userCoins').textContent.replace(/,/g, ''));
     const newCoins = currentCoins + amount;
     updateCoinsDisplay(newCoins);
-}
 }
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
@@ -2131,4 +2051,3 @@ function getDefaultAvatar() {
 
 // Инициализируем приложение когда страница загрузится
 document.addEventListener('DOMContentLoaded', initApp);
-
