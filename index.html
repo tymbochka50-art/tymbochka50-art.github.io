@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Мультиплеерная Игра</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .server-list {
+            margin: 30px 0;
+        }
+        
+        .server-item {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            text-align: left;
+        }
+        
+        .server-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .server-info {
+            color: #666;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .player-count {
+            background: #e9ecef;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+        
+        #gameContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .hud-item {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+        }
+        
+        .controls h3 {
+            margin-bottom: 15px;
+        }
+        
+        .key {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            min-width: 40px;
+        }
+        
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .username-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginContainer" class="container">
+        <h1>🎮 3D Мультиплеер</h1>
+        <div id="error" class="error"></div>
+        <input type="text" id="username" placeholder="Введите имя игрока (2-20 символов)" maxlength="20">
+        <button class="btn" onclick="login()">Войти в игру</button>
+    </div>
+
+    <div id="serverContainer" class="container" style="display: none;">
+        <h1>🌐 Выбор сервера</h1>
+        <div id="serverList" class="server-list"></div>
+        <button class="btn btn-secondary" onclick="goBack()">← Назад</button>
+    </div>
+
+    <div id="gameScreen" style="display: none;">
+        <div id="gameContainer"></div>
+        <div id="hud">
+            <div class="hud-item">
+                <span>Координаты:</span>
+                <span id="coords">X: 0.00 Y: 1.00 Z: 0.00</span>
+            </div>
+            <div class="hud-item">
+                <span>Игроков онлайн:</span>
+                <span id="playerCount">1</span>
+            </div>
+            <div class="hud-item">
+                <span>FPS:</span>
+                <span id="fps">60</span>
+            </div>
+        </div>
+        <div id="usernameDisplay" class="username-display"></div>
+        <div class="controls">
+            <h3>Управление</h3>
+            <div>
+                <div class="key">W</div>
+                <div class="key">↑</div>
+                <span>Вперёд</span>
+            </div>
+            <div>
+                <div class="key">A</div>
+                <div class="key">←</div>
+                <span>Влево</span>
+            </div>
+            <div>
+                <div class="key">S</div>
+                <div class="key">↓</div>
+                <span>Назад</span>
+            </div>
+            <div>
+                <div class="key">D</div>
+                <div class="key">→</div>
+                <span>Вправо</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script>
+        // Конфигурация
+        const SERVER_URL = 'https://your-vercel-server.vercel.app'; // Замените на ваш Vercel URL
+        
+        // Глобальные переменные
+        let username = '';
+        let selectedServer = '';
+        let game = null;
+
+        // Функции интерфейса
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+
+        function login() {
+            const input = document.getElementById('username');
+            username = input.value.trim();
+            
+            if (username.length < 2 || username.length > 20) {
+                showError('Имя должно быть от 2 до 20 символов');
+                return;
+            }
+            
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('serverContainer').style.display = 'block';
+            loadServers();
+        }
+
+        function goBack() {
+            document.getElementById('serverContainer').style.display = 'none';
+            document.getElementById('loginContainer').style.display = 'block';
+        }
+
+        async function loadServers() {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/servers`);
+                const servers = await response.json();
+                
+                const container = document.getElementById('serverList');
+                container.innerHTML = '';
+                
+                servers.forEach(server => {
+                    const serverElement = document.createElement('div');
+                    serverElement.className = 'server-item';
+                    serverElement.innerHTML = `
+                        <div class="server-name">${server.name}</div>
+                        <div class="server-info">
+                            <span>${server.description || 'Основной сервер'}</span>
+                            <span class="player-count">${server.players}/${server.maxPlayers}</span>
+                        </div>
+                        <button class="btn" style="margin-top: 10px;" onclick="joinServer('${server.id}')">
+                            Подключиться ${server.players >= server.maxPlayers ? '❌' : '✅'}
+                        </button>
+                    `;
+                    container.appendChild(serverElement);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки серверов:', error);
+                showError('Не удалось загрузить список серверов');
+            }
+        }
+
+        function joinServer(serverId) {
+            selectedServer = serverId;
+            
+            document.getElementById('serverContainer').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'block';
+            document.getElementById('usernameDisplay').textContent = username;
+            
+            startGame();
+        }
+
+        // Игровой код
+        class Game {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.players = {};
+                this.playerId = null;
+                this.socket = null;
+                
+                this.keys = {};
+                this.playerSpeed = 0.15;
+                this.playerPosition = { x: 0, y: 1, z: 0 };
+                this.lastUpdate = Date.now();
+                this.fpsCounter = 0;
+                this.lastFpsUpdate = Date.now();
+                
+                this.init();
+            }
+
+            init() {
+                // Инициализация Three.js
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.getElementById('gameContainer').appendChild(this.renderer.domElement);
+                
+                // Настройка камеры (вид от третьего лица)
+                this.camera.position.set(0, 3, 5);
+                
+                // Освещение
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 20, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.camera.left = -20;
+                directionalLight.shadow.camera.right = 20;
+                directionalLight.shadow.camera.top = 20;
+                directionalLight.shadow.camera.bottom = -20;
+                this.scene.add(directionalLight);
+                
+                // Небо
+                this.scene.background = new THREE.Color(0x87CEEB);
+                
+                // Создание мира
+                this.createWorld();
+                
+                // Управление
+                this.setupControls();
+                
+                // Подключение к серверу
+                this.connectToServer();
+                
+                // Запуск анимации
+                this.animate();
+                
+                // Обработка изменения размера окна
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            createWorld() {
+                // Пол
+                const floorGeometry = new THREE.PlaneGeometry(40, 40);
+                const floorMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x228B22,
+                    side: THREE.DoubleSide
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = Math.PI / 2;
+                floor.receiveShadow = true;
+                this.scene.add(floor);
+                
+                // Границы
+                this.createWall(-20, 2.5, 0, 0.1, 5, 40); // Левая стена
+                this.createWall(20, 2.5, 0, 0.1, 5, 40);  // Правая стена
+                this.createWall(0, 2.5, -20, 40, 5, 0.1); // Задняя стена
+                this.createWall(0, 2.5, 20, 40, 5, 0.1);  // Передняя стена
+                
+                // Декоративные кубики
+                const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xFF4500 });
+                for (let i = 0; i < 15; i++) {
+                    const size = Math.random() * 1.5 + 0.5;
+                    const cube = new THREE.Mesh(
+                        new THREE.BoxGeometry(size, size, size),
+                        cubeMaterial
+                    );
+                    cube.position.set(
+                        Math.random() * 30 - 15,
+                        size / 2,
+                        Math.random() * 30 - 15
+                    );
+                    cube.castShadow = true;
+                    cube.receiveShadow = true;
+                    this.scene.add(cube);
+                }
+                
+                // Центральная платформа
+                const platform = new THREE.Mesh(
+                    new THREE.CylinderGeometry(3, 3, 0.5, 32),
+                    new THREE.MeshPhongMaterial({ color: 0x8B4513 })
+                );
+                platform.position.set(0, 0.25, 0);
+                platform.receiveShadow = true;
+                this.scene.add(platform);
+            }
+
+            createWall(x, y, z, width, height, depth) {
+                const wallGeometry = new THREE.BoxGeometry(width, height, depth);
+                const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                wall.position.set(x, y, z);
+                wall.receiveShadow = true;
+                wall.castShadow = true;
+                this.scene.add(wall);
+            }
+
+            setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+            }
+
+            updateMovement() {
+                const now = Date.now();
+                const deltaTime = (now - this.lastUpdate) / 16.67; // Нормализация к 60 FPS
+                this.lastUpdate = now;
+                
+                let moveX = 0;
+                let moveZ = 0;
+                
+                if (this.keys['w'] || this.keys['arrowup']) moveZ -= this.playerSpeed * deltaTime;
+                if (this.keys['s'] || this.keys['arrowdown']) moveZ += this.playerSpeed * deltaTime;
+                if (this.keys['a'] || this.keys['arrowleft']) moveX -= this.playerSpeed * deltaTime;
+                if (this.keys['d'] || this.keys['arrowright']) moveX += this.playerSpeed * deltaTime;
+                
+                // Ограничение движения границами
+                const newX = this.playerPosition.x + moveX;
+                const newZ = this.playerPosition.z + moveZ;
+                
+                if (Math.abs(newX) < 19) this.playerPosition.x = newX;
+                if (Math.abs(newZ) < 19) this.playerPosition.z = newZ;
+                
+                // Обновление камеры (third-person)
+                const cameraDistance = 8;
+                const cameraHeight = 5;
+                const lookAtHeight = 1;
+                
+                this.camera.position.x = this.playerPosition.x;
+                this.camera.position.z = this.playerPosition.z + cameraDistance;
+                this.camera.position.y = this.playerPosition.y + cameraHeight;
+                this.camera.lookAt(
+                    this.playerPosition.x,
+                    this.playerPosition.y + lookAtHeight,
+                    this.playerPosition.z
+                );
+                
+                // Обновление HUD
+                document.getElementById('coords').textContent = 
+                    `X: ${this.playerPosition.x.toFixed(2)} Y: ${this.playerPosition.y.toFixed(2)} Z: ${this.playerPosition.z.toFixed(2)}`;
+                
+                // Отправка обновления на сервер
+                if (this.socket && this.playerId) {
+                    this.socket.emit('playerMovement', {
+                        room: selectedServer,
+                        position: this.playerPosition,
+                        rotation: { x: 0, y: 0, z: 0 }
+                    });
+                }
+            }
+
+            connectToServer() {
+                this.socket = io(SERVER_URL, {
+                    transports: ['websocket', 'polling']
+                });
+                
+                this.socket.on('connect', () => {
+                    this.playerId = this.socket.id;
+                    
+                    this.socket.emit('join', {
+                        username: username,
+                        room: selectedServer
+                    });
+                });
+                
+                this.socket.on('currentPlayers', (players) => {
+                    Object.values(players).forEach(player => {
+                        if (player.id !== this.playerId) {
+                            this.addOtherPlayer(player);
+                        } else {
+                            this.playerPosition = player.position;
+                        }
+                    });
+                    document.getElementById('playerCount').textContent = Object.keys(players).length;
+                });
+                
+                this.socket.on('newPlayer', (playerData) => {
+                    if (playerData.id !== this.playerId) {
+                        this.addOtherPlayer(playerData);
+                        document.getElementById('playerCount').textContent = 
+                            parseInt(document.getElementById('playerCount').textContent) + 1;
+                    }
+                });
+                
+                this.socket.on('playerMoved', (data) => {
+                    const player = this.players[data.id];
+                    if (player && player.mesh) {
+                        player.mesh.position.copy(data.position);
+                    }
+                });
+                
+                this.socket.on('playerDisconnected', (playerId) => {
+                    if (this.players[playerId]) {
+                        this.scene.remove(this.players[playerId].mesh);
+                        delete this.players[playerId];
+                        document.getElementById('playerCount').textContent = 
+                            parseInt(document.getElementById('playerCount').textContent) - 1;
+                    }
+                });
+                
+                this.socket.on('error', (message) => {
+                    showError(message);
+                    document.getElementById('gameScreen').style.display = 'none';
+                    document.getElementById('serverContainer').style.display = 'block';
+                });
+            }
+
+            addOtherPlayer(playerData) {
+                const geometry = new THREE.BoxGeometry(0.8, 1.8, 0.8);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: 0x1E90FF,
+                    shininess: 30
+                });
+                const playerMesh = new THREE.Mesh(geometry, material);
+                
+                playerMesh.position.set(
+                    playerData.position.x,
+                    playerData.position.y,
+                    playerData.position.z
+                );
+                
+                playerMesh.castShadow = true;
+                playerMesh.receiveShadow = true;
+                
+                this.scene.add(playerMesh);
+                this.players[playerData.id] = {
+                    mesh: playerMesh,
+                    username: playerData.username
+                };
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            updateFPS() {
+                this.fpsCounter++;
+                const now = Date.now();
+                if (now - this.lastFpsUpdate >= 1000) {
+                    document.getElementById('fps').textContent = this.fpsCounter;
+                    this.fpsCounter = 0;
+                    this.lastFpsUpdate = now;
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateMovement();
+                this.updateFPS();
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        function startGame() {
+            game = new Game();
+        }
+
+        // Предзагрузка серверов
+        loadServers();
+    </script>
+</body>
+</html>
