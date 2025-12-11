@@ -179,6 +179,35 @@
             font-weight: bold;
             z-index: 1000;
         }
+
+        .player-label {
+            position: absolute;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            transform: translate(-50%, -100%);
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .debug-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -210,6 +239,10 @@
                 <span>FPS:</span>
                 <span id="fps">60</span>
             </div>
+            <div class="hud-item">
+                <span>Статус:</span>
+                <span id="connectionStatus">Подключение...</span>
+            </div>
         </div>
         <div id="usernameDisplay" class="username-display"></div>
         <div class="controls">
@@ -235,28 +268,59 @@
                 <span>Вправо</span>
             </div>
         </div>
+        <div id="debugPanel" class="debug-panel" style="display: none;"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <script>
-        // Конфигурация
-        const SERVER_URL = 'https://game-server-beige.vercel.app'; // Замените на ваш Vercel URL
+        // ================= КОНФИГУРАЦИЯ =================
+        const SERVER_URL = 'https://game-server-beige.vercel.app';
+        const DEBUG = true; // Включить отладку в консоли
         
-        // Глобальные переменные
+        // ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =================
         let username = '';
         let selectedServer = '';
         let game = null;
-
-        // Функции интерфейса
+        let debugLogs = [];
+        
+        // ================= ФУНКЦИИ ИНТЕРФЕЙСА =================
         function showError(message) {
             const errorDiv = document.getElementById('error');
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
             setTimeout(() => errorDiv.style.display = 'none', 5000);
+            logDebug('ERROR: ' + message);
         }
 
-        function login() {
+        function updateConnectionStatus(status, color = 'white') {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = status;
+            statusEl.style.color = color;
+        }
+
+        function logDebug(message) {
+            if (!DEBUG) return;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            debugLogs.push(logMessage);
+            
+            // Ограничиваем количество логов
+            if (debugLogs.length > 10) {
+                debugLogs.shift();
+            }
+            
+            // Обновляем панель отладки
+            const debugPanel = document.getElementById('debugPanel');
+            debugPanel.innerHTML = debugLogs.map(log => `<div>${log}</div>`).join('');
+            debugPanel.style.display = 'block';
+            
+            // Также выводим в консоль
+            console.log(logMessage);
+        }
+
+        async function login() {
             const input = document.getElementById('username');
             username = input.value.trim();
             
@@ -265,9 +329,11 @@
                 return;
             }
             
+            logDebug(`Пользователь пытается войти: ${username}`);
+            
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('serverContainer').style.display = 'block';
-            loadServers();
+            await loadServers();
         }
 
         function goBack() {
@@ -277,8 +343,15 @@
 
         async function loadServers() {
             try {
+                logDebug(`Запрашиваю список серверов с ${SERVER_URL}/api/servers`);
                 const response = await fetch(`${SERVER_URL}/api/servers`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const servers = await response.json();
+                logDebug(`Получено серверов: ${servers.length}`);
                 
                 const container = document.getElementById('serverList');
                 container.innerHTML = '';
@@ -293,14 +366,15 @@
                             <span class="player-count">${server.players}/${server.maxPlayers}</span>
                         </div>
                         <button class="btn" style="margin-top: 10px;" onclick="joinServer('${server.id}')">
-                            Подключиться ${server.players >= server.maxPlayers ? '❌' : '✅'}
+                            ${server.players >= server.maxPlayers ? '❌ Переполнен' : '✅ Подключиться'}
                         </button>
                     `;
                     container.appendChild(serverElement);
                 });
             } catch (error) {
+                logDebug(`Ошибка загрузки серверов: ${error.message}`);
+                showError('Не удалось загрузить список серверов. Проверьте консоль для подробностей.');
                 console.error('Ошибка загрузки серверов:', error);
-                showError('Не удалось загрузить список серверов');
             }
         }
 
@@ -314,7 +388,7 @@
             startGame();
         }
 
-        // Игровой код
+        // ================= КЛАСС ИГРЫ =================
         class Game {
             constructor() {
                 this.scene = null;
@@ -323,6 +397,7 @@
                 this.players = {};
                 this.playerId = null;
                 this.socket = null;
+                this.playerLabels = {};
                 
                 this.keys = {};
                 this.playerSpeed = 0.15;
@@ -330,100 +405,130 @@
                 this.lastUpdate = Date.now();
                 this.fpsCounter = 0;
                 this.lastFpsUpdate = Date.now();
+                this.lastMovementUpdate = 0;
+                this.movementUpdateInterval = 100; // Отправлять обновления каждые 100мс
                 
+                logDebug('Инициализация игры...');
                 this.init();
             }
 
             init() {
-                // Инициализация Three.js
-                this.scene = new THREE.Scene();
-                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                this.renderer = new THREE.WebGLRenderer({ antialias: true });
-                
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.renderer.shadowMap.enabled = true;
-                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-                document.getElementById('gameContainer').appendChild(this.renderer.domElement);
-                
-                // Настройка камеры (вид от третьего лица)
-                this.camera.position.set(0, 3, 5);
-                
-                // Освещение
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-                this.scene.add(ambientLight);
-                
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                directionalLight.position.set(10, 20, 5);
-                directionalLight.castShadow = true;
-                directionalLight.shadow.camera.left = -20;
-                directionalLight.shadow.camera.right = 20;
-                directionalLight.shadow.camera.top = 20;
-                directionalLight.shadow.camera.bottom = -20;
-                this.scene.add(directionalLight);
-                
-                // Небо
-                this.scene.background = new THREE.Color(0x87CEEB);
-                
-                // Создание мира
-                this.createWorld();
-                
-                // Управление
-                this.setupControls();
-                
-                // Подключение к серверу
-                this.connectToServer();
-                
-                // Запуск анимации
-                this.animate();
-                
-                // Обработка изменения размера окна
-                window.addEventListener('resize', () => this.onWindowResize());
+                try {
+                    // Инициализация Three.js
+                    this.scene = new THREE.Scene();
+                    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                    this.renderer = new THREE.WebGLRenderer({ 
+                        antialias: true,
+                        alpha: true
+                    });
+                    
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                    this.renderer.shadowMap.enabled = true;
+                    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                    this.renderer.setPixelRatio(window.devicePixelRatio);
+                    
+                    const gameContainer = document.getElementById('gameContainer');
+                    gameContainer.innerHTML = '';
+                    gameContainer.appendChild(this.renderer.domElement);
+                    
+                    // Настройка камеры (вид от третьего лица)
+                    this.camera.position.set(0, 3, 5);
+                    
+                    // Освещение
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                    this.scene.add(ambientLight);
+                    
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                    directionalLight.position.set(10, 20, 5);
+                    directionalLight.castShadow = true;
+                    directionalLight.shadow.camera.left = -20;
+                    directionalLight.shadow.camera.right = 20;
+                    directionalLight.shadow.camera.top = 20;
+                    directionalLight.shadow.camera.bottom = -20;
+                    this.scene.add(directionalLight);
+                    
+                    // Небо
+                    this.scene.background = new THREE.Color(0x87CEEB);
+                    
+                    // Создание мира
+                    this.createWorld();
+                    
+                    // Управление
+                    this.setupControls();
+                    
+                    // Подключение к серверу
+                    this.connectToServer();
+                    
+                    // Запуск анимации
+                    this.animate();
+                    
+                    // Обработка изменения размера окна
+                    window.addEventListener('resize', () => this.onWindowResize());
+                    
+                    // Обработка закрытия окна
+                    window.addEventListener('beforeunload', () => {
+                        if (this.socket) {
+                            this.socket.disconnect();
+                        }
+                    });
+                    
+                    logDebug('Игра инициализирована');
+                } catch (error) {
+                    logDebug(`Ошибка инициализации игры: ${error.message}`);
+                    showError('Ошибка инициализации игры');
+                }
             }
 
             createWorld() {
-                // Пол
-                const floorGeometry = new THREE.PlaneGeometry(40, 40);
-                const floorMaterial = new THREE.MeshPhongMaterial({ 
-                    color: 0x228B22,
-                    side: THREE.DoubleSide
-                });
-                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-                floor.rotation.x = Math.PI / 2;
-                floor.receiveShadow = true;
-                this.scene.add(floor);
-                
-                // Границы
-                this.createWall(-20, 2.5, 0, 0.1, 5, 40); // Левая стена
-                this.createWall(20, 2.5, 0, 0.1, 5, 40);  // Правая стена
-                this.createWall(0, 2.5, -20, 40, 5, 0.1); // Задняя стена
-                this.createWall(0, 2.5, 20, 40, 5, 0.1);  // Передняя стена
-                
-                // Декоративные кубики
-                const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xFF4500 });
-                for (let i = 0; i < 15; i++) {
-                    const size = Math.random() * 1.5 + 0.5;
-                    const cube = new THREE.Mesh(
-                        new THREE.BoxGeometry(size, size, size),
-                        cubeMaterial
+                try {
+                    // Пол
+                    const floorGeometry = new THREE.PlaneGeometry(40, 40);
+                    const floorMaterial = new THREE.MeshPhongMaterial({ 
+                        color: 0x228B22,
+                        side: THREE.DoubleSide
+                    });
+                    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                    floor.rotation.x = Math.PI / 2;
+                    floor.receiveShadow = true;
+                    this.scene.add(floor);
+                    
+                    // Границы
+                    this.createWall(-20, 2.5, 0, 0.1, 5, 40); // Левая стена
+                    this.createWall(20, 2.5, 0, 0.1, 5, 40);  // Правая стена
+                    this.createWall(0, 2.5, -20, 40, 5, 0.1); // Задняя стена
+                    this.createWall(0, 2.5, 20, 40, 5, 0.1);  // Передняя стена
+                    
+                    // Декоративные кубики
+                    const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xFF4500 });
+                    for (let i = 0; i < 15; i++) {
+                        const size = Math.random() * 1.5 + 0.5;
+                        const cube = new THREE.Mesh(
+                            new THREE.BoxGeometry(size, size, size),
+                            cubeMaterial
+                        );
+                        cube.position.set(
+                            Math.random() * 30 - 15,
+                            size / 2,
+                            Math.random() * 30 - 15
+                        );
+                        cube.castShadow = true;
+                        cube.receiveShadow = true;
+                        this.scene.add(cube);
+                    }
+                    
+                    // Центральная платформа
+                    const platform = new THREE.Mesh(
+                        new THREE.CylinderGeometry(3, 3, 0.5, 32),
+                        new THREE.MeshPhongMaterial({ color: 0x8B4513 })
                     );
-                    cube.position.set(
-                        Math.random() * 30 - 15,
-                        size / 2,
-                        Math.random() * 30 - 15
-                    );
-                    cube.castShadow = true;
-                    cube.receiveShadow = true;
-                    this.scene.add(cube);
+                    platform.position.set(0, 0.25, 0);
+                    platform.receiveShadow = true;
+                    this.scene.add(platform);
+                    
+                    logDebug('Мир создан');
+                } catch (error) {
+                    logDebug(`Ошибка создания мира: ${error.message}`);
                 }
-                
-                // Центральная платформа
-                const platform = new THREE.Mesh(
-                    new THREE.CylinderGeometry(3, 3, 0.5, 32),
-                    new THREE.MeshPhongMaterial({ color: 0x8B4513 })
-                );
-                platform.position.set(0, 0.25, 0);
-                platform.receiveShadow = true;
-                this.scene.add(platform);
             }
 
             createWall(x, y, z, width, height, depth) {
@@ -444,168 +549,338 @@
                 document.addEventListener('keyup', (e) => {
                     this.keys[e.key.toLowerCase()] = false;
                 });
+                
+                logDebug('Управление настроено');
             }
 
             updateMovement() {
-                const now = Date.now();
-                const deltaTime = (now - this.lastUpdate) / 16.67; // Нормализация к 60 FPS
-                this.lastUpdate = now;
-                
-                let moveX = 0;
-                let moveZ = 0;
-                
-                if (this.keys['w'] || this.keys['arrowup']) moveZ -= this.playerSpeed * deltaTime;
-                if (this.keys['s'] || this.keys['arrowdown']) moveZ += this.playerSpeed * deltaTime;
-                if (this.keys['a'] || this.keys['arrowleft']) moveX -= this.playerSpeed * deltaTime;
-                if (this.keys['d'] || this.keys['arrowright']) moveX += this.playerSpeed * deltaTime;
-                
-                // Ограничение движения границами
-                const newX = this.playerPosition.x + moveX;
-                const newZ = this.playerPosition.z + moveZ;
-                
-                if (Math.abs(newX) < 19) this.playerPosition.x = newX;
-                if (Math.abs(newZ) < 19) this.playerPosition.z = newZ;
-                
-                // Обновление камеры (third-person)
-                const cameraDistance = 8;
-                const cameraHeight = 5;
-                const lookAtHeight = 1;
-                
-                this.camera.position.x = this.playerPosition.x;
-                this.camera.position.z = this.playerPosition.z + cameraDistance;
-                this.camera.position.y = this.playerPosition.y + cameraHeight;
-                this.camera.lookAt(
-                    this.playerPosition.x,
-                    this.playerPosition.y + lookAtHeight,
-                    this.playerPosition.z
-                );
-                
-                // Обновление HUD
-                document.getElementById('coords').textContent = 
-                    `X: ${this.playerPosition.x.toFixed(2)} Y: ${this.playerPosition.y.toFixed(2)} Z: ${this.playerPosition.z.toFixed(2)}`;
-                
-                // Отправка обновления на сервер
-                if (this.socket && this.playerId) {
-                    this.socket.emit('playerMovement', {
-                        room: selectedServer,
-                        position: this.playerPosition,
-                        rotation: { x: 0, y: 0, z: 0 }
-                    });
+                try {
+                    const now = Date.now();
+                    const deltaTime = Math.min((now - this.lastUpdate) / 16.67, 2.0); // Ограничиваем deltaTime
+                    this.lastUpdate = now;
+                    
+                    let moveX = 0;
+                    let moveZ = 0;
+                    
+                    if (this.keys['w'] || this.keys['arrowup']) moveZ -= this.playerSpeed * deltaTime;
+                    if (this.keys['s'] || this.keys['arrowdown']) moveZ += this.playerSpeed * deltaTime;
+                    if (this.keys['a'] || this.keys['arrowleft']) moveX -= this.playerSpeed * deltaTime;
+                    if (this.keys['d'] || this.keys['arrowright']) moveX += this.playerSpeed * deltaTime;
+                    
+                    // Ограничение движения границами
+                    const newX = this.playerPosition.x + moveX;
+                    const newZ = this.playerPosition.z + moveZ;
+                    
+                    if (Math.abs(newX) < 19) this.playerPosition.x = newX;
+                    if (Math.abs(newZ) < 19) this.playerPosition.z = newZ;
+                    
+                    // Обновление камеры (third-person)
+                    const cameraDistance = 8;
+                    const cameraHeight = 5;
+                    const lookAtHeight = 1;
+                    
+                    this.camera.position.x = this.playerPosition.x;
+                    this.camera.position.z = this.playerPosition.z + cameraDistance;
+                    this.camera.position.y = this.playerPosition.y + cameraHeight;
+                    this.camera.lookAt(
+                        this.playerPosition.x,
+                        this.playerPosition.y + lookAtHeight,
+                        this.playerPosition.z
+                    );
+                    
+                    // Обновление HUD
+                    document.getElementById('coords').textContent = 
+                        `X: ${this.playerPosition.x.toFixed(2)} Y: ${this.playerPosition.y.toFixed(2)} Z: ${this.playerPosition.z.toFixed(2)}`;
+                    
+                    // Отправка обновления на сервер (с ограничением частоты)
+                    if (this.socket && this.playerId && now - this.lastMovementUpdate > this.movementUpdateInterval) {
+                        this.lastMovementUpdate = now;
+                        
+                        this.socket.emit('playerMovement', {
+                            room: selectedServer,
+                            position: this.playerPosition,
+                            rotation: { x: 0, y: 0, z: 0 }
+                        });
+                    }
+                } catch (error) {
+                    logDebug(`Ошибка обновления движения: ${error.message}`);
                 }
             }
 
             connectToServer() {
-                this.socket = io(SERVER_URL, {
-                    transports: ['websocket', 'polling']
-                });
-                
-                this.socket.on('connect', () => {
-                    this.playerId = this.socket.id;
+                try {
+                    logDebug(`Подключаюсь к серверу: ${SERVER_URL}`);
+                    updateConnectionStatus('Подключение...', 'yellow');
                     
-                    this.socket.emit('join', {
-                        username: username,
-                        room: selectedServer
+                    this.socket = io(SERVER_URL, {
+                        transports: ['websocket', 'polling'],
+                        path: '/socket.io/',
+                        reconnection: true,
+                        reconnectionAttempts: 10,
+                        reconnectionDelay: 1000,
+                        reconnectionDelayMax: 5000,
+                        timeout: 20000
                     });
-                });
-                
-                this.socket.on('currentPlayers', (players) => {
-                    Object.values(players).forEach(player => {
-                        if (player.id !== this.playerId) {
-                            this.addOtherPlayer(player);
-                        } else {
-                            this.playerPosition = player.position;
+                    
+                    // Обработчики событий Socket.IO
+                    this.socket.on('connect', () => {
+                        logDebug(`✅ Соединение установлено! ID: ${this.socket.id}`);
+                        updateConnectionStatus('Подключено', '#0f0');
+                        this.playerId = this.socket.id;
+                        
+                        // Отправляем запрос на присоединение
+                        this.socket.emit('join', {
+                            username: username,
+                            room: selectedServer
+                        });
+                        
+                        logDebug(`Отправляю запрос на присоединение: ${username} -> ${selectedServer}`);
+                    });
+                    
+                    this.socket.on('connect_error', (error) => {
+                        logDebug(`❌ Ошибка соединения: ${error.message}`);
+                        updateConnectionStatus('Ошибка подключения', 'red');
+                        showError('Ошибка подключения к серверу');
+                    });
+                    
+                    this.socket.on('disconnect', (reason) => {
+                        logDebug(`📴 Отключение: ${reason}`);
+                        updateConnectionStatus('Отключено', 'red');
+                    });
+                    
+                    this.socket.on('welcome', (data) => {
+                        logDebug(`👋 Приветствие от сервера: ${JSON.stringify(data)}`);
+                    });
+                    
+                    this.socket.on('serverInfo', (data) => {
+                        logDebug(`ℹ️ Информация сервера: ${JSON.stringify(data)}`);
+                    });
+                    
+                    this.socket.on('currentPlayers', (players) => {
+                        logDebug(`🎮 Получено игроков: ${Object.keys(players).length}`);
+                        
+                        Object.values(players).forEach(player => {
+                            if (player.id !== this.playerId) {
+                                this.addOtherPlayer(player);
+                            } else {
+                                this.playerPosition = player.position;
+                                logDebug(`Моя позиция: x=${player.position.x}, z=${player.position.z}`);
+                            }
+                        });
+                        
+                        document.getElementById('playerCount').textContent = Object.keys(players).length;
+                    });
+                    
+                    this.socket.on('newPlayer', (playerData) => {
+                        logDebug(`🆕 Новый игрок: ${playerData.username} (${playerData.id})`);
+                        
+                        if (playerData.id !== this.playerId) {
+                            this.addOtherPlayer(playerData);
+                            document.getElementById('playerCount').textContent = 
+                                parseInt(document.getElementById('playerCount').textContent) + 1;
                         }
                     });
-                    document.getElementById('playerCount').textContent = Object.keys(players).length;
-                });
-                
-                this.socket.on('newPlayer', (playerData) => {
-                    if (playerData.id !== this.playerId) {
-                        this.addOtherPlayer(playerData);
-                        document.getElementById('playerCount').textContent = 
-                            parseInt(document.getElementById('playerCount').textContent) + 1;
-                    }
-                });
-                
-                this.socket.on('playerMoved', (data) => {
-                    const player = this.players[data.id];
-                    if (player && player.mesh) {
-                        player.mesh.position.copy(data.position);
-                    }
-                });
-                
-                this.socket.on('playerDisconnected', (playerId) => {
-                    if (this.players[playerId]) {
-                        this.scene.remove(this.players[playerId].mesh);
-                        delete this.players[playerId];
-                        document.getElementById('playerCount').textContent = 
-                            parseInt(document.getElementById('playerCount').textContent) - 1;
-                    }
-                });
-                
-                this.socket.on('error', (message) => {
-                    showError(message);
-                    document.getElementById('gameScreen').style.display = 'none';
-                    document.getElementById('serverContainer').style.display = 'block';
-                });
+                    
+                    this.socket.on('playerMoved', (data) => {
+                        const player = this.players[data.id];
+                        if (player && player.mesh) {
+                            player.mesh.position.set(data.position.x, data.position.y, data.position.z);
+                            this.updatePlayerLabel(data.id, data.position);
+                        }
+                    });
+                    
+                    this.socket.on('playerDisconnected', (playerId) => {
+                        logDebug(`👋 Игрок отключился: ${playerId}`);
+                        
+                        if (this.players[playerId]) {
+                            this.scene.remove(this.players[playerId].mesh);
+                            delete this.players[playerId];
+                            
+                            // Удаляем метку
+                            if (this.playerLabels[playerId]) {
+                                document.body.removeChild(this.playerLabels[playerId]);
+                                delete this.playerLabels[playerId];
+                            }
+                            
+                            document.getElementById('playerCount').textContent = 
+                                parseInt(document.getElementById('playerCount').textContent) - 1;
+                        }
+                    });
+                    
+                    this.socket.on('error', (message) => {
+                        logDebug(`❌ Ошибка сервера: ${message}`);
+                        showError(`Ошибка сервера: ${message}`);
+                        document.getElementById('gameScreen').style.display = 'none';
+                        document.getElementById('serverContainer').style.display = 'block';
+                    });
+                    
+                    this.socket.on('pong', (data) => {
+                        logDebug(`🏓 Pong: ${JSON.stringify(data)}`);
+                    });
+                    
+                    logDebug('Обработчики событий Socket.IO установлены');
+                } catch (error) {
+                    logDebug(`Ошибка подключения к серверу: ${error.message}`);
+                    showError('Не удалось подключиться к серверу');
+                }
             }
 
             addOtherPlayer(playerData) {
-                const geometry = new THREE.BoxGeometry(0.8, 1.8, 0.8);
-                const material = new THREE.MeshPhongMaterial({ 
-                    color: 0x1E90FF,
-                    shininess: 30
-                });
-                const playerMesh = new THREE.Mesh(geometry, material);
-                
-                playerMesh.position.set(
-                    playerData.position.x,
-                    playerData.position.y,
-                    playerData.position.z
-                );
-                
-                playerMesh.castShadow = true;
-                playerMesh.receiveShadow = true;
-                
-                this.scene.add(playerMesh);
-                this.players[playerData.id] = {
-                    mesh: playerMesh,
-                    username: playerData.username
-                };
+                try {
+                    logDebug(`Добавляю игрока: ${playerData.username}`);
+                    
+                    const geometry = new THREE.BoxGeometry(0.8, 1.8, 0.8);
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: 0x1E90FF,
+                        shininess: 30
+                    });
+                    const playerMesh = new THREE.Mesh(geometry, material);
+                    
+                    playerMesh.position.set(
+                        playerData.position.x,
+                        playerData.position.y,
+                        playerData.position.z
+                    );
+                    
+                    playerMesh.castShadow = true;
+                    playerMesh.receiveShadow = true;
+                    
+                    this.scene.add(playerMesh);
+                    this.players[playerData.id] = {
+                        mesh: playerMesh,
+                        username: playerData.username
+                    };
+                    
+                    // Создаем метку с именем игрока
+                    this.createPlayerLabel(playerData.id, playerData.username, playerData.position);
+                    
+                    logDebug(`Игрок ${playerData.username} добавлен на сцену`);
+                } catch (error) {
+                    logDebug(`Ошибка добавления игрока: ${error.message}`);
+                }
+            }
+
+            createPlayerLabel(playerId, username, position) {
+                try {
+                    const label = document.createElement('div');
+                    label.className = 'player-label';
+                    label.textContent = username;
+                    label.id = `player-label-${playerId}`;
+                    document.body.appendChild(label);
+                    
+                    this.playerLabels[playerId] = label;
+                    this.updatePlayerLabel(playerId, position);
+                    
+                    logDebug(`Метка создана для игрока: ${username}`);
+                } catch (error) {
+                    logDebug(`Ошибка создания метки игрока: ${error.message}`);
+                }
+            }
+
+            updatePlayerLabel(playerId, position) {
+                try {
+                    const label = this.playerLabels[playerId];
+                    if (!label || !this.camera) return;
+                    
+                    // Преобразуем 3D координаты в 2D экранные координаты
+                    const vector = new THREE.Vector3(position.x, position.y + 2.2, position.z);
+                    vector.project(this.camera);
+                    
+                    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+                    
+                    // Проверяем, находится ли точка перед камерой
+                    if (vector.z < 1) {
+                        label.style.left = `${x}px`;
+                        label.style.top = `${y}px`;
+                        label.style.display = 'block';
+                    } else {
+                        label.style.display = 'none';
+                    }
+                } catch (error) {
+                    // Тихий сбой - не логируем постоянно
+                }
             }
 
             onWindowResize() {
-                this.camera.aspect = window.innerWidth / window.innerHeight;
-                this.camera.updateProjectionMatrix();
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                try {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                } catch (error) {
+                    logDebug(`Ошибка изменения размера окна: ${error.message}`);
+                }
             }
 
             updateFPS() {
-                this.fpsCounter++;
-                const now = Date.now();
-                if (now - this.lastFpsUpdate >= 1000) {
-                    document.getElementById('fps').textContent = this.fpsCounter;
-                    this.fpsCounter = 0;
-                    this.lastFpsUpdate = now;
+                try {
+                    this.fpsCounter++;
+                    const now = Date.now();
+                    if (now - this.lastFpsUpdate >= 1000) {
+                        document.getElementById('fps').textContent = this.fpsCounter;
+                        this.fpsCounter = 0;
+                        this.lastFpsUpdate = now;
+                    }
+                } catch (error) {
+                    logDebug(`Ошибка обновления FPS: ${error.message}`);
+                }
+            }
+
+            updatePlayerLabels() {
+                try {
+                    Object.keys(this.players).forEach(playerId => {
+                        const player = this.players[playerId];
+                        if (player && player.mesh) {
+                            this.updatePlayerLabel(playerId, player.mesh.position);
+                        }
+                    });
+                } catch (error) {
+                    // Тихий сбой
                 }
             }
 
             animate() {
-                requestAnimationFrame(() => this.animate());
-                
-                this.updateMovement();
-                this.updateFPS();
-                
-                this.renderer.render(this.scene, this.camera);
+                try {
+                    requestAnimationFrame(() => this.animate());
+                    
+                    this.updateMovement();
+                    this.updateFPS();
+                    this.updatePlayerLabels();
+                    
+                    this.renderer.render(this.scene, this.camera);
+                } catch (error) {
+                    logDebug(`Ошибка анимации: ${error.message}`);
+                }
             }
         }
 
         function startGame() {
-            game = new Game();
+            try {
+                logDebug('Запуск игры...');
+                game = new Game();
+            } catch (error) {
+                logDebug(`Ошибка запуска игры: ${error.message}`);
+                showError('Ошибка запуска игры');
+            }
         }
 
-        // Предзагрузка серверов
-        loadServers();
+        // ================= ИНИЦИАЛИЗАЦИЯ =================
+        logDebug('Скрипт загружен');
+        logDebug(`Frontend URL: ${window.location.origin}`);
+        logDebug(`Backend URL: ${SERVER_URL}`);
+        
+        // Проверяем доступность сервера при загрузке
+        fetch(`${SERVER_URL}/health`)
+            .then(response => {
+                if (response.ok) {
+                    logDebug('Сервер доступен');
+                } else {
+                    logDebug('Сервер недоступен');
+                }
+            })
+            .catch(error => {
+                logDebug(`Ошибка проверки сервера: ${error.message}`);
+            });
     </script>
 </body>
 </html>
