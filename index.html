@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Assistant - ChatGPT Clone</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+    <div class="container">
+        <!-- Боковая панель -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button class="new-chat-btn" id="newChatBtn">
+                    <i class="fas fa-plus"></i> Новый чат
+                </button>
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <div class="chat-history" id="chatHistory">
+                <!-- История будет загружаться через JS -->
+                <div class="history-placeholder">
+                    <i class="fas fa-comments"></i>
+                    <p>История чатов пуста</p>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar">U</div>
+                    <div class="user-details">
+                        <span class="username">Пользователь</span>
+                        <span class="user-status">Online</span>
+                    </div>
+                </div>
+                <button class="settings-btn" id="settingsBtn" title="Настройки">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Основной чат -->
+        <main class="chat-container">
+            <!-- Заголовок чата -->
+            <header class="chat-header">
+                <div class="header-content">
+                    <h1><i class="fas fa-robot"></i> AI Code Assistant</h1>
+                    <div class="model-info">
+                        <span class="model-badge" id="modelBadge">DeepSeek-Coder 1.3B</span>
+                        <span class="status" id="statusIndicator">
+                            <i class="fas fa-circle"></i> <span class="status-text">Подключение...</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="clearChatBtn" title="Очистить чат">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="header-btn" id="exportBtn" title="Экспорт истории">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Область сообщений -->
+            <div class="chat-messages" id="chatMessages">
+                <!-- Приветственное сообщение -->
+                <div class="message ai-message welcome-message">
+                    <div class="avatar">AI</div>
+                    <div class="message-content">
+                        <div class="message-text">
+                            <h3>👋 Добро пожаловать в AI Code Assistant!</h3>
+                            <p>Я ваш персональный помощник по программированию. Я умею:</p>
+                            <ul>
+                                <li><i class="fas fa-code"></i> Писать код на Python, JavaScript, Java, C++ и других языках</li>
+                                <li><i class="fas fa-book"></i> Объяснять сложные концепции программирования</li>
+                                <li><i class="fas fa-bug"></i> Находить и исправлять ошибки в коде</li>
+                                <li><i class="fas fa-chart-line"></i> Оптимизировать алгоритмы и производительность</li>
+                                <li><i class="fas fa-project-diagram"></i> Помогать с архитектурой проектов</li>
+                            </ul>
+                            <p>Просто напишите ваш вопрос или задание в поле ниже!</p>
+                            <div class="welcome-examples">
+                                <p class="examples-title">Попробуйте спросить:</p>
+                                <div class="example-buttons">
+                                    <button class="example-btn" data-example="Напиши функцию для проверки числа на простоту на Python">
+                                        <i class="fas fa-terminal"></i> Простой код
+                                    </button>
+                                    <button class="example-btn" data-example="Объясни разницу между async и await в JavaScript">
+                                        <i class="fas fa-question-circle"></i> Объяснение
+                                    </button>
+                                    <button class="example-btn" data-example="Помоги найти ошибку: def sum(a,b): return a + b print(sum(5))">
+                                        <i class="fas fa-bug"></i> Найти ошибку
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="message-timestamp">Только что</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Индикатор печатания -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-avatar">AI</div>
+                <div class="typing-content">
+                    <div class="typing-text">
+                        <span class="typing-dots">
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                        </span>
+                        <span class="typing-text-label">AI печатает...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Панель ввода сообщения -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <div class="input-box">
+                        <textarea 
+                            id="messageInput" 
+                            placeholder="Напишите сообщение... (Enter для отправки, Shift+Enter для новой строки)" 
+                            rows="1"
+                            autocomplete="off"
+                            autocorrect="off"
+                            spellcheck="false"
+                            maxlength="2000"
+                        ></textarea>
+                        <div class="input-actions">
+                            <button class="input-action-btn" id="attachFileBtn" title="Прикрепить файл">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <button class="input-action-btn" id="sendButton" title="Отправить сообщение">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="input-footer">
+                    <div class="shortcut-buttons">
+                        <button class="shortcut-btn" data-prompt="Напиши функцию для парсинга JSON на Python">
+                            <i class="fas fa-code"></i> JSON парсер
+                        </button>
+                        <button class="shortcut-btn" data-prompt="Объясни принцип работы REST API">
+                            <i class="fas fa-network-wired"></i> REST API
+                        </button>
+                        <button class="shortcut-btn" data-prompt="Создай простую HTML форму с валидацией">
+                            <i class="fas fa-file-code"></i> HTML форма
+                        </button>
+                        <button class="shortcut-btn" data-prompt="Напиши SQL запрос для выборки последних 10 пользователей">
+                            <i class="fas fa-database"></i> SQL запрос
+                        </button>
+                    </div>
+                    <div class="footer-info">
+                        <div class="char-counter" id="charCounter">0/2000</div>
+                        <div class="input-hint">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Для новой строки используйте Shift+Enter</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Модальное окно настроек -->
+        <div class="modal-overlay" id="settingsModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2><i class="fas fa-cog"></i> Настройки AI</h2>
+                    <button class="modal-close" id="closeSettingsBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h3><i class="fas fa-server"></i> Настройки API</h3>
+                        
+                        <div class="setting-group">
+                            <label for="apiEndpoint">
+                                <i class="fas fa-link"></i> API Endpoint URL
+                            </label>
+                            <input 
+                                type="text" 
+                                id="apiEndpoint" 
+                                value="https://misha4458456-test3.hf.space" 
+                                placeholder="https://ваш-space.hf.space"
+                            >
+                            <div class="setting-description">
+                                Укажите URL вашего Hugging Face Space. Убедитесь, что Space запущен.
+                            </div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="apiRoute">
+                                <i class="fas fa-route"></i> API Route
+                            </label>
+                            <input 
+                                type="text" 
+                                id="apiRoute" 
+                                value="/run/predict" 
+                                placeholder="/api/chat или /run/predict"
+                            >
+                            <div class="setting-description">
+                                Путь к API эндпоинту. По умолчанию для Gradio: /run/predict
+                            </div>
+                        </div>
+                        
+                        <div class="test-api-section">
+                            <button class="test-api-btn" id="testApiBtn">
+                                <i class="fas fa-vial"></i> Протестировать подключение
+                            </button>
+                            <div class="test-result" id="testResult"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3><i class="fas fa-sliders-h"></i> Параметры модели</h3>
+                        
+                        <div class="setting-group">
+                            <label for="temperatureSlider">
+                                <i class="fas fa-thermometer-half"></i> Температура (креативность)
+                                <span id="temperatureValue">0.1</span>
+                            </label>
+                            <input 
+                                type="range" 
+                                id="temperatureSlider" 
+                                min="0" 
+                                max="1" 
+                                step="0.1" 
+                                value="0.1"
+                            >
+                            <div class="setting-description">
+                                Чем выше значение, тем более креативными и разнообразными будут ответы.
+                            </div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="maxTokensSlider">
+                                <i class="fas fa-ruler-horizontal"></i> Максимальная длина ответа
+                                <span id="maxTokensValue">300</span> токенов
+                            </label>
+                            <input 
+                                type="range" 
+                                id="maxTokensSlider" 
+                                min="50" 
+                                max="1000" 
+                                step="50" 
+                                value="300"
+                            >
+                            <div class="setting-description">
+                                Максимальное количество токенов в ответе AI.
+                            </div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="modelSelect">
+                                <i class="fas fa-brain"></i> Режим модели
+                            </label>
+                            <select id="modelSelect">
+                                <option value="code">💻 Режим кода (точный)</option>
+                                <option value="chat">💬 Режим общения (креативный)</option>
+                                <option value="balanced">⚖️ Сбалансированный режим</option>
+                            </select>
+                            <div class="setting-description">
+                                Выберите режим работы AI в зависимости от ваших задач.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3><i class="fas fa-paint-brush"></i> Внешний вид</h3>
+                        
+                        <div class="setting-group">
+                            <label for="themeSelect">
+                                <i class="fas fa-palette"></i> Цветовая тема
+                            </label>
+                            <select id="themeSelect">
+                                <option value="light">☀️ Светлая тема</option>
+                                <option value="dark">🌙 Тёмная тема</option>
+                                <option value="auto">⚙️ Автоматически</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>
+                                <input type="checkbox" id="animationsToggle" checked>
+                                <i class="fas fa-film"></i> Включить анимации
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="resetSettingsBtn">
+                        <i class="fas fa-undo"></i> Сбросить настройки
+                    </button>
+                    <button class="btn-primary" id="saveSettingsBtn">
+                        <i class="fas fa-save"></i> Сохранить настройки
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно информации о чате -->
+        <div class="modal-overlay" id="chatInfoModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2><i class="fas fa-info-circle"></i> Информация о чате</h2>
+                    <button class="modal-close" id="closeChatInfoBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body" id="chatInfoContent">
+                    <!-- Информация будет загружаться динамически -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
